@@ -80,17 +80,19 @@ def build():
     _style_sheet(
         infos,
         headers=["Rubrique", "Contenu"],
-        widths=[32, 70],
+        widths=[32, 74],
         rows=[
-            ["Nom du restaurant", "Chez Léon"],
-            ["Ton de voix", "Chaleureux, professionnel, tutoiement léger"],
-            ["Horaires", "Mardi-Dimanche 12h-14h et 19h-22h, fermé le lundi"],
-            ["Adresse", "12 rue de la Paix, 31000 Toulouse"],
-            ["Accès / Parking", "Métro Jean Jaurès, parking gratuit à 50 m"],
-            ["Téléphone", "05 61 00 00 00"],
-            ["Politique de réservation", "Réservation conseillée le week-end"],
-            ["Livraison / À emporter", "À emporter oui ; livraison via Uber Eats"],
-            ["À escalader systématiquement", "Réservations, commandes, réclamations, privatisations, demandes de groupe"],
+            ["Nom du restaurant", "Le Maquis du Bonheur"],
+            ["Ton de voix", "Chaleureux, accueillant, vouvoiement poli"],
+            ["Horaires", "Tous les jours de 11h à 23h"],
+            ["Adresse", "Quartier Fidjrossè, Cotonou, Bénin"],
+            ["Repère / Accès", "En face de la pharmacie Fidjrossè, à 100 m du carrefour"],
+            ["Téléphone / WhatsApp", "+229 01 90 00 00 00"],
+            ["Devise", "FCFA (franc CFA)"],
+            ["Moyens de paiement", "Espèces, MTN MoMo, Moov Money, carte bancaire"],
+            ["Livraison / À emporter", "À emporter oui ; livraison sur Cotonou via Gozem et livreur maison"],
+            ["Politique de réservation", "Réservation conseillée le week-end et pour les groupes"],
+            ["À escalader systématiquement", "Réservations, commandes, réclamations, privatisations, traiteur / événements"],
         ],
     )
 
@@ -99,13 +101,19 @@ def build():
     _style_sheet(
         menu,
         headers=["Catégorie", "Plat", "Description", "Prix", "Allergènes / Régime"],
-        widths=[16, 26, 40, 10, 26],
+        widths=[16, 28, 42, 14, 26],
         rows=[
-            ["Entrée", "Salade César", "Poulet grillé, parmesan, croûtons", "9€", "contient gluten, œuf"],
-            ["Plat", "Burger maison", "Bœuf, cheddar, frites maison", "15€", "contient gluten, lactose"],
-            ["Plat", "Risotto aux légumes", "Légumes de saison, parmesan", "14€", "végétarien, sans gluten"],
-            ["Dessert", "Tiramisu maison", "Recette traditionnelle", "7€", "contient lactose, œuf"],
-            ["Boisson", "Côtes du Rhône (verre)", "Vin rouge", "5€", ""],
+            ["Entrée", "Salade d'avocat", "Avocat, tomate, oignon", "1 500 FCFA", "végétarien, végan"],
+            ["Plat", "Riz au gras", "Riz mijoté, légumes, viande", "2 500 FCFA", ""],
+            ["Plat", "Poulet braisé", "Poulet mariné grillé, piment", "3 000 FCFA", ""],
+            ["Plat", "Poisson braisé", "Tilapia grillé, sauce piment", "3 500 FCFA", "contient poisson"],
+            ["Plat", "Pâte rouge + sauce arachide", "Pâte de maïs, sauce arachide", "2 000 FCFA", "contient arachide"],
+            ["Plat", "Amiwo poulet", "Pâte de maïs tomatée + poulet", "2 500 FCFA", ""],
+            ["Accompagnement", "Aloko", "Banane plantain frite", "1 000 FCFA", "végétarien, végan"],
+            ["Dessert", "Salade de fruits", "Fruits frais de saison", "1 500 FCFA", "végan"],
+            ["Boisson", "Jus de bissap", "Hibiscus maison", "1 000 FCFA", "végan"],
+            ["Boisson", "Bière (33 cl)", "Béninoise ou autre", "1 000 FCFA", "contient gluten"],
+            ["Boisson", "Eau minérale 1,5 L", "Possotomè", "500 FCFA", ""],
         ],
     )
 
@@ -114,13 +122,15 @@ def build():
     _style_sheet(
         faq,
         headers=["Question", "Réponse"],
-        widths=[40, 62],
+        widths=[42, 66],
         rows=[
-            ["Vous avez une terrasse ?", "Oui, une terrasse chauffée ouverte toute l'année."],
-            ["Acceptez-vous les cartes ?", "Oui, carte bancaire et tickets restaurant."],
-            ["Avez-vous des plats végétariens ?", "Oui, plusieurs plats végétariens et véganes."],
-            ["Êtes-vous accessibles PMR ?", "Oui, le restaurant est accessible aux personnes à mobilité réduite."],
-            ["Peut-on venir avec un chien ?", "Les chiens sont les bienvenus en terrasse."],
+            ["Vous êtes ouverts aujourd'hui ?", "Oui, nous sommes ouverts tous les jours de 11h à 23h."],
+            ["Où êtes-vous situés ?", "À Cotonou, quartier Fidjrossè, en face de la pharmacie Fidjrossè."],
+            ["Acceptez-vous Mobile Money ?", "Oui, MTN MoMo et Moov Money, ainsi que les espèces et la carte."],
+            ["Faites-vous la livraison ?", "Oui, livraison sur Cotonou via Gozem et notre livreur maison."],
+            ["Avez-vous des plats végétariens ?", "Oui, par exemple l'aloko, la salade d'avocat et la salade de fruits."],
+            ["Peut-on privatiser la salle ?", "Oui pour les événements. Je transmets votre demande à l'équipe."],
+            ["Y a-t-il une salle climatisée ?", "Oui, nous avons une salle climatisée et une terrasse."],
         ],
     )
 
