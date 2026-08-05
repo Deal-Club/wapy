@@ -59,23 +59,30 @@ prouvé que le socle tient en prod avec un vrai resto.
 
 ### Format de la fiche restaurant (base de connaissances)
 La fiche est **construite avec le client** (des « fiches essais » d'abord). Format
-retenu : **un fichier Markdown par resto**, choisi pour sa simplicité — se remplit à la
-main en ~20 min, se glisse tel quel dans le prompt de Claude (pas de base vectorielle),
-et se versionne dans git.
+retenu : **un Google Sheet** (un onglet/resto en multi-tenant). Choisi parce que la
+cible est **non technique** — le restaurateur édite ses prix/horaires lui-même comme un
+tableur — et parce que ça **réutilise l'infrastructure Google Sheets existante**
+(`gspread`, compte de service `credentials.json`, pattern `google_sheet.py`). Édition
+collaborative en direct avec le client, familier à la base clients existante.
 
-Sections de la fiche :
-- **Identité & ton de voix** (nom, style de réponse : chaleureux/pro/décontracté)
-- **Horaires** (jours, services, jours de fermeture)
-- **Adresse, accès, parking**
-- **Menu avec prix** (plats, formules, boissons)
-- **Régimes & allergènes** (végé, sans gluten, etc.)
-- **Politique de réservation** (même si les résas ne sont pas automatisées en v1 : le
-  bot doit savoir quoi répondre et vers qui escalader)
-- **FAQ courantes** (questions fréquentes + réponses validées)
-- **À escalader systématiquement** (ce que le bot ne doit jamais traiter seul)
+Structure (3 onglets, pensés pour être remplis sans réfléchir) :
+- **Onglet `Infos`** — 2 colonnes `Rubrique | Contenu` : Nom, Ton de voix, Horaires,
+  Adresse/Accès/Parking, Politique de réservation, **À escalader systématiquement**
+  (ce que le bot ne doit jamais traiter seul).
+- **Onglet `Menu`** — `Catégorie | Plat | Description | Prix | Allergènes/Régime`.
+- **Onglet `FAQ`** — `Question | Réponse` (réponses validées).
 
-Le **template vierge de cette fiche** sera le tout premier livrable de
-l'implémentation, prêt à remplir avec le resto.
+Wapy lit les 3 onglets et les **aplatit dans le prompt** de Claude (pas de base
+vectorielle).
+
+**Contrainte de perf (importante)** : ne PAS appeler l'API Google à chaque message
+(centaines/jour → lenteur + quotas Google). La fiche est **mise en cache** et
+**rechargée périodiquement** (ex. toutes les 5-10 min) ou via une commande « recharger ».
+Le client édite son Sheet → le bot en tient compte quelques minutes plus tard, de façon
+transparente.
+
+Le **template de Google Sheet vierge** (3 onglets pré-structurés) sera le tout premier
+livrable de l'implémentation, prêt à remplir avec le resto.
 
 ---
 
@@ -113,7 +120,9 @@ tard sans toucher au cerveau.
 **Cerveau (`brain/`)** — appel Claude (`claude-*`). Le prompt système contient la
 **fiche complète du restaurant** (menu, horaires, infos pratiques, ton de voix) + une
 règle stricte : *« si l'information n'est pas dans la fiche, ne l'invente pas ;
-escalade. »* Retourne soit une réponse texte, soit une décision d'escalade.
+escalade. »* Retourne soit une réponse texte, soit une décision d'escalade. La fiche est
+chargée depuis un **Google Sheet mis en cache** (chargeur réutilisant `gspread` /
+`google_sheet.py`), rechargée périodiquement — jamais appelée à chaque message.
 
 **Persistance (`store/`)** — SQLite. Tables minimales : `conversations` (par numéro
 client : historique des messages, statut, timestamp), `escalations` (conversations
@@ -192,14 +201,16 @@ Garde-fous intégrés dès la v1 (repris/adaptés du bot AGM TEC) :
 - **Python 3.10+ + FastAPI** (webhook entrant) — reste dans la stack de l'équipe.
 - **WAHA** (Docker) — adaptateur non-officiel (canal).
 - **Claude** (`claude-*`, Anthropic) — cerveau.
-- **SQLite** — persistance (suffisant pour un mono-resto).
+- **Google Sheets + `gspread`** — fiche restaurant (source éditable par le client), en cache.
+- **SQLite** — persistance des conversations (suffisant pour un mono-resto).
 - **WhatsApp** — escalade client → staff du resto (via le canal).
 - **Telegram** — alertes techniques → opérateur Wapy (réutilise `notifier.py` existant).
 - **Hébergement** : VPS OVH existant (`51.210.108.173`), à côté des autres services.
 
 ### Réutilisable du projet existant
-- `notifier.py` (Telegram), structure `config.py`, scripts `_deploy/`, gestion d'état
-  type `bot_state.json`.
+- `google_sheet.py` / `gspread` + `credentials.json` (lecture de la fiche resto),
+  `notifier.py` (alertes Telegram opérateur), structure `config.py`, scripts `_deploy/`,
+  gestion d'état type `bot_state.json`.
 
 ### NON réutilisable
 - Tout le Selenium (`whatsapp_sender.py`, `browser/`) — changement de paradigme
