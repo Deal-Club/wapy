@@ -19,7 +19,9 @@ class _Ch:
     def parse_incoming(self, payload):
         p = payload["payload"]
         cid = p["from"]
-        return IncomingMessage(cid, p["body"], p.get("fromMe", False), cid.endswith("@g.us"))
+        return IncomingMessage(
+            cid, p["body"], p.get("fromMe", False), cid.endswith("@g.us"), p.get("id", "")
+        )
 
     def send_text(self, chat_id, text):
         self.sent.append((chat_id, text))
@@ -37,7 +39,13 @@ class _Brain:
 
 class _Store:
     def __init__(self):
-        self.msgs, self.esc, self.opt = [], set(), set()
+        self.msgs, self.esc, self.opt, self.processed = [], set(), set(), set()
+
+    def is_processed(self, mid):
+        return mid in self.processed
+
+    def mark_processed(self, mid):
+        self.processed.add(mid)
 
     def append(self, cid, role, text):
         self.msgs.append((cid, role, text))
@@ -77,8 +85,23 @@ def _client(brain, ch=None, store=None):
     return TestClient(create_app(deps)), ch, store
 
 
-def _msg(cid="33611112222@c.us", body="Vous ouvrez à quelle heure ?", from_me=False):
-    return {"event": "message", "payload": {"from": cid, "body": body, "fromMe": from_me}}
+def _msg(cid="33611112222@c.us", body="Vous ouvrez à quelle heure ?", from_me=False, mid="m1"):
+    return {
+        "event": "message",
+        "payload": {"from": cid, "body": body, "fromMe": from_me, "id": mid},
+    }
+
+
+def test_duplicate_message_ignored():
+    brain = _Brain(Decision("reply", "ok", "y"))
+    client, ch, store = _client(brain)
+    client.post("/webhook", json=_msg(mid="dup1"))
+    assert len(ch.sent) == 1
+    brain.called = False
+    r = client.post("/webhook", json=_msg(mid="dup1"))
+    assert r.json()["status"] == "duplicate"
+    assert brain.called is False
+    assert len(ch.sent) == 1
 
 
 def test_reply_flow_sends_and_persists():

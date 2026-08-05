@@ -28,6 +28,7 @@ class WahaProvider(WhatsAppChannel):
             text=body,
             from_me=bool(p.get("fromMe", False)),
             is_group=chat_id.endswith("@g.us"),
+            id=str(p.get("id", "")),
         )
 
     def send_text(self, chat_id: str, text: str) -> None:

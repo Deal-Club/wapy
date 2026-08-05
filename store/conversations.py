@@ -28,6 +28,26 @@ class ConversationStore:
                     optout INTEGER DEFAULT 0
                 )"""
             )
+            c.execute(
+                """CREATE TABLE IF NOT EXISTS processed_messages (
+                    id TEXT PRIMARY KEY,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )"""
+            )
+
+    def is_processed(self, msg_id: str) -> bool:
+        """True si ce message WAHA a déjà été traité (anti-doublon / rejeu webhook)."""
+        with self._conn() as c:
+            row = c.execute(
+                "SELECT 1 FROM processed_messages WHERE id = ?", (msg_id,)
+            ).fetchone()
+        return row is not None
+
+    def mark_processed(self, msg_id: str) -> None:
+        with self._conn() as c:
+            c.execute(
+                "INSERT OR IGNORE INTO processed_messages (id) VALUES (?)", (msg_id,)
+            )
 
     def append(self, chat_id: str, role: str, text: str) -> None:
         with self._conn() as c:

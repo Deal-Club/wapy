@@ -10,6 +10,7 @@ class IncomingMessage:
     text: str
     from_me: bool
     is_group: bool
+    id: str = ""  # identifiant WAHA du message (pour l'idempotence)
 
 
 class WhatsAppChannel(ABC):
