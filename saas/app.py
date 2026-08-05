@@ -61,6 +61,12 @@ class ConfigIn(BaseModel):
     wapy_model: str | None = None
 
 
+class SettingsIn(BaseModel):
+    staff_numbers: str | None = None
+    staff_inbound_ids: str | None = None
+    wapy_model: str | None = None
+
+
 # --- Helpers config ---
 def _replace_config(s, tenant_id, infos, menu, faq):
     s.query(models.RestaurantInfo).filter_by(tenant_id=tenant_id).delete()
@@ -181,6 +187,17 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             [m.model_dump() for m in body.menu],
             [f.model_dump() for f in body.faq],
         )
+        if body.staff_numbers is not None:
+            tenant.staff_numbers = body.staff_numbers
+        if body.staff_inbound_ids is not None:
+            tenant.staff_inbound_ids = body.staff_inbound_ids
+        if body.wapy_model:
+            tenant.wapy_model = body.wapy_model
+        s.commit()
+        return {"status": "saved"}
+
+    @app.put("/api/settings")
+    def put_settings(body: SettingsIn, tenant=Depends(current_tenant), s=Depends(db)):
         if body.staff_numbers is not None:
             tenant.staff_numbers = body.staff_numbers
         if body.staff_inbound_ids is not None:

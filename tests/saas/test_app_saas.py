@@ -189,3 +189,14 @@ def test_wa_connect_status_qr_with_fake():
     assert c.get("/api/wa/status", headers=_auth(tok)).json()["status"] == "SCAN_QR_CODE"
     qr = c.get("/api/wa/qr", headers=_auth(tok))
     assert qr.status_code == 200 and qr.content == b"PNGDATA"
+
+
+def test_settings_update_without_wiping_config():
+    c = TestClient(create_app(session_factory=_factory()))
+    tok = _token(c)
+    c.put("/api/config", json={"menu": [{"plat": "Poulet", "prix": "3000"}]}, headers=_auth(tok))
+    r = c.put("/api/settings", json={"staff_numbers": "229x@c.us"}, headers=_auth(tok))
+    assert r.status_code == 200
+    cfg = c.get("/api/config", headers=_auth(tok)).json()
+    assert cfg["staff_numbers"] == "229x@c.us"
+    assert cfg["menu"][0]["plat"] == "Poulet"  # config préservée
