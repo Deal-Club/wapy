@@ -60,6 +60,21 @@ export const api = {
     return req("/api/import", { method: "POST", body: fd });
   },
   templateUrl: () => BASE + "/api/template.xlsx",
+  getConversations: () => req("/api/conversations"),
+  getThread: (chatId: string) => req(`/api/conversations/${encodeURIComponent(chatId)}`),
+  handoffReply: (chat_id: string, text: string) =>
+    req("/api/handoff/reply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id, text }),
+    }),
+  handoffClose: (chat_id: string) =>
+    req("/api/handoff/close", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id }),
+    }),
+  getUsage: () => req("/api/usage"),
   waConnect: () => req("/api/wa/connect", { method: "POST" }),
   waStatus: () => req("/api/wa/status"),
   waQrBlobUrl: async () => {
