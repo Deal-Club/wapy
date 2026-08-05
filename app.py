@@ -16,7 +16,7 @@ def _build_default_deps() -> dict:
     import anthropic
 
     return {
-        "channel": WahaProvider(config.WAHA_BASE_URL, config.WAHA_SESSION),
+        "channel": WahaProvider(config.WAHA_BASE_URL, config.WAHA_SESSION, config.WAHA_API_KEY),
         "brain": Brain(anthropic.Anthropic(), config.WAPY_MODEL),
         "store": ConversationStore(config.DB_PATH),
         "fiche": FicheLoader(gspread_reader, config.FICHE_TTL_SECONDS),

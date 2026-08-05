@@ -4,6 +4,8 @@ import os
 # --- Canal WAHA ---
 WAHA_BASE_URL = os.environ.get("WAHA_BASE_URL", "http://localhost:3000")
 WAHA_SESSION = os.environ.get("WAHA_SESSION", "default")
+# Clé API WAHA (si WAHA la réclame). Même variable que côté WAHA : WHATSAPP_API_KEY.
+WAHA_API_KEY = os.environ.get("WHATSAPP_API_KEY", "").strip()
 
 # --- Cerveau (Claude) ---
 # Modèle configurable. Défaut Opus 4.8. Pour un bot FAQ à fort volume,

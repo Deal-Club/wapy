@@ -37,12 +37,13 @@ def test_parse_incoming_ignores_empty_body():
     assert _provider().parse_incoming(payload) is None
 
 
-def test_send_text_posts_to_waha(monkeypatch):
+def test_send_text_posts_to_waha_with_api_key(monkeypatch):
     captured = {}
 
-    def fake_post(url, json, timeout):
+    def fake_post(url, json, headers, timeout):
         captured["url"] = url
         captured["json"] = json
+        captured["headers"] = headers
 
         class R:
             status_code = 201
@@ -54,10 +55,13 @@ def test_send_text_posts_to_waha(monkeypatch):
 
     import channel.waha as waha
     monkeypatch.setattr(waha.requests, "post", fake_post)
-    _provider().send_text("33612345678@c.us", "Bonjour !")
+    WahaProvider("http://waha:3000", "default", api_key="secret").send_text(
+        "33612345678@c.us", "Bonjour !"
+    )
     assert captured["url"] == "http://waha:3000/api/sendText"
     assert captured["json"] == {
         "session": "default",
         "chatId": "33612345678@c.us",
         "text": "Bonjour !",
     }
+    assert captured["headers"] == {"X-Api-Key": "secret"}
