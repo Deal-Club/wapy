@@ -63,8 +63,9 @@ def build():
         ("• Ne renommez PAS les onglets « Infos », « Menu », « FAQ » (le bot les cherche par nom).", None),
         ("• Ne supprimez pas la 1re ligne (les en-têtes) de chaque onglet.", None),
         ("• Les exemples sont là pour vous guider : remplacez-les par vos vraies infos.", None),
-        ("• Ce que le bot ne doit jamais traiter seul (réservations, commandes…) : listez-le", None),
-        ("  dans la rubrique « À escalader systématiquement » de l'onglet Infos.", None),
+        ("• CONSIGNES : dans l'onglet Infos, vous pouvez dicter le comportement du bot", None),
+        ("  (ex. « Consigne : réservations » = envoyez le lien / transmettez au responsable).", None),
+        ("  Le bot suit ces consignes. « À escalader systématiquement » = ce qu'il transmet à un humain.", None),
         ("", None),
         ("Ensuite : Fichier → Importer ce classeur dans Google Sheets, puis partagez-le", None),
         ("en édition avec l'e-mail du compte de service (fourni par votre intégrateur).", None),
@@ -92,7 +93,10 @@ def build():
             ["Moyens de paiement", "Espèces, MTN MoMo, Moov Money, carte bancaire"],
             ["Livraison / À emporter", "À emporter oui ; livraison sur Cotonou via Gozem et livreur maison"],
             ["Politique de réservation", "Réservation conseillée le week-end et pour les groupes"],
-            ["À escalader systématiquement", "Réservations, commandes, réclamations, privatisations, traiteur / événements"],
+            ["Lien de réservation", "(votre lien de résa en ligne, ex. https://calendly.com/... ; laissez vide si aucun)"],
+            ["Consigne : réservations", "S'il y a un lien de réservation, envoyez-le au client. Sinon, transmettez la demande au responsable."],
+            ["Consigne : commandes / à emporter", "Prenez le détail (plats, quantités, nom, heure) puis transmettez au responsable."],
+            ["À escalader systématiquement", "Réclamations, privatisations, événements / traiteur, ou toute demande de parler à un humain"],
         ],
     )
 
