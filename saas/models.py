@@ -23,6 +23,11 @@ class Tenant(Base):
     name = Column(String(255), nullable=False)
     slug = Column(String(255), unique=True)
     plan = Column(String(50), default="free")
+    # Config bot par tenant (numéros @c.us pour envoyer les alertes ;
+    # @lid pour reconnaître les messages entrants du staff — cf. WAHA/NOWEB).
+    staff_numbers = Column(Text, default="")
+    staff_inbound_ids = Column(Text, default="")
+    wapy_model = Column(String(80), default="claude-opus-4-8")
     created_at = Column(DateTime, server_default=func.now())
 
 
