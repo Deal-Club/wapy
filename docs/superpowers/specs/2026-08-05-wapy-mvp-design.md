@@ -57,6 +57,26 @@ FAQ + escalade = ~80 % de la valeur pour ~20 % du risque. Les réservations et l
 commandes touchent à l'argent et aux erreurs graves → on les ajoute **après** avoir
 prouvé que le socle tient en prod avec un vrai resto.
 
+### Format de la fiche restaurant (base de connaissances)
+La fiche est **construite avec le client** (des « fiches essais » d'abord). Format
+retenu : **un fichier Markdown par resto**, choisi pour sa simplicité — se remplit à la
+main en ~20 min, se glisse tel quel dans le prompt de Claude (pas de base vectorielle),
+et se versionne dans git.
+
+Sections de la fiche :
+- **Identité & ton de voix** (nom, style de réponse : chaleureux/pro/décontracté)
+- **Horaires** (jours, services, jours de fermeture)
+- **Adresse, accès, parking**
+- **Menu avec prix** (plats, formules, boissons)
+- **Régimes & allergènes** (végé, sans gluten, etc.)
+- **Politique de réservation** (même si les résas ne sont pas automatisées en v1 : le
+  bot doit savoir quoi répondre et vers qui escalader)
+- **FAQ courantes** (questions fréquentes + réponses validées)
+- **À escalader systématiquement** (ce que le bot ne doit jamais traiter seul)
+
+Le **template vierge de cette fiche** sera le tout premier livrable de
+l'implémentation, prêt à remplir avec le resto.
+
 ---
 
 ## 3. Architecture
@@ -71,12 +91,15 @@ Client WhatsApp
 │  adaptateur)│◄─────│  fiche resto)│      └─────────┬──────────┘
 └─────┬───────┘      └──────┬───────┘                │
       │                     │                        ▼
-      ▼                     ▼                 ┌───────────────┐
-┌─────────────┐      ┌──────────────┐         │  Escalade      │
-│ Garde-fous  │      │ Persistance  │         │  humaine       │
-│ (protection │      │ (SQLite:     │         │  (Telegram)    │
-│  numéro)    │      │ conversations)│        └───────────────┘
-└─────────────┘      └──────────────┘
+      ▼                     ▼                 ┌────────────────────┐
+┌─────────────┐      ┌──────────────┐         │  Escalade humaine   │
+│ Garde-fous  │      │ Persistance  │         │  → staff du resto   │
+│ (protection │      │ (SQLite:     │         │  sur WhatsApp        │
+│  numéro)    │      │ conversations)│        └────────────────────┘
+└──────┬──────┘      └──────────────┘
+       │ alertes techniques (session, ban)
+       ▼
+  Telegram (opérateur Wapy)
 ```
 
 ### Composants
@@ -96,9 +119,15 @@ escalade. »* Retourne soit une réponse texte, soit une décision d'escalade.
 client : historique des messages, statut, timestamp), `escalations` (conversations
 passées à l'humain). But : donner le contexte au cerveau et éviter le double-traitement.
 
-**Escalade (`handoff/`)** — réutilise le **pattern Telegram** du projet existant
-(`notifier.py`). Quand le bot escalade, un employé reçoit la conversation sur Telegram,
-et le bot **cesse de répondre automatiquement** à ce client (un humain a la main).
+**Escalade (`handoff/`)** — deux publics distincts :
+- **Escalade client → staff du resto** : le bot envoie une alerte **sur le WhatsApp**
+  d'un ou plusieurs employés (numéros configurés). L'employé répond ensuite au client
+  **depuis le WhatsApp du resto sur son propre téléphone** (WAHA n'est qu'un appareil
+  lié — la ligne reste active sur le mobile). Le bot **cesse de répondre
+  automatiquement** à ce client (un humain a la main).
+- **Alertes techniques → opérateur Wapy** : session qui saute, avertissement de ban →
+  **Telegram** (réutilise le pattern `notifier.py` du projet existant). Public privé,
+  hors resto.
 
 **Garde-fous (`safety/`)** — voir §6.
 
@@ -119,8 +148,8 @@ resto, clés API, bornes des garde-fous.
 5. Le cerveau décide :
    - **Réponse trouvée dans la fiche** → passer par les garde-fous de sortie (rythme
      humain, throttle) → envoyer via le canal → enregistrer.
-   - **Info absente / demande d'humain / opt-out détecté** → escalader (Telegram),
-     marquer la conversation, ne plus répondre auto.
+   - **Info absente / demande d'humain / opt-out détecté** → escalader (alerte
+     WhatsApp au staff du resto), marquer la conversation, ne plus répondre auto.
 6. Enregistrer l'échange dans SQLite.
 
 ---
@@ -144,7 +173,10 @@ rendent pas nul — seul l'adaptateur officiel Meta l'élimine (option premium f
 En entrant, le risque est déjà bien plus faible qu'en sortant.
 
 Garde-fous intégrés dès la v1 (repris/adaptés du bot AGM TEC) :
-- **Ne jamais initier** de conversation — répondre uniquement (levier anti-ban n°1).
+- **Ne jamais initier** de conversation avec un client — répondre uniquement (levier
+  anti-ban n°1). Seule exception : les **alertes d'escalade vers le staff du resto**,
+  limitées à une **liste blanche fixe** de numéros internes connus (contacts qui
+  attendent ces messages) → risque négligeable.
 - **Rythme humain** + throttle : pas de rafales si beaucoup de messages arrivent d'un coup.
 - **Heartbeat de session** + alerte Telegram si le QR/session saute.
 - **Détection d'avertissements WhatsApp** (« trop de messages », restriction) → pause
@@ -161,7 +193,8 @@ Garde-fous intégrés dès la v1 (repris/adaptés du bot AGM TEC) :
 - **WAHA** (Docker) — adaptateur non-officiel (canal).
 - **Claude** (`claude-*`, Anthropic) — cerveau.
 - **SQLite** — persistance (suffisant pour un mono-resto).
-- **Telegram** — escalade humaine (réutilise le pattern `notifier.py` existant).
+- **WhatsApp** — escalade client → staff du resto (via le canal).
+- **Telegram** — alertes techniques → opérateur Wapy (réutilise `notifier.py` existant).
 - **Hébergement** : VPS OVH existant (`51.210.108.173`), à côté des autres services.
 
 ### Réutilisable du projet existant
