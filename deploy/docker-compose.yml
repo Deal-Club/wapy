@@ -1,0 +1,56 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: wapy
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: wapy
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  waha:
+    image: devlikeapro/waha
+    environment:
+      - WHATSAPP_DEFAULT_ENGINE=NOWEB
+      - WHATSAPP_API_KEY=${WHATSAPP_API_KEY}
+    volumes:
+      - ./waha_sessions:/app/.sessions
+
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    environment:
+      - DATABASE_URL=postgresql://wapy:${POSTGRES_PASSWORD}@postgres:5432/wapy
+      - JWT_SECRET=${JWT_SECRET}
+      - WAHA_BASE_URL=http://waha:3000
+      - WHATSAPP_API_KEY=${WHATSAPP_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - WEBHOOK_URL=http://api:8000/webhook
+    depends_on:
+      - postgres
+      - waha
+
+  web:
+    build:
+      context: ../web
+    depends_on:
+      - api
+
+  caddy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+      - web
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

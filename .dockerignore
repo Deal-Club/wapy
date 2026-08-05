@@ -1,0 +1,14 @@
+.git
+__pycache__/
+*.pyc
+.pytest_cache/
+*.db
+*.log
+chrome_profile/
+waha_sessions/
+web/node_modules/
+web/.next/
+qr.png
+credentials.json
+.env
+docs/

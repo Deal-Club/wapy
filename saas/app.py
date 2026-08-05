@@ -127,8 +127,11 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     app = FastAPI(title="Wapy Platform")
     sf = session_factory or SessionLocal
     wam = wa_module or wa
+
     if init:
-        init_db()
+        @app.on_event("startup")
+        def _startup():
+            init_db()
 
     def db():
         s = sf()
@@ -275,4 +278,4 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     return app
 
 
-app = create_app()
+app = create_app(init=True)

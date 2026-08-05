@@ -1,0 +1,11 @@
+wapy.51.210.108.173.sslip.io {
+	# API FastAPI (auth, endpoints /api, webhook WAHA)
+	@backend path /api/* /auth/* /webhook
+	handle @backend {
+		reverse_proxy api:8000
+	}
+	# Front Next.js (tout le reste)
+	handle {
+		reverse_proxy web:3001
+	}
+}

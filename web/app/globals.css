@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background: #f4f1ea;
+  color: #2b2b2b;
+}
+
+.btn {
+  @apply inline-flex items-center justify-center rounded-lg bg-brand px-4 py-2.5 font-medium text-white transition hover:bg-brand-dark disabled:opacity-50;
+}
+.btn-ghost {
+  @apply inline-flex items-center justify-center rounded-lg border border-gray-300 bg-white px-4 py-2.5 font-medium text-gray-700 transition hover:bg-gray-50;
+}
+.input {
+  @apply w-full rounded-lg border border-gray-300 px-3 py-2 outline-none focus:border-brand focus:ring-1 focus:ring-brand;
+}
+.card {
+  @apply rounded-2xl bg-white p-6 shadow-sm;
+}
+.label {
+  @apply mb-1 block text-sm font-medium text-gray-700;
+}
