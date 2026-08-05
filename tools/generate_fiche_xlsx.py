@@ -42,7 +42,8 @@ def _style_sheet(ws, headers, widths, rows):
     ws.sheet_view.showGridLines = False
 
 
-def build():
+def build_workbook():
+    """Construit et renvoie le classeur modèle (réutilisé par l'API pour le download)."""
     wb = Workbook()
 
     # --- Lisez-moi ---
@@ -138,8 +139,12 @@ def build():
         ],
     )
 
+    return wb
+
+
+def build():
     out = "docs/fiche-modele.xlsx"
-    wb.save(out)
+    build_workbook().save(out)
     print(f"OK -> {out}")
 
 
