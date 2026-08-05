@@ -16,6 +16,16 @@ if not logger.handlers:
     logger.setLevel(logging.INFO)
     logger.propagate = False
 
+# Commandes du boss pour rendre la conversation au bot.
+HANDBACK_CMDS = {"/fin", "fin", "/bot", "terminé", "termine"}
+
+
+def _safe_send(channel, to: str, text: str) -> None:
+    try:
+        channel.send_text(to, text)
+    except Exception:
+        pass
+
 
 def _build_default_deps() -> dict:
     from channel.waha import WahaProvider
@@ -66,6 +76,26 @@ def create_app(deps: dict | None = None) -> FastAPI:
             store.mark_processed(msg.id)
 
         logger.info("IN  %s : %s", msg.chat_id, msg.text[:200])
+
+        # Relais boss : un message venant du staff est transmis au client escaladé.
+        staff = d.get("staff_numbers", [])
+        if msg.chat_id in staff:
+            client_id = store.latest_open_handoff_client(msg.chat_id)
+            if msg.text.strip().lower() in HANDBACK_CMDS:
+                if client_id:
+                    store.resolve_handoffs_for_client(client_id)
+                    store.clear_escalated(client_id)
+                    _safe_send(channel, msg.chat_id, "🔁 Conversation rendue au bot.")
+                    logger.info("HANDBACK staff %s -> client %s", msg.chat_id, client_id)
+                    return {"status": "handback"}
+                _safe_send(channel, msg.chat_id, "Aucune conversation en cours.")
+                return {"status": "staff-idle"}
+            if client_id:
+                channel.send_text(client_id, msg.text)
+                logger.info("RELAY staff %s -> client %s", msg.chat_id, client_id)
+                return {"status": "relayed"}
+            logger.info("staff %s sans handoff ouvert", msg.chat_id)
+            return {"status": "staff-idle"}
 
         if store.is_optout(msg.chat_id) or store.is_escalated(msg.chat_id):
             logger.info("SKIP (opt-out/escaladé) %s", msg.chat_id)

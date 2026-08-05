@@ -40,6 +40,7 @@ class _Brain:
 class _Store:
     def __init__(self):
         self.msgs, self.esc, self.opt, self.processed = [], set(), set(), set()
+        self.handoffs = []  # (staff, client, resolved)
 
     def is_processed(self, mid):
         return mid in self.processed
@@ -59,11 +60,28 @@ class _Store:
     def set_escalated(self, cid):
         self.esc.add(cid)
 
+    def clear_escalated(self, cid):
+        self.esc.discard(cid)
+
     def is_optout(self, cid):
         return cid in self.opt
 
     def set_optout(self, cid):
         self.opt.add(cid)
+
+    def open_handoff(self, staff, client):
+        self.handoffs.append([staff, client, False])
+
+    def latest_open_handoff_client(self, staff):
+        for h in reversed(self.handoffs):
+            if h[0] == staff and not h[2]:
+                return h[1]
+        return None
+
+    def resolve_handoffs_for_client(self, client):
+        for h in self.handoffs:
+            if h[1] == client:
+                h[2] = True
 
 
 class _Fiche:
@@ -141,6 +159,35 @@ def test_optout_keyword_stops_and_marks():
     client, ch, store = _client(brain)
     client.post("/webhook", json=_msg(body="STOP"))
     assert store.is_optout("33611112222@c.us")
+    assert brain.called is False
+
+
+def test_boss_relay_then_handback():
+    staff = "33600000000@c.us"
+    brain = _Brain(Decision("escalate", "", "réservation"))
+    client, ch, store = _client(brain)
+
+    # 1. Le client déclenche une escalade
+    client.post("/webhook", json=_msg(cid="CLIENT@c.us", body="je veux réserver", mid="c1"))
+    assert store.is_escalated("CLIENT@c.us")
+
+    # 2. Le boss répond -> relayé au client (la conversation reste escaladée)
+    r = client.post("/webhook", json=_msg(cid=staff, body="Oui, table libre à 20h", mid="s1"))
+    assert r.json()["status"] == "relayed"
+    assert ("CLIENT@c.us", "Oui, table libre à 20h") in ch.sent
+    assert store.is_escalated("CLIENT@c.us")
+
+    # 3. Le boss tape /fin -> la main revient au bot
+    r2 = client.post("/webhook", json=_msg(cid=staff, body="/fin", mid="s2"))
+    assert r2.json()["status"] == "handback"
+    assert not store.is_escalated("CLIENT@c.us")
+
+
+def test_staff_message_without_open_handoff_is_idle():
+    brain = _Brain(Decision("reply", "x", "y"))
+    client, ch, store = _client(brain)
+    r = client.post("/webhook", json=_msg(cid="33600000000@c.us", body="coucou", mid="s9"))
+    assert r.json()["status"] == "staff-idle"
     assert brain.called is False
 
 

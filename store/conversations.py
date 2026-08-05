@@ -34,6 +34,41 @@ class ConversationStore:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )"""
             )
+            c.execute(
+                """CREATE TABLE IF NOT EXISTS handoffs (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    staff_number TEXT NOT NULL,
+                    client_id TEXT NOT NULL,
+                    resolved INTEGER DEFAULT 0,
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )"""
+            )
+
+    # --- Handoff (relais boss <-> client) ---
+    def open_handoff(self, staff_number: str, client_id: str) -> None:
+        with self._conn() as c:
+            c.execute(
+                "INSERT INTO handoffs (staff_number, client_id) VALUES (?, ?)",
+                (staff_number, client_id),
+            )
+
+    def latest_open_handoff_client(self, staff_number: str) -> str | None:
+        """Client du handoff ouvert le plus récent pour ce numéro staff (ou None)."""
+        with self._conn() as c:
+            row = c.execute(
+                "SELECT client_id FROM handoffs WHERE staff_number = ? AND resolved = 0 "
+                "ORDER BY id DESC LIMIT 1",
+                (staff_number,),
+            ).fetchone()
+        return row[0] if row else None
+
+    def resolve_handoffs_for_client(self, client_id: str) -> None:
+        with self._conn() as c:
+            c.execute("UPDATE handoffs SET resolved = 1 WHERE client_id = ?", (client_id,))
+
+    def clear_escalated(self, chat_id: str) -> None:
+        with self._conn() as c:
+            c.execute("UPDATE conv_state SET escalated = 0 WHERE chat_id = ?", (chat_id,))
 
     def is_processed(self, msg_id: str) -> bool:
         """True si ce message WAHA a déjà été traité (anti-doublon / rejeu webhook)."""
