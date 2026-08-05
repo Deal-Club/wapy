@@ -1,0 +1,112 @@
+"""Store conversationnel adossé à la DB, scellé à un tenant.
+
+Même interface que `store.conversations.ConversationStore` afin de réutiliser
+l'orchestration du bot sans la modifier. Toutes les requêtes filtrent par tenant_id.
+"""
+from saas import models
+
+
+class DbStore:
+    def __init__(self, session, tenant_id: int):
+        self.s = session
+        self.tid = tenant_id
+
+    # --- Historique ---
+    def append(self, chat_id: str, role: str, text: str) -> None:
+        self.s.add(
+            models.Conversation(tenant_id=self.tid, chat_id=chat_id, role=role, content=text)
+        )
+        self.s.commit()
+
+    def get_history(self, chat_id: str, limit: int) -> list[dict]:
+        rows = (
+            self.s.query(models.Conversation)
+            .filter_by(tenant_id=self.tid, chat_id=chat_id)
+            .order_by(models.Conversation.id.desc())
+            .limit(limit)
+            .all()
+        )
+        return [{"role": r.role, "content": r.content} for r in reversed(rows)]
+
+    # --- État de conversation ---
+    def _state(self, chat_id: str, create: bool = False):
+        st = (
+            self.s.query(models.ConvState)
+            .filter_by(tenant_id=self.tid, chat_id=chat_id)
+            .first()
+        )
+        if st is None and create:
+            st = models.ConvState(
+                tenant_id=self.tid, chat_id=chat_id, escalated=False, optout=False
+            )
+            self.s.add(st)
+            self.s.commit()
+        return st
+
+    def is_escalated(self, chat_id: str) -> bool:
+        st = self._state(chat_id)
+        return bool(st and st.escalated)
+
+    def set_escalated(self, chat_id: str) -> None:
+        st = self._state(chat_id, create=True)
+        st.escalated = True
+        self.s.commit()
+
+    def clear_escalated(self, chat_id: str) -> None:
+        st = self._state(chat_id)
+        if st:
+            st.escalated = False
+            self.s.commit()
+
+    def is_optout(self, chat_id: str) -> bool:
+        st = self._state(chat_id)
+        return bool(st and st.optout)
+
+    def set_optout(self, chat_id: str) -> None:
+        st = self._state(chat_id, create=True)
+        st.optout = True
+        self.s.commit()
+
+    # --- Idempotence ---
+    def is_processed(self, msg_id: str) -> bool:
+        return (
+            self.s.query(models.ProcessedMessage)
+            .filter_by(tenant_id=self.tid, msg_id=msg_id)
+            .first()
+            is not None
+        )
+
+    def mark_processed(self, msg_id: str) -> None:
+        if not self.is_processed(msg_id):
+            self.s.add(models.ProcessedMessage(tenant_id=self.tid, msg_id=msg_id))
+            self.s.commit()
+
+    # --- Handoff ---
+    def open_handoff(self, staff_number: str, client_id: str) -> None:
+        self.s.add(
+            models.Handoff(
+                tenant_id=self.tid,
+                staff_number=staff_number,
+                client_id=client_id,
+                resolved=False,
+            )
+        )
+        self.s.commit()
+
+    def latest_open_handoff_client(self) -> str | None:
+        row = (
+            self.s.query(models.Handoff)
+            .filter_by(tenant_id=self.tid, resolved=False)
+            .order_by(models.Handoff.id.desc())
+            .first()
+        )
+        return row.client_id if row else None
+
+    def resolve_handoffs_for_client(self, client_id: str) -> None:
+        for h in (
+            self.s.query(models.Handoff)
+            .filter_by(tenant_id=self.tid, client_id=client_id)
+            .all()
+        ):
+            h.resolved = True
+        self.s.commit()
