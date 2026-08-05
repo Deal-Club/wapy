@@ -200,3 +200,34 @@ def test_settings_update_without_wiping_config():
     cfg = c.get("/api/config", headers=_auth(tok)).json()
     assert cfg["staff_numbers"] == "229x@c.us"
     assert cfg["menu"][0]["plat"] == "Poulet"  # config préservée
+
+
+def test_conversations_usage_and_handoff_web():
+    ch = _Ch()
+    app = create_app(
+        session_factory=_factory(),
+        channel_factory=lambda t: ch,
+        brain=_Brain(Decision("reply", "On ouvre à 12h.", "horaires")),
+    )
+    c = TestClient(app)
+    r = c.post("/auth/signup", json={"email": "a@b.com", "password": "secret123", "resto_nom": "T"})
+    tok = r.json()["token"]
+    tid = r.json()["tenant"]["id"]
+
+    # une conversation via webhook (routage par session t{id})
+    c.post("/webhook", json={"event": "message", "session": f"t{tid}", "payload": {"from": "cl@c.us", "body": "horaires ?", "id": "m1"}})
+
+    convs = c.get("/api/conversations", headers=_auth(tok)).json()["conversations"]
+    assert any(x["chat_id"] == "cl@c.us" for x in convs)
+
+    thread = c.get("/api/conversations/cl@c.us", headers=_auth(tok)).json()
+    assert any(m["role"] == "assistant" for m in thread["messages"])
+
+    u = c.get("/api/usage", headers=_auth(tok)).json()
+    assert u["messages_in"] >= 1 and u["messages_out"] >= 1
+
+    r2 = c.post("/api/handoff/reply", json={"chat_id": "cl@c.us", "text": "Bonjour du web"}, headers=_auth(tok))
+    assert r2.json()["status"] == "sent"
+    assert ("cl@c.us", "Bonjour du web") in ch.sent
+
+    assert c.post("/api/handoff/close", json={"chat_id": "cl@c.us"}, headers=_auth(tok)).json()["status"] == "closed"

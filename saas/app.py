@@ -12,8 +12,9 @@ from fastapi.responses import Response, StreamingResponse
 from pydantic import BaseModel, EmailStr
 
 from saas.db import SessionLocal, init_db
-from saas import auth, models, wa
+from saas import auth, models, wa, usage
 from saas.bot import process_incoming
+from saas.store_db import DbStore
 
 # Générateur du modèle Excel (dossier tools/).
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "tools"))
@@ -65,6 +66,15 @@ class SettingsIn(BaseModel):
     staff_numbers: str | None = None
     staff_inbound_ids: str | None = None
     wapy_model: str | None = None
+
+
+class ReplyIn(BaseModel):
+    chat_id: str
+    text: str
+
+
+class CloseIn(BaseModel):
+    chat_id: str
 
 
 # --- Helpers config ---
@@ -231,6 +241,62 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             raise HTTPException(status_code=400, detail="fichier Excel illisible")
         _replace_config(s, tenant.id, cfg["infos"], cfg["menu"], cfg["faq"])
         return {"status": "imported", "counts": {k: len(v) for k, v in cfg.items()}}
+
+    # --- Conversations & handoff web ---
+    @app.get("/api/conversations")
+    def list_conversations(tenant=Depends(current_tenant), s=Depends(db)):
+        rows = (
+            s.query(models.Conversation)
+            .filter_by(tenant_id=tenant.id)
+            .order_by(models.Conversation.id.desc())
+            .limit(1000)
+            .all()
+        )
+        states = {st.chat_id: st for st in s.query(models.ConvState).filter_by(tenant_id=tenant.id).all()}
+        seen: dict = {}
+        for r in rows:
+            if r.chat_id not in seen:
+                st = states.get(r.chat_id)
+                seen[r.chat_id] = {
+                    "chat_id": r.chat_id,
+                    "last": (r.content or "")[:140],
+                    "escalated": bool(st and st.escalated),
+                }
+        return {"conversations": list(seen.values())}
+
+    @app.get("/api/conversations/{chat_id}")
+    def conversation_thread(chat_id: str, tenant=Depends(current_tenant), s=Depends(db)):
+        rows = (
+            s.query(models.Conversation)
+            .filter_by(tenant_id=tenant.id, chat_id=chat_id)
+            .order_by(models.Conversation.id.asc())
+            .all()
+        )
+        st = s.query(models.ConvState).filter_by(tenant_id=tenant.id, chat_id=chat_id).first()
+        return {
+            "chat_id": chat_id,
+            "escalated": bool(st and st.escalated),
+            "messages": [{"role": r.role, "content": r.content} for r in rows],
+        }
+
+    @app.post("/api/handoff/reply")
+    def handoff_reply(body: ReplyIn, tenant=Depends(current_tenant), s=Depends(db)):
+        channel = (channel_factory or wam.channel_for)(tenant)
+        channel.send_text(body.chat_id, body.text)
+        DbStore(s, tenant.id).append(body.chat_id, "assistant", body.text)
+        usage.bump(s, tenant.id, out_delta=1)
+        return {"status": "sent"}
+
+    @app.post("/api/handoff/close")
+    def handoff_close(body: CloseIn, tenant=Depends(current_tenant), s=Depends(db)):
+        st = DbStore(s, tenant.id)
+        st.resolve_handoffs_for_client(body.chat_id)
+        st.clear_escalated(body.chat_id)
+        return {"status": "closed"}
+
+    @app.get("/api/usage")
+    def get_usage(tenant=Depends(current_tenant), s=Depends(db)):
+        return usage.totals(s, tenant.id)
 
     # --- WhatsApp ---
     @app.post("/api/wa/connect")

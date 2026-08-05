@@ -10,11 +10,14 @@ from safety.guards import is_group, is_broadcast, detect_optout
 from handoff.handoff import escalate_to_staff
 from saas.store_db import DbStore
 from saas.config_repo import build_fiche_text
+from saas import usage
 
 logger = logging.getLogger("wapy.saas")
 
 HISTORY_LIMIT = 20
 HANDBACK_CMDS = {"/fin", "fin", "/bot", "terminé", "termine"}
+# Statuts qui ont émis un message sortant (compteur d'usage).
+_SENT_STATUSES = {"replied", "escalated", "relayed", "forwarded", "handback"}
 
 
 def _safe_send(channel, to: str, text: str) -> None:
@@ -90,6 +93,15 @@ def process_incoming(session, channel, brain, tenant, payload):
     fiche_text = build_fiche_text(session, tenant.id)
     staff_send = _csv(tenant.staff_numbers)
     staff_recognize = list(set(staff_send) | set(_csv(tenant.staff_inbound_ids)))
-    return handle_message(
+    result = handle_message(
         channel, store, brain, fiche_text, staff_send, staff_recognize, payload
     )
+    status = result.get("status")
+    if status not in ("ignored", "duplicate"):
+        usage.bump(
+            session,
+            tenant.id,
+            in_delta=1,
+            out_delta=1 if status in _SENT_STATUSES else 0,
+        )
+    return result
