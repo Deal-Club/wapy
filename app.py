@@ -1,14 +1,73 @@
-"""Point d'entrée Wapy — routes uniquement. La logique vit dans les modules."""
-from fastapi import FastAPI
+"""Point d'entrée Wapy — routes + câblage. La logique vit dans les modules."""
+import random
+
+from fastapi import FastAPI, Request
+
+import config
+from safety.guards import is_group, is_broadcast, detect_optout
+from handoff.handoff import escalate_to_staff
+
+
+def _build_default_deps() -> dict:
+    from channel.waha import WahaProvider
+    from brain.brain import Brain
+    from store.conversations import ConversationStore
+    from fiche.loader import FicheLoader, gspread_reader
+    import anthropic
+
+    return {
+        "channel": WahaProvider(config.WAHA_BASE_URL, config.WAHA_SESSION),
+        "brain": Brain(anthropic.Anthropic(), config.WAPY_MODEL),
+        "store": ConversationStore(config.DB_PATH),
+        "fiche": FicheLoader(gspread_reader, config.FICHE_TTL_SECONDS),
+        "staff_numbers": config.STAFF_WHATSAPP_NUMBERS,
+        "rng": random.Random(),
+    }
 
 
 def create_app(deps: dict | None = None) -> FastAPI:
     app = FastAPI(title="Wapy")
-    app.state.deps = deps or {}
+    app.state.deps = deps  # None => construits paresseusement au 1er webhook
 
     @app.get("/health")
     def health():
         return {"status": "ok", "service": "Wapy"}
+
+    @app.post("/webhook")
+    async def webhook(request: Request):
+        if app.state.deps is None:
+            app.state.deps = _build_default_deps()
+        d = app.state.deps
+        channel, brain, store, fiche = d["channel"], d["brain"], d["store"], d["fiche"]
+
+        payload = await request.json()
+        msg = channel.parse_incoming(payload)
+        if msg is None:
+            return {"status": "ignored"}
+
+        # Garde-fous d'entrée
+        if msg.from_me or msg.is_group or is_broadcast(msg.chat_id) or is_group(msg.chat_id):
+            return {"status": "ignored"}
+        if store.is_optout(msg.chat_id) or store.is_escalated(msg.chat_id):
+            return {"status": "handed_off"}
+        if detect_optout(msg.text):
+            store.set_optout(msg.chat_id)
+            return {"status": "optout"}
+
+        # Traitement
+        store.append(msg.chat_id, "user", msg.text)
+        history = store.get_history(msg.chat_id, config.HISTORY_LIMIT)
+        decision = brain.decide(fiche.load(), history, msg.text)
+
+        if decision.action == "reply":
+            channel.send_text(msg.chat_id, decision.message)
+            store.append(msg.chat_id, "assistant", decision.message)
+            return {"status": "replied"}
+
+        escalate_to_staff(
+            channel, store, msg.chat_id, msg.text, d["staff_numbers"], decision.reason
+        )
+        return {"status": "escalated"}
 
     return app
 
