@@ -40,6 +40,9 @@ def _build_default_deps() -> dict:
         "store": ConversationStore(config.DB_PATH),
         "fiche": FicheLoader(gspread_reader, config.FICHE_TTL_SECONDS),
         "staff_numbers": config.STAFF_WHATSAPP_NUMBERS,
+        "staff_recognize": list(
+            set(config.STAFF_WHATSAPP_NUMBERS) | set(config.STAFF_INBOUND_IDS)
+        ),
         "rng": random.Random(),
     }
 
@@ -78,9 +81,9 @@ def create_app(deps: dict | None = None) -> FastAPI:
         logger.info("IN  %s : %s", msg.chat_id, msg.text[:200])
 
         # Relais boss : un message venant du staff est transmis au client escaladé.
-        staff = d.get("staff_numbers", [])
-        if msg.chat_id in staff:
-            client_id = store.latest_open_handoff_client(msg.chat_id)
+        recognize = d.get("staff_recognize") or d.get("staff_numbers", [])
+        if msg.chat_id in recognize:
+            client_id = store.latest_open_handoff_client()
             if msg.text.strip().lower() in HANDBACK_CMDS:
                 if client_id:
                     store.resolve_handoffs_for_client(client_id)

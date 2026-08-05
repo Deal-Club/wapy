@@ -52,13 +52,15 @@ class ConversationStore:
                 (staff_number, client_id),
             )
 
-    def latest_open_handoff_client(self, staff_number: str) -> str | None:
-        """Client du handoff ouvert le plus récent pour ce numéro staff (ou None)."""
+    def latest_open_handoff_client(self) -> str | None:
+        """Client du handoff ouvert le plus récent (tous staff confondus), ou None.
+
+        Global volontairement : l'id du staff en réception (@lid) peut différer de
+        celui d'envoi (@c.us), donc on ne filtre pas par numéro staff. Convient à un
+        resto avec un seul point de contact staff ; limite connue en multi-staff."""
         with self._conn() as c:
             row = c.execute(
-                "SELECT client_id FROM handoffs WHERE staff_number = ? AND resolved = 0 "
-                "ORDER BY id DESC LIMIT 1",
-                (staff_number,),
+                "SELECT client_id FROM handoffs WHERE resolved = 0 ORDER BY id DESC LIMIT 1"
             ).fetchone()
         return row[0] if row else None
 

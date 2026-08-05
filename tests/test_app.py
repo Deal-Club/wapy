@@ -72,9 +72,9 @@ class _Store:
     def open_handoff(self, staff, client):
         self.handoffs.append([staff, client, False])
 
-    def latest_open_handoff_client(self, staff):
+    def latest_open_handoff_client(self):
         for h in reversed(self.handoffs):
-            if h[0] == staff and not h[2]:
+            if not h[2]:
                 return h[1]
         return None
 

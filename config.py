@@ -25,9 +25,15 @@ DB_PATH = os.environ.get("WAPY_DB_PATH", "wapy.db")
 HISTORY_LIMIT = 20  # nb de messages d'historique injectés dans le prompt
 
 # --- Escalade ---
-# Liste blanche de numéros WhatsApp du staff (format WAHA: "336XXXXXXXX@c.us").
+# Numéros WhatsApp du staff pour ENVOYER les alertes (format "336XXXXXXXX@c.us").
 STAFF_WHATSAPP_NUMBERS = [
     n.strip() for n in os.environ.get("STAFF_WHATSAPP_NUMBERS", "").split(",") if n.strip()
+]
+# Identifiants du staff pour RECONNAÎTRE ses messages entrants. WAHA/NOWEB peut
+# livrer un contact sous un id privé "@lid" différent du "@c.us". Renseigner ici
+# le(s) @lid du staff (visible dans les logs "IN ...@lid" quand le boss écrit).
+STAFF_INBOUND_IDS = [
+    x.strip() for x in os.environ.get("STAFF_INBOUND_IDS", "").split(",") if x.strip()
 ]
 
 # --- Garde-fous ---
