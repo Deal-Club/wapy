@@ -191,11 +191,15 @@ def test_staff_message_without_open_handoff_is_idle():
     assert brain.called is False
 
 
-def test_already_escalated_conversation_is_not_answered():
+def test_escalated_client_message_is_forwarded_to_staff():
     brain = _Brain(Decision("reply", "x", "y"))
     ch, store = _Ch(), _Store()
     store.set_escalated("33611112222@c.us")
     client, _, _ = _client(brain, ch=ch, store=store)
-    client.post("/webhook", json=_msg())
-    assert brain.called is False
-    assert ch.sent == []
+    r = client.post("/webhook", json=_msg())
+    assert brain.called is False  # le bot ne répond pas
+    assert r.json()["status"] == "forwarded"
+    # le message du client est transmis au staff, avec un libellé
+    assert any(
+        to == "33600000000@c.us" and "Vous ouvrez" in text for to, text in ch.sent
+    )

@@ -100,13 +100,22 @@ def create_app(deps: dict | None = None) -> FastAPI:
             logger.info("staff %s sans handoff ouvert", msg.chat_id)
             return {"status": "staff-idle"}
 
-        if store.is_optout(msg.chat_id) or store.is_escalated(msg.chat_id):
-            logger.info("SKIP (opt-out/escaladé) %s", msg.chat_id)
+        if store.is_optout(msg.chat_id):
             return {"status": "handed_off"}
         if detect_optout(msg.text):
             store.set_optout(msg.chat_id)
+            store.resolve_handoffs_for_client(msg.chat_id)
             logger.info("OPT-OUT %s", msg.chat_id)
             return {"status": "optout"}
+
+        # Conversation en cours avec un humain : transmettre le message du client
+        # au staff (handoff bidirectionnel) au lieu de laisser le bot répondre.
+        if store.is_escalated(msg.chat_id):
+            label = f"💬 Client {msg.chat_id} :\n{msg.text}"
+            for num in d.get("staff_numbers", []):
+                _safe_send(channel, num, label)
+            logger.info("FORWARD client %s -> staff", msg.chat_id)
+            return {"status": "forwarded"}
 
         # Traitement
         store.append(msg.chat_id, "user", msg.text)
