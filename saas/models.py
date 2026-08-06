@@ -2,6 +2,8 @@
 
 Toute table tenant-scoped porte `tenant_id`. Isolation garantie côté requêtes.
 """
+from datetime import datetime
+
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -140,3 +142,41 @@ class UsageCounter(Base):
     messages_in = Column(Integer, default=0)
     messages_out = Column(Integer, default=0)
     __table_args__ = (UniqueConstraint("tenant_id", "day", name="uq_usage_day"),)
+
+
+class Contact(Base):
+    """Nom d'affichage d'un interlocuteur (pushName WhatsApp) pour ne pas afficher
+    un @lid illisible dans le tableau de bord."""
+    __tablename__ = "contacts"
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), primary_key=True)
+    chat_id = Column(String(120), primary_key=True)
+    name = Column(String(255), default="")
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class StaffVerification(Base):
+    """Code OTP en attente pour confirmer le numéro d'alerte du staff.
+
+    Un seul en cours par tenant (PK = tenant_id). Le code est envoyé sur le WhatsApp
+    du numéro saisi : s'il arrive, le numéro reçoit bien -> alertes fiables."""
+    __tablename__ = "staff_verifications"
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), primary_key=True)
+    jid = Column(String(120), default="")
+    code = Column(String(12), default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Suggestion(Base):
+    """Amélioration de config proposée par l'IA à partir des conversations.
+
+    kind ∈ {faq, info, consigne, table_row}. `payload` porte le contenu prêt à
+    fusionner. `status` ∈ {pending, accepted, rejected}. Rien n'entre en config
+    sans validation du propriétaire (statut accepted)."""
+    __tablename__ = "suggestions"
+    id = Column(Integer, primary_key=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    kind = Column(String(30), nullable=False)
+    title = Column(String(255), default="")
+    payload = Column(JSON, default=dict)
+    status = Column(String(20), default="pending")
+    created_at = Column(DateTime, default=datetime.utcnow)

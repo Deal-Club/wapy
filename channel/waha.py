@@ -23,12 +23,15 @@ class WahaProvider(WhatsAppChannel):
         body = p.get("body", "")
         if not chat_id or not body:
             return None
+        data = p.get("_data") or {}
+        name = p.get("notifyName") or data.get("notifyName") or data.get("pushName") or ""
         return IncomingMessage(
             chat_id=chat_id,
             text=body,
             from_me=bool(p.get("fromMe", False)),
             is_group=chat_id.endswith("@g.us"),
             id=str(p.get("id", "")),
+            sender_name=str(name),
         )
 
     def send_text(self, chat_id: str, text: str) -> None:

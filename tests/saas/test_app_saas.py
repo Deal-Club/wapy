@@ -262,6 +262,64 @@ def test_conversations_usage_and_handoff_web():
     assert c.post("/api/handoff/close", json={"chat_id": "cl@c.us"}, headers=_auth(tok)).json()["status"] == "closed"
 
 
+def test_staff_verify_otp_flow():
+    import re
+
+    ch = _Ch()
+    c = TestClient(create_app(session_factory=_factory(), channel_factory=lambda t: ch))
+    tok = _token(c)
+    r = c.post("/api/staff/verify/start", json={"number": "61040461", "dialcode": "229"}, headers=_auth(tok))
+    assert r.status_code == 200
+    # le code part sur le WhatsApp du numéro normalisé en JID
+    to, text = ch.sent[0]
+    assert to == "22961040461@c.us"
+    code = re.search(r"(\d{4})", text).group(1)
+    # mauvais code -> refusé, numéro pas encore enregistré
+    assert c.post("/api/staff/verify/confirm", json={"code": "abcd"}, headers=_auth(tok)).status_code == 400
+    # bon code -> numéro vérifié devient le destinataire des alertes
+    r2 = c.post("/api/staff/verify/confirm", json={"code": code}, headers=_auth(tok))
+    assert r2.status_code == 200 and r2.json()["staff_numbers"] == "22961040461@c.us"
+    cfg = c.get("/api/config", headers=_auth(tok)).json()
+    assert cfg["staff_numbers"] == "22961040461@c.us"
+
+
+def test_staff_verify_confirm_without_start():
+    c = TestClient(create_app(session_factory=_factory()))
+    tok = _token(c)
+    assert c.post("/api/staff/verify/confirm", json={"code": "1234"}, headers=_auth(tok)).status_code == 400
+
+
+def test_ai_suggestions_flow():
+    def fake_learn(tenant, fiche, convos):
+        return [{"kind": "faq", "title": "Livraison", "payload": {"question": "Vous livrez ?", "reponse": "Oui, via Gozem."}}]
+
+    c = TestClient(create_app(session_factory=_factory(), ai_learn=fake_learn))
+    tok = _token(c)
+    assert c.post("/api/ai/learn", headers=_auth(tok)).json()["added"] == 1
+    # idempotent : pas de doublon
+    assert c.post("/api/ai/learn", headers=_auth(tok)).json()["added"] == 0
+    lst = c.get("/api/suggestions", headers=_auth(tok)).json()["suggestions"]
+    assert len(lst) == 1 and lst[0]["kind"] == "faq"
+    sid = lst[0]["id"]
+    assert c.post(f"/api/suggestions/{sid}/accept", headers=_auth(tok)).json()["status"] == "accepted"
+    cfg = c.get("/api/config", headers=_auth(tok)).json()
+    assert any(f["question"] == "Vous livrez ?" for f in cfg["faq"])
+    assert c.get("/api/suggestions", headers=_auth(tok)).json()["suggestions"] == []
+
+
+def test_conversation_shows_contact_name():
+    sf = _factory()
+    c = TestClient(create_app(session_factory=sf))
+    tok = _token(c)
+    s = sf()
+    t = s.query(models.Tenant).first()
+    s.add(models.Conversation(tenant_id=t.id, chat_id="198406064615659@lid", role="user", content="salut"))
+    s.add(models.Contact(tenant_id=t.id, chat_id="198406064615659@lid", name="Yann"))
+    s.commit()
+    convs = c.get("/api/conversations", headers=_auth(tok)).json()["conversations"]
+    assert convs[0]["name"] == "Yann"
+
+
 def test_upload_image_and_reject_non_image():
     c = TestClient(create_app(session_factory=_factory()))
     tok = _token(c)

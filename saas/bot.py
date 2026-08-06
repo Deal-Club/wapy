@@ -11,7 +11,7 @@ from safety.guards import is_group, is_broadcast, detect_optout
 from handoff.handoff import escalate_to_staff
 from saas.store_db import DbStore
 from saas.config_repo import build_fiche_text
-from saas import usage
+from saas import phone, usage
 
 logger = logging.getLogger("wapy.saas")
 
@@ -45,6 +45,9 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
         return {"status": "duplicate"}
     if msg.id:
         store.mark_processed(msg.id)
+
+    if getattr(msg, "sender_name", "") and hasattr(store, "set_name"):
+        store.set_name(msg.chat_id, msg.sender_name)
 
     logger.info("IN %s : %s", msg.chat_id, msg.text[:200])
 
@@ -102,7 +105,9 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
 def process_incoming(session, channel, brain, tenant, payload):
     store = DbStore(session, tenant.id)
     fiche_text = build_fiche_text(session, tenant.id)
-    staff_send = _csv(tenant.staff_numbers)
+    # Normalise en JID @c.us : une valeur legacy sans suffixe (ex. "22961040461")
+    # partait dans le vide (WAHA renvoie 201 mais ne délivre pas).
+    staff_send = [phone.to_jid(n) for n in _csv(tenant.staff_numbers) if phone.to_jid(n)]
     staff_recognize = list(set(staff_send) | set(_csv(tenant.staff_inbound_ids)))
     result = handle_message(
         channel, store, brain, fiche_text, staff_send, staff_recognize, payload

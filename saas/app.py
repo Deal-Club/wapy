@@ -5,8 +5,10 @@ P2 : endpoints d'onboarding (config, modèle Excel, import xlsx, WhatsApp connec
 """
 import io
 import os
+import random
 import sys
 import uuid
+from datetime import datetime, timedelta
 
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, UploadFile, File
 from fastapi.responses import Response, StreamingResponse
@@ -14,9 +16,10 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 
 MEDIA_DIR = os.environ.get("MEDIA_DIR", "media")
+OTP_TTL = timedelta(minutes=15)
 
 from saas.db import SessionLocal, init_db
-from saas import auth, config_repo, models, sectors, usage, wa
+from saas import auth, config_repo, models, phone, sectors, usage, wa
 from saas.bot import process_incoming
 from saas.store_db import DbStore
 
@@ -57,6 +60,15 @@ class ReplyIn(BaseModel):
 
 class CloseIn(BaseModel):
     chat_id: str
+
+
+class StaffVerifyStartIn(BaseModel):
+    number: str
+    dialcode: str = ""
+
+
+class StaffVerifyConfirmIn(BaseModel):
+    code: str
 
 
 # --- Helpers config ---
@@ -101,7 +113,7 @@ def parse_workbook(data: bytes) -> dict:
     return {"infos": infos, "tables": tables, "faq": faq, "consignes": []}
 
 
-def create_app(session_factory=None, channel_factory=None, brain=None, wa_module=None, ai_generate=None, init=False):
+def create_app(session_factory=None, channel_factory=None, brain=None, wa_module=None, ai_generate=None, ai_learn=None, init=False):
     app = FastAPI(title="Wapy Platform")
     sf = session_factory or SessionLocal
     wam = wa_module or wa
@@ -174,7 +186,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         cfg = {k: body.get(k) for k in ("sector", "description", "infos", "tables", "consignes", "faq") if k in body}
         config_repo.save_config(s, tenant.id, {**config_repo.get_config(s, tenant.id), **cfg})
         if body.get("staff_numbers") is not None:
-            tenant.staff_numbers = body["staff_numbers"]
+            tenant.staff_numbers = phone.to_jids_csv(body["staff_numbers"])
         if body.get("staff_inbound_ids") is not None:
             tenant.staff_inbound_ids = body["staff_inbound_ids"]
         if body.get("wapy_model"):
@@ -199,13 +211,135 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     @app.put("/api/settings")
     def put_settings(body: SettingsIn, tenant=Depends(current_tenant), s=Depends(db)):
         if body.staff_numbers is not None:
-            tenant.staff_numbers = body.staff_numbers
+            tenant.staff_numbers = phone.to_jids_csv(body.staff_numbers)
         if body.staff_inbound_ids is not None:
             tenant.staff_inbound_ids = body.staff_inbound_ids
         if body.wapy_model:
             tenant.wapy_model = body.wapy_model
         s.commit()
         return {"status": "saved"}
+
+    # --- Vérification du numéro staff par code (OTP envoyé sur WhatsApp) ---
+    @app.post("/api/staff/verify/start")
+    def staff_verify_start(body: StaffVerifyStartIn, tenant=Depends(current_tenant), s=Depends(db)):
+        jid = phone.to_jid(body.number, body.dialcode)
+        if not jid:
+            raise HTTPException(status_code=400, detail="Numéro invalide")
+        code = f"{random.randint(0, 9999):04d}"
+        row = s.get(models.StaffVerification, tenant.id)
+        if row:
+            row.jid, row.code, row.created_at = jid, code, datetime.utcnow()
+        else:
+            s.add(models.StaffVerification(tenant_id=tenant.id, jid=jid, code=code))
+        s.commit()
+        channel = (channel_factory or wam.channel_for)(tenant)
+        try:
+            channel.send_text(
+                jid,
+                f"🔐 Votre code Wapy est : {code}\n"
+                "Saisissez-le dans votre tableau de bord pour activer les alertes.",
+            )
+        except Exception:
+            raise HTTPException(
+                status_code=400,
+                detail="Impossible d'envoyer le code. Vérifiez que WhatsApp est connecté et que le numéro est correct.",
+            )
+        return {"status": "sent", "masked": phone.mask(jid)}
+
+    @app.post("/api/staff/verify/confirm")
+    def staff_verify_confirm(body: StaffVerifyConfirmIn, tenant=Depends(current_tenant), s=Depends(db)):
+        row = s.get(models.StaffVerification, tenant.id)
+        if not row or not row.code:
+            raise HTTPException(status_code=400, detail="Aucun code en attente. Renvoyez un code.")
+        if datetime.utcnow() - row.created_at > OTP_TTL:
+            raise HTTPException(status_code=400, detail="Code expiré. Renvoyez un code.")
+        if body.code.strip() != row.code:
+            raise HTTPException(status_code=400, detail="Code incorrect.")
+        tenant.staff_numbers = row.jid  # numéro vérifié = seul destinataire des alertes
+        s.delete(row)
+        s.commit()
+        return {"status": "verified", "staff_numbers": tenant.staff_numbers}
+
+    # --- Suggestions IA (l'assistant apprend des conversations, tu valides) ---
+    @app.post("/api/ai/learn")
+    def ai_learn_run(tenant=Depends(current_tenant), s=Depends(db)):
+        # Rassemble les dernières conversations (clients uniquement).
+        rows = (
+            s.query(models.Conversation)
+            .filter_by(tenant_id=tenant.id)
+            .order_by(models.Conversation.id.desc())
+            .limit(400)
+            .all()
+        )
+        convos: dict = {}
+        for r in reversed(rows):
+            convos.setdefault(r.chat_id, []).append({"role": r.role, "content": r.content})
+        conversations = [{"chat_id": k, "messages": v} for k, v in convos.items()]
+        fiche = config_repo.build_fiche_text(s, tenant.id)
+
+        learn = ai_learn
+        if learn is None:
+            import anthropic
+            from saas.ai_learn import analyze
+
+            learn = lambda t, fiche_text, convs: analyze(  # noqa: E731
+                anthropic.Anthropic(), t.wapy_model, fiche_text, convs
+            )
+        suggestions = learn(tenant, fiche, conversations)
+
+        existing = {
+            (x.kind, x.title)
+            for x in s.query(models.Suggestion)
+            .filter_by(tenant_id=tenant.id, status="pending")
+            .all()
+        }
+        added = 0
+        for sug in suggestions:
+            key = (sug.get("kind"), sug.get("title"))
+            if key in existing:
+                continue
+            s.add(models.Suggestion(
+                tenant_id=tenant.id,
+                kind=sug.get("kind"),
+                title=sug.get("title", ""),
+                payload=sug.get("payload", {}),
+            ))
+            existing.add(key)
+            added += 1
+        s.commit()
+        return {"added": added}
+
+    @app.get("/api/suggestions")
+    def list_suggestions(tenant=Depends(current_tenant), s=Depends(db)):
+        rows = (
+            s.query(models.Suggestion)
+            .filter_by(tenant_id=tenant.id, status="pending")
+            .order_by(models.Suggestion.id.desc())
+            .all()
+        )
+        return {"suggestions": [
+            {"id": r.id, "kind": r.kind, "title": r.title, "payload": r.payload}
+            for r in rows
+        ]}
+
+    @app.post("/api/suggestions/{sid}/accept")
+    def accept_suggestion(sid: int, tenant=Depends(current_tenant), s=Depends(db)):
+        row = s.get(models.Suggestion, sid)
+        if not row or row.tenant_id != tenant.id:
+            raise HTTPException(status_code=404, detail="Suggestion introuvable")
+        config_repo.apply_suggestion(s, tenant.id, row.kind, row.payload)
+        row.status = "accepted"
+        s.commit()
+        return {"status": "accepted"}
+
+    @app.post("/api/suggestions/{sid}/reject")
+    def reject_suggestion(sid: int, tenant=Depends(current_tenant), s=Depends(db)):
+        row = s.get(models.Suggestion, sid)
+        if not row or row.tenant_id != tenant.id:
+            raise HTTPException(status_code=404, detail="Suggestion introuvable")
+        row.status = "rejected"
+        s.commit()
+        return {"status": "rejected"}
 
     # --- Modèle Excel ---
     @app.get("/api/template.xlsx")
@@ -255,12 +389,14 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             .all()
         )
         states = {st.chat_id: st for st in s.query(models.ConvState).filter_by(tenant_id=tenant.id).all()}
+        names = {c.chat_id: c.name for c in s.query(models.Contact).filter_by(tenant_id=tenant.id).all()}
         seen: dict = {}
         for r in rows:
             if r.chat_id not in seen:
                 st = states.get(r.chat_id)
                 seen[r.chat_id] = {
                     "chat_id": r.chat_id,
+                    "name": names.get(r.chat_id, ""),
                     "last": (r.content or "")[:140],
                     "escalated": bool(st and st.escalated),
                 }
@@ -275,8 +411,14 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             .all()
         )
         st = s.query(models.ConvState).filter_by(tenant_id=tenant.id, chat_id=chat_id).first()
+        contact = (
+            s.query(models.Contact)
+            .filter_by(tenant_id=tenant.id, chat_id=chat_id)
+            .first()
+        )
         return {
             "chat_id": chat_id,
+            "name": contact.name if contact else "",
             "escalated": bool(st and st.escalated),
             "messages": [{"role": r.role, "content": r.content} for r in rows],
         }

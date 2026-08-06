@@ -9,3 +9,9 @@ chrome_profile/
 waha_sessions/
 
 media/
+
+# Artefacts session WhatsApp / build (jamais committer)
+qr.png
+qr_live.html
+web/tsconfig.tsbuildinfo
+*.tsbuildinfo

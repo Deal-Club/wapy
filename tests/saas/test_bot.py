@@ -136,6 +136,23 @@ def _session():
     return sessionmaker(bind=eng, future=True)()
 
 
+def test_dbstore_set_name_upsert():
+    """set_name stocke puis met à jour le nom (pushName) d'un contact ; nom vide ignoré.
+
+    (L'unicité par clé (tenant, chat) est garantie par la PK composite du schéma ;
+    la visibilité inter-session est propre à Postgres/prod, pas au :memory: des tests.)"""
+    from saas.store_db import DbStore
+
+    s = _session()
+    st = DbStore(s, 1)
+    st.set_name("198406064615659@lid", "Yann")
+    assert s.query(models.Contact).filter_by(chat_id="198406064615659@lid").first().name == "Yann"
+    st.set_name("198406064615659@lid", "")  # vide -> pas d'écrasement
+    st.set_name("198406064615659@lid", "Yann R.")  # mise à jour
+    row = s.query(models.Contact).filter_by(chat_id="198406064615659@lid").first()
+    assert row.name == "Yann R."
+
+
 def test_process_incoming_end_to_end_db():
     s = _session()
     _, tenant = auth.signup(s, "a@b.com", "x", "Chez Test")

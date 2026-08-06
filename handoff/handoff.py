@@ -3,6 +3,9 @@
 Le boss répond à l'alerte pour transmettre au client (relais géré dans app.py),
 et tape /fin pour rendre la conversation au bot. Le client reçoit un accusé
 immédiat pour ne pas rester sans réponse."""
+import logging
+
+logger = logging.getLogger("wapy.handoff")
 
 CLIENT_ACK = (
     "Merci ! Je transmets votre demande à notre équipe, "
@@ -20,15 +23,23 @@ def escalate_to_staff(channel, store, chat_id, incoming_text, staff_numbers, rea
         "➡️ Répondez à ce message pour transmettre au client.\n"
         "Tapez /fin pour rendre la conversation au bot."
     )
+    if not staff_numbers:
+        logger.error(
+            "Escalade sans destinataire : aucun numéro staff vérifié pour ce client %s. "
+            "Le boss ne sera PAS alerté.", chat_id
+        )
+    delivered = 0
     for num in staff_numbers:
         store.open_handoff(num, chat_id)
         try:
             channel.send_text(num, alerte)
-        except Exception:
-            # Une alerte staff qui échoue ne doit pas casser le traitement.
-            pass
+            delivered += 1
+        except Exception as e:
+            # Ne casse pas le traitement, mais l'échec doit être VISIBLE (diagnostic ban / mauvais numéro).
+            logger.error("Alerte staff non envoyée à %s : %s", num, e)
     # Accusé au client : il sait qu'un humain va lui répondre.
     try:
         channel.send_text(chat_id, CLIENT_ACK)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error("Accusé client non envoyé à %s : %s", chat_id, e)
+    return delivered

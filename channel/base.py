@@ -11,6 +11,7 @@ class IncomingMessage:
     from_me: bool
     is_group: bool
     id: str = ""  # identifiant WAHA du message (pour l'idempotence)
+    sender_name: str = ""  # pushName WhatsApp (affichage lisible d'un @lid)
 
 
 class WhatsAppChannel(ABC):

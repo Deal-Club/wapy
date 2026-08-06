@@ -18,6 +18,15 @@ class DbStore:
         )
         self.s.commit()
 
+    def set_name(self, chat_id: str, name: str) -> None:
+        """Mémorise le nom d'affichage (pushName) d'un interlocuteur."""
+        name = (name or "").strip()
+        if not name:
+            return
+        # merge = upsert par clé primaire (tenant_id, chat_id) : insère ou met à jour.
+        self.s.merge(models.Contact(tenant_id=self.tid, chat_id=chat_id, name=name))
+        self.s.commit()
+
     def get_history(self, chat_id: str, limit: int) -> list[dict]:
         rows = (
             self.s.query(models.Conversation)

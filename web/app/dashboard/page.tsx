@@ -4,11 +4,14 @@ import { useRouter } from "next/navigation";
 import { api, getToken, clearToken } from "@/lib/api";
 import ConfigEditor, { Config, emptyConfig } from "@/components/ConfigEditor";
 import WhatsAppConnect from "@/components/WhatsAppConnect";
+import StaffAlertVerify from "@/components/StaffAlertVerify";
+import Suggestions from "@/components/Suggestions";
 
-type Tab = "conversations" | "config" | "whatsapp" | "usage";
+type Tab = "conversations" | "config" | "suggestions" | "whatsapp" | "usage";
 const TABS: { id: Tab; label: string }[] = [
   { id: "conversations", label: "Conversations" },
   { id: "config", label: "Configuration" },
+  { id: "suggestions", label: "Suggestions" },
   { id: "whatsapp", label: "WhatsApp" },
   { id: "usage", label: "Usage" },
 ];
@@ -42,7 +45,13 @@ export default function Dashboard() {
       <div className="rise">
         {tab === "conversations" && <Conversations />}
         {tab === "config" && <ConfigTab />}
-        {tab === "whatsapp" && <div className="card mx-auto max-w-md"><WhatsAppConnect /></div>}
+        {tab === "suggestions" && <Suggestions />}
+        {tab === "whatsapp" && (
+          <div className="mx-auto max-w-md space-y-4">
+            <div className="card"><WhatsAppConnect /></div>
+            <div className="card"><StaffAlertVerify /></div>
+          </div>
+        )}
         {tab === "usage" && <UsageTab />}
       </div>
     </main>
@@ -85,6 +94,10 @@ function ConfigTab() {
   );
 }
 
+function label(c: any): string {
+  return c?.name?.trim() || (c?.chat_id || "").replace(/@.*/, "");
+}
+
 function Conversations() {
   const [convs, setConvs] = useState<any[]>([]);
   const [active, setActive] = useState<string | null>(null);
@@ -92,6 +105,8 @@ function Conversations() {
   const [reply, setReply] = useState("");
   const [loading, setLoading] = useState(true);
   const endRef = useRef<HTMLDivElement>(null);
+  const activeRef = useRef<string | null>(null);
+  const lenRef = useRef(0);
 
   async function load() {
     try {
@@ -99,14 +114,27 @@ function Conversations() {
     } catch {}
     setLoading(false);
   }
-  async function openThread(cid: string) {
-    setActive(cid);
-    setThread(await api.getThread(cid));
-    setTimeout(() => endRef.current?.scrollIntoView(), 60);
+  async function refreshThread(scroll: boolean) {
+    const cid = activeRef.current;
+    if (!cid) return;
+    try {
+      const t = await api.getThread(cid);
+      const grew = (t.messages?.length || 0) !== lenRef.current;
+      lenRef.current = t.messages?.length || 0;
+      setThread(t);
+      if (scroll || grew) setTimeout(() => endRef.current?.scrollIntoView(), 60);
+    } catch {}
   }
+  function openThread(cid: string) {
+    setActive(cid);
+    activeRef.current = cid;
+    lenRef.current = 0;
+    refreshThread(true);
+  }
+  // Temps réel : liste + fil actif rafraîchis toutes les 5 s.
   useEffect(() => {
     load();
-    const i = setInterval(load, 8000);
+    const i = setInterval(() => { load(); refreshThread(false); }, 5000);
     return () => clearInterval(i);
   }, []);
 
@@ -114,7 +142,7 @@ function Conversations() {
     if (!active || !reply.trim()) return;
     await api.handoffReply(active, reply.trim());
     setReply("");
-    openThread(active);
+    refreshThread(true);
   }
 
   return (
@@ -126,7 +154,7 @@ function Conversations() {
             <button key={c.chat_id} onClick={() => openThread(c.chat_id)}
               className={`mb-1 block w-full rounded-xl p-3 text-left transition hover:bg-brand-soft ${active === c.chat_id ? "bg-brand-soft" : ""}`}>
               <div className="flex items-center justify-between">
-                <span className="truncate font-medium">{c.chat_id.replace(/@.*/, "")}</span>
+                <span className="truncate font-medium">{label(c)}</span>
                 {c.escalated && <span className="pill bg-brand-soft text-brand-dark">humain</span>}
               </div>
               <div className="truncate text-xs text-muted">{c.last}</div>
@@ -138,7 +166,7 @@ function Conversations() {
         {!thread ? <p className="m-auto text-sm text-muted">Sélectionnez une conversation.</p> : (
           <>
             <div className="mb-2 flex items-center justify-between border-b border-line pb-2">
-              <span className="font-medium">{thread.chat_id.replace(/@.*/, "")}</span>
+              <span className="font-medium">{label(thread)}</span>
               {thread.escalated && <button className="btn-ghost text-xs" onClick={async () => { await api.handoffClose(thread.chat_id); openThread(thread.chat_id); load(); }}>Rendre au bot</button>}
             </div>
             <div className="flex-1 space-y-2 overflow-auto py-2">

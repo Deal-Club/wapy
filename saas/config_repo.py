@@ -37,6 +37,38 @@ def save_config(session, tenant_id: int, data: dict) -> None:
     session.commit()
 
 
+def apply_suggestion(session, tenant_id: int, kind: str, payload: dict) -> None:
+    """Fusionne une suggestion validée dans la config (append, sans écraser)."""
+    cfg = get_config(session, tenant_id)
+    payload = payload or {}
+    if kind == "faq":
+        cfg["faq"] = cfg.get("faq", []) + [{
+            "question": payload.get("question", ""),
+            "reponse": payload.get("reponse", ""),
+        }]
+    elif kind == "info":
+        cfg["infos"] = cfg.get("infos", []) + [{
+            "label": payload.get("label", ""),
+            "value": payload.get("value", ""),
+        }]
+    elif kind == "consigne":
+        cfg["consignes"] = cfg.get("consignes", []) + [{
+            "situation": payload.get("situation", ""),
+            "action": payload.get("action", ""),
+        }]
+    elif kind == "table_row":
+        name = payload.get("table", "")
+        row = payload.get("row", {}) or {}
+        for t in cfg.get("tables", []):
+            if t.get("name") == name:
+                for col in row:
+                    if col not in t.get("columns", []):
+                        t.setdefault("columns", []).append(col)
+                t.setdefault("rows", []).append(row)
+                break
+    save_config(session, tenant_id, cfg)
+
+
 def build_fiche_text(session, tenant_id: int) -> str:
     c = get_config(session, tenant_id)
     parts = ["# FICHE ÉTABLISSEMENT"]

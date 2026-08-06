@@ -89,6 +89,22 @@ export const api = {
       body: JSON.stringify({ chat_id }),
     }),
   getUsage: () => req("/api/usage"),
+  staffVerifyStart: (number: string, dialcode: string) =>
+    req("/api/staff/verify/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ number, dialcode }),
+    }),
+  staffVerifyConfirm: (code: string) =>
+    req("/api/staff/verify/confirm", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    }),
+  aiLearn: () => req("/api/ai/learn", { method: "POST" }),
+  getSuggestions: () => req("/api/suggestions"),
+  acceptSuggestion: (id: number) => req(`/api/suggestions/${id}/accept`, { method: "POST" }),
+  rejectSuggestion: (id: number) => req(`/api/suggestions/${id}/reject`, { method: "POST" }),
   waConnect: () => req("/api/wa/connect", { method: "POST" }),
   waStatus: () => req("/api/wa/status"),
   waQrBlobUrl: async () => {
