@@ -5,11 +5,23 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        brand: { DEFAULT: "#C25B3E", dark: "#A64A30", light: "#F4F1EA" },
+        cream: "#F7F4EF",
+        surface: "#FFFFFF",
+        ink: "#211C18",
+        muted: "#726A61",
+        line: "#E8E1D6",
+        brand: { DEFAULT: "#C2502F", dark: "#A63F22", soft: "#F4E5DC" },
+        emerald: { DEFAULT: "#1FA463", dark: "#178552", soft: "#E3F3EA" },
       },
       fontFamily: {
-        sans: ["ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
+        display: ["var(--font-display)", "Georgia", "serif"],
+        sans: ["var(--font-sans)", "system-ui", "sans-serif"],
       },
+      boxShadow: {
+        soft: "0 1px 2px rgba(33,28,24,.04), 0 8px 24px rgba(33,28,24,.06)",
+        lift: "0 10px 30px rgba(33,28,24,.10)",
+      },
+      borderRadius: { xl2: "1.25rem" },
     },
   },
   plugins: [],

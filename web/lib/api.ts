@@ -41,6 +41,14 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     }),
+  getSectors: () => req("/api/sectors"),
+  aiGenerate: (sector: string, description: string) =>
+    req("/api/ai/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sector, description }),
+    }),
+  waLogout: () => req("/api/wa/logout", { method: "POST" }),
   getConfig: () => req("/api/config"),
   putConfig: (cfg: any) =>
     req("/api/config", {
