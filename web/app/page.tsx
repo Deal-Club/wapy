@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import AuthNav from "@/components/AuthNav";
 
 const SITE = "https://wapy.51.210.108.173.sslip.io";
 
@@ -120,8 +121,7 @@ export default function Landing() {
             <a href="#faq" className="hover:text-ink">FAQ</a>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/login" className="btn-ghost text-sm">Se connecter</Link>
-            <Link href="/signup" className="btn text-sm">Commencer</Link>
+            <AuthNav />
           </div>
         </nav>
       </header>

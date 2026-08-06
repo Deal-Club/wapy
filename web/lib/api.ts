@@ -101,6 +101,18 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code }),
     }),
+  staffExclude: (chat_id: string) =>
+    req("/api/staff/exclude", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id }),
+    }),
+  staffUnexclude: (chat_id: string) =>
+    req("/api/staff/exclude/remove", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id }),
+    }),
   aiLearn: () => req("/api/ai/learn", { method: "POST" }),
   getSuggestions: () => req("/api/suggestions"),
   acceptSuggestion: (id: number) => req(`/api/suggestions/${id}/accept`, { method: "POST" }),

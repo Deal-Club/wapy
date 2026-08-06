@@ -19,8 +19,10 @@ def digits(s: str) -> str:
 def to_e164(number: str, dialcode: str = "") -> str:
     """Combine indicatif + numéro local en chiffres E.164 (sans '+').
 
-    - Si le numéro contient déjà l'indicatif, on le garde tel quel.
-    - Sinon on retire un éventuel '0' de tête (préfixe national) puis on préfixe.
+    On NE retire PAS le '0' de tête : au Bénin le '01' fait partie du numéro
+    (ex. 01 61 04 04 61 -> 2290161040461). Le stripping cassait ces numéros.
+    Les habitudes 'trunk 0' (France...) sont couvertes par `candidate_jids`,
+    qui essaie aussi la variante sans le 0.
     """
     nn = digits(number)
     cc = digits(dialcode)
@@ -28,7 +30,6 @@ def to_e164(number: str, dialcode: str = "") -> str:
         return ""
     if cc and nn.startswith(cc):
         return nn
-    nn = nn[1:] if nn.startswith("0") else nn
     return (cc + nn) if cc else nn
 
 
@@ -39,6 +40,33 @@ def to_jid(number: str, dialcode: str = "") -> str:
         return n
     e = to_e164(n, dialcode)
     return e + CUS if e else ""
+
+
+def candidate_jids(number: str, dialcode: str = "") -> list[str]:
+    """Variantes plausibles d'un même numéro, pour envoyer l'OTP à toutes.
+
+    Couvre l'ambiguïté du '0' de tête (gardé OU retiré) sans deviner : seule la
+    vraie ligne WhatsApp reçoit le code ; les variantes invalides tombent dans le
+    vide. Ex. Bénin '01 61040461'+229 -> {2290161040461, 22961040461} ;
+    France '06...'+33 -> {330..., 336...}.
+    """
+    n = (number or "").strip()
+    if n.endswith(_JID_SUFFIXES):
+        return [n]
+    d = digits(n)
+    cc = digits(dialcode)
+    if not d:
+        return []
+    if cc and d.startswith(cc):
+        bases = {d}
+    elif cc:
+        stripped = d.lstrip("0")
+        bases = {cc + d, cc + stripped}
+    else:
+        bases = {d, d.lstrip("0")}
+    # ordre stable : plus long d'abord (garde le 0), puis variante raccourcie
+    ordered = sorted({b for b in bases if b}, key=len, reverse=True)
+    return [b + CUS for b in ordered]
 
 
 def to_jids_csv(value: str, dialcode: str = "") -> str:

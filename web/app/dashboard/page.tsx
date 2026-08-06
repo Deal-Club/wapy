@@ -145,6 +145,14 @@ function Conversations() {
     refreshThread(true);
   }
 
+  async function toggleStaff() {
+    if (!thread) return;
+    if (thread.staff) await api.staffUnexclude(thread.chat_id);
+    else await api.staffExclude(thread.chat_id);
+    await refreshThread(false);
+    load();
+  }
+
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <div className="card max-h-[72vh] overflow-auto p-2 md:col-span-1">
@@ -153,9 +161,12 @@ function Conversations() {
           : convs.map((c) => (
             <button key={c.chat_id} onClick={() => openThread(c.chat_id)}
               className={`mb-1 block w-full rounded-xl p-3 text-left transition hover:bg-brand-soft ${active === c.chat_id ? "bg-brand-soft" : ""}`}>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <span className="truncate font-medium">{label(c)}</span>
-                {c.escalated && <span className="pill bg-brand-soft text-brand-dark">humain</span>}
+                <span className="flex shrink-0 items-center gap-1">
+                  {c.staff && <span className="pill bg-ink/10 text-ink">personnel</span>}
+                  {c.escalated && <span className="pill bg-brand-soft text-brand-dark">humain</span>}
+                </span>
               </div>
               <div className="truncate text-xs text-muted">{c.last}</div>
             </button>
@@ -165,9 +176,17 @@ function Conversations() {
       <div className="card flex max-h-[72vh] flex-col md:col-span-2">
         {!thread ? <p className="m-auto text-sm text-muted">Sélectionnez une conversation.</p> : (
           <>
-            <div className="mb-2 flex items-center justify-between border-b border-line pb-2">
-              <span className="font-medium">{label(thread)}</span>
-              {thread.escalated && <button className="btn-ghost text-xs" onClick={async () => { await api.handoffClose(thread.chat_id); openThread(thread.chat_id); load(); }}>Rendre au bot</button>}
+            <div className="mb-2 flex items-center justify-between gap-2 border-b border-line pb-2">
+              <span className="flex items-center gap-2 font-medium">
+                {label(thread)}
+                {thread.staff && <span className="pill bg-ink/10 text-ink">personnel</span>}
+              </span>
+              <span className="flex items-center gap-2">
+                {thread.escalated && <button className="btn-ghost text-xs" onClick={async () => { await api.handoffClose(thread.chat_id); openThread(thread.chat_id); load(); }}>Rendre au bot</button>}
+                <button className="btn-ghost text-xs" onClick={toggleStaff}>
+                  {thread.staff ? "Retirer du personnel" : "C'est un membre du personnel"}
+                </button>
+              </span>
             </div>
             <div className="flex-1 space-y-2 overflow-auto py-2">
               {thread.messages.map((m: any, i: number) => (

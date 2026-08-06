@@ -283,6 +283,33 @@ def test_staff_verify_otp_flow():
     assert cfg["staff_numbers"] == "22961040461@c.us"
 
 
+def test_staff_verify_sends_to_candidate_variants():
+    ch = _Ch()
+    c = TestClient(create_app(session_factory=_factory(), channel_factory=lambda t: ch))
+    tok = _token(c)
+    r = c.post("/api/staff/verify/start", json={"number": "0161040461", "dialcode": "229"}, headers=_auth(tok))
+    assert r.status_code == 200
+    tos = {to for to, _ in ch.sent}
+    # la variante qui garde le 0 (celle qui délivre au Bénin) est envoyée
+    assert "2290161040461@c.us" in tos and len(tos) >= 2
+
+
+def test_staff_exclude_marks_conversation_and_config():
+    sf = _factory()
+    c = TestClient(create_app(session_factory=sf))
+    tok = _token(c)
+    s = sf()
+    t = s.query(models.Tenant).first()
+    s.add(models.Conversation(tenant_id=t.id, chat_id="70940562067544@lid", role="user", content="salut"))
+    s.commit()
+    assert c.post("/api/staff/exclude", json={"chat_id": "70940562067544@lid"}, headers=_auth(tok)).status_code == 200
+    conv = next(x for x in c.get("/api/conversations", headers=_auth(tok)).json()["conversations"] if x["chat_id"] == "70940562067544@lid")
+    assert conv["staff"] is True
+    assert "70940562067544@lid" in c.get("/api/config", headers=_auth(tok)).json()["staff_inbound_ids"]
+    c.post("/api/staff/exclude/remove", json={"chat_id": "70940562067544@lid"}, headers=_auth(tok))
+    assert "70940562067544@lid" not in c.get("/api/config", headers=_auth(tok)).json()["staff_inbound_ids"]
+
+
 def test_staff_verify_confirm_without_start():
     c = TestClient(create_app(session_factory=_factory()))
     tok = _token(c)

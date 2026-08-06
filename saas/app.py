@@ -71,6 +71,10 @@ class StaffVerifyConfirmIn(BaseModel):
     code: str
 
 
+class StaffExcludeIn(BaseModel):
+    chat_id: str
+
+
 # --- Helpers config ---
 def parse_workbook(data: bytes) -> dict:
     """Parse un .xlsx en config JSON flexible.
@@ -222,29 +226,36 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     # --- Vérification du numéro staff par code (OTP envoyé sur WhatsApp) ---
     @app.post("/api/staff/verify/start")
     def staff_verify_start(body: StaffVerifyStartIn, tenant=Depends(current_tenant), s=Depends(db)):
-        jid = phone.to_jid(body.number, body.dialcode)
-        if not jid:
+        # Plusieurs variantes plausibles (0 gardé/retiré) : seule la vraie ligne reçoit.
+        jids = phone.candidate_jids(body.number, body.dialcode)
+        if not jids:
             raise HTTPException(status_code=400, detail="Numéro invalide")
         code = f"{random.randint(0, 9999):04d}"
+        jids_csv = ",".join(jids)
         row = s.get(models.StaffVerification, tenant.id)
         if row:
-            row.jid, row.code, row.created_at = jid, code, datetime.utcnow()
+            row.jid, row.code, row.created_at = jids_csv, code, datetime.utcnow()
         else:
-            s.add(models.StaffVerification(tenant_id=tenant.id, jid=jid, code=code))
+            s.add(models.StaffVerification(tenant_id=tenant.id, jid=jids_csv, code=code))
         s.commit()
         channel = (channel_factory or wam.channel_for)(tenant)
-        try:
-            channel.send_text(
-                jid,
-                f"🔐 Votre code Wapy est : {code}\n"
-                "Saisissez-le dans votre tableau de bord pour activer les alertes.",
-            )
-        except Exception:
+        sent = 0
+        for jid in jids:
+            try:
+                channel.send_text(
+                    jid,
+                    f"🔐 Votre code Wapy est : {code}\n"
+                    "Saisissez-le dans votre tableau de bord pour activer les alertes.",
+                )
+                sent += 1
+            except Exception:
+                pass
+        if sent == 0:
             raise HTTPException(
                 status_code=400,
                 detail="Impossible d'envoyer le code. Vérifiez que WhatsApp est connecté et que le numéro est correct.",
             )
-        return {"status": "sent", "masked": phone.mask(jid)}
+        return {"status": "sent", "masked": phone.mask(jids[0])}
 
     @app.post("/api/staff/verify/confirm")
     def staff_verify_confirm(body: StaffVerifyConfirmIn, tenant=Depends(current_tenant), s=Depends(db)):
@@ -259,6 +270,28 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         s.delete(row)
         s.commit()
         return {"status": "verified", "staff_numbers": tenant.staff_numbers}
+
+    # --- Personnel à exclure (numéros/@lid du staff : jamais traités comme clients) ---
+    def _inbound_set(tenant) -> list[str]:
+        return [x.strip() for x in (tenant.staff_inbound_ids or "").split(",") if x.strip()]
+
+    @app.post("/api/staff/exclude")
+    def staff_exclude(body: StaffExcludeIn, tenant=Depends(current_tenant), s=Depends(db)):
+        ids = _inbound_set(tenant)
+        if body.chat_id and body.chat_id not in ids:
+            ids.append(body.chat_id)
+        tenant.staff_inbound_ids = ",".join(ids)
+        # Un membre du personnel ne doit pas rester "escaladé" comme un client.
+        DbStore(s, tenant.id).clear_escalated(body.chat_id)
+        s.commit()
+        return {"status": "excluded", "staff_inbound_ids": tenant.staff_inbound_ids}
+
+    @app.post("/api/staff/exclude/remove")
+    def staff_unexclude(body: StaffExcludeIn, tenant=Depends(current_tenant), s=Depends(db)):
+        ids = [x for x in _inbound_set(tenant) if x != body.chat_id]
+        tenant.staff_inbound_ids = ",".join(ids)
+        s.commit()
+        return {"status": "removed", "staff_inbound_ids": tenant.staff_inbound_ids}
 
     # --- Suggestions IA (l'assistant apprend des conversations, tu valides) ---
     @app.post("/api/ai/learn")
@@ -390,6 +423,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         )
         states = {st.chat_id: st for st in s.query(models.ConvState).filter_by(tenant_id=tenant.id).all()}
         names = {c.chat_id: c.name for c in s.query(models.Contact).filter_by(tenant_id=tenant.id).all()}
+        staff_ids = set(_inbound_set(tenant))
         seen: dict = {}
         for r in rows:
             if r.chat_id not in seen:
@@ -399,6 +433,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
                     "name": names.get(r.chat_id, ""),
                     "last": (r.content or "")[:140],
                     "escalated": bool(st and st.escalated),
+                    "staff": r.chat_id in staff_ids,
                 }
         return {"conversations": list(seen.values())}
 
@@ -420,6 +455,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             "chat_id": chat_id,
             "name": contact.name if contact else "",
             "escalated": bool(st and st.escalated),
+            "staff": chat_id in set(_inbound_set(tenant)),
             "messages": [{"role": r.role, "content": r.content} for r in rows],
         }
 

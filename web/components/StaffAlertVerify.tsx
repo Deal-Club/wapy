@@ -77,7 +77,7 @@ export default function StaffAlertVerify() {
 
       {current && (
         <div className="rounded-xl border border-emerald/40 bg-emerald-soft/40 px-3 py-2 text-sm">
-          ✅ Numéro vérifié actuel : <b>+{current.replace(/@.*/, "")}</b>
+          ✅ Numéro vérifié actuel : <b>+{current.split(",")[0].replace(/@.*/, "")}</b>
         </div>
       )}
 
