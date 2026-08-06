@@ -1,62 +1,83 @@
-"""Config resto en base + construction de la fiche (aplatie) pour le cerveau.
+"""Config flexible de l'établissement (multi-secteurs), stockée en JSON par tenant.
 
-Remplace Google Sheets : la fiche vit dans la DB, éditable via le dashboard ou
-importée depuis un Excel. `build_fiche_text` produit le même format que le cerveau
-attend (Infos / Menu / FAQ), scellé au tenant.
+Structure `data` :
+  sector, description,
+  infos:    [{label, value}]
+  tables:   [{name, columns:[str], rows:[{col: val}]}]   # colonnes personnalisables
+  consignes:[{situation, action}]
+  faq:      [{question, reponse}]
+
+`build_fiche_text` aplati le tout pour le cerveau (format identique attendu).
 """
 from saas import models
 
+EMPTY = {
+    "sector": "",
+    "description": "",
+    "infos": [],
+    "tables": [],
+    "consignes": [],
+    "faq": [],
+}
 
-def set_info(session, tenant_id: int, rubrique: str, contenu: str) -> None:
-    row = (
-        session.query(models.RestaurantInfo)
-        .filter_by(tenant_id=tenant_id, rubrique=rubrique)
-        .first()
-    )
+
+def get_config(session, tenant_id: int) -> dict:
+    row = session.get(models.BusinessConfig, tenant_id)
+    data = dict(row.data) if row and row.data else {}
+    return {**EMPTY, **data}
+
+
+def save_config(session, tenant_id: int, data: dict) -> None:
+    clean = {**EMPTY, **(data or {})}
+    row = session.get(models.BusinessConfig, tenant_id)
     if row:
-        row.contenu = contenu
+        row.data = clean
     else:
-        session.add(
-            models.RestaurantInfo(tenant_id=tenant_id, rubrique=rubrique, contenu=contenu)
-        )
-    session.commit()
-
-
-def add_menu_item(session, tenant_id, categorie="", plat="", description="", prix="", regime=""):
-    session.add(
-        models.MenuItem(
-            tenant_id=tenant_id,
-            categorie=categorie,
-            plat=plat,
-            description=description,
-            prix=prix,
-            regime=regime,
-        )
-    )
-    session.commit()
-
-
-def add_faq(session, tenant_id: int, question: str, reponse: str) -> None:
-    session.add(models.Faq(tenant_id=tenant_id, question=question, reponse=reponse))
+        session.add(models.BusinessConfig(tenant_id=tenant_id, data=clean))
     session.commit()
 
 
 def build_fiche_text(session, tenant_id: int) -> str:
-    infos = session.query(models.RestaurantInfo).filter_by(tenant_id=tenant_id).all()
-    menu = session.query(models.MenuItem).filter_by(tenant_id=tenant_id).all()
-    faq = session.query(models.Faq).filter_by(tenant_id=tenant_id).all()
+    c = get_config(session, tenant_id)
+    parts = ["# FICHE ÉTABLISSEMENT"]
+    if c.get("sector"):
+        parts.append(f"Secteur : {c['sector']}")
+    if c.get("description"):
+        parts.append(f"Description : {c['description']}")
 
-    parts = ["# FICHE RESTAURANT", "", "## Infos"]
-    for i in infos:
-        if (i.rubrique or "").strip():
-            parts.append(f"- {i.rubrique.strip()} : {(i.contenu or '').strip()}")
-    parts += ["", "## Menu"]
-    for m in menu:
-        cells = [c.strip() for c in (m.categorie, m.plat, m.description, m.prix, m.regime) if (c or "").strip()]
-        if cells:
-            parts.append("- " + " | ".join(cells))
+    parts += ["", "## Infos"]
+    for i in c.get("infos", []):
+        label = (i.get("label") or "").strip()
+        val = (i.get("value") or "").strip()
+        if label:
+            parts.append(f"- {label} : {val}")
+
+    for t in c.get("tables", []):
+        name = (t.get("name") or "Table").strip()
+        cols = t.get("columns", []) or []
+        parts += ["", f"## {name}"]
+        for r in t.get("rows", []):
+            cells = [
+                f"{col}: {str(r.get(col, '')).strip()}"
+                for col in cols
+                if str(r.get(col, "")).strip()
+            ]
+            if cells:
+                parts.append("- " + " | ".join(cells))
+
+    if c.get("consignes"):
+        parts += ["", "## Consignes"]
+        for cg in c["consignes"]:
+            s = (cg.get("situation") or "").strip()
+            a = (cg.get("action") or "").strip()
+            if s:
+                parts.append(f"- {s} : {a}")
+
     parts += ["", "## FAQ"]
-    for f in faq:
-        if (f.question or "").strip():
-            parts.append(f"Q: {f.question.strip()}\nR: {(f.reponse or '').strip()}")
+    for f in c.get("faq", []):
+        q = (f.get("question") or "").strip()
+        a = (f.get("reponse") or "").strip()
+        if q:
+            parts.append(f"Q: {q}\nR: {a}")
+
     return "\n".join(parts)

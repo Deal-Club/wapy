@@ -128,7 +128,9 @@ def test_process_incoming_end_to_end_db():
     s = _session()
     _, tenant = auth.signup(s, "a@b.com", "x", "Chez Test")
     tenant.staff_numbers = "s@c.us"
-    config_repo.add_menu_item(s, tenant.id, categorie="Plat", plat="Poulet braisé", prix="3000 FCFA")
+    config_repo.save_config(s, tenant.id, {
+        "tables": [{"name": "Menu", "columns": ["Plat", "Prix"], "rows": [{"Plat": "Poulet braisé", "Prix": "3000 FCFA"}]}]
+    })
     s.commit()
 
     ch = _Ch()

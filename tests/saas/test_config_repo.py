@@ -10,27 +10,36 @@ def _session():
     return sessionmaker(bind=eng, future=True)()
 
 
-def test_build_fiche_text_and_tenant_isolation():
+def test_save_get_and_build_fiche_text_with_custom_columns():
     s = _session()
     _, t1 = auth.signup(s, "a@b.com", "x", "T1")
     _, t2 = auth.signup(s, "c@d.com", "y", "T2")
 
-    config_repo.set_info(s, t1.id, "Horaires", "11h-23h")
-    config_repo.add_menu_item(s, t1.id, categorie="Plat", plat="Poulet braisé", prix="3000 FCFA")
-    config_repo.add_faq(s, t1.id, "Vous avez une terrasse ?", "Oui, chauffée")
-    config_repo.set_info(s, t2.id, "Horaires", "SECRET-T2")
+    config_repo.save_config(s, t1.id, {
+        "sector": "Salon de coiffure",
+        "description": "Salon moderne",
+        "infos": [{"label": "Horaires", "value": "9h-19h"}],
+        "tables": [{
+            "name": "Prestations",
+            "columns": ["Prestation", "Durée", "Prix"],
+            "rows": [{"Prestation": "Coupe", "Durée": "30min", "Prix": "3000 FCFA"}],
+        }],
+        "consignes": [{"situation": "Rendez-vous", "action": "Transmettre au responsable"}],
+        "faq": [{"question": "Sur RDV ?", "reponse": "Oui"}],
+    })
+    config_repo.save_config(s, t2.id, {"infos": [{"label": "X", "value": "SECRET-T2"}]})
 
     text = config_repo.build_fiche_text(s, t1.id)
-    assert "11h-23h" in text
-    assert "Poulet braisé" in text and "3000 FCFA" in text
-    assert "Vous avez une terrasse ?" in text and "Oui, chauffée" in text
-    assert "SECRET-T2" not in text  # isolation entre tenants
+    assert "Salon de coiffure" in text
+    assert "9h-19h" in text
+    assert "Prestations" in text and "Coupe" in text and "3000 FCFA" in text
+    assert "Rendez-vous" in text  # consigne
+    assert "Sur RDV ?" in text
+    assert "SECRET-T2" not in text  # isolation
 
 
-def test_set_info_updates_existing_rubrique():
+def test_get_config_defaults_empty():
     s = _session()
     _, t = auth.signup(s, "a@b.com", "x", "T")
-    config_repo.set_info(s, t.id, "Horaires", "11h-23h")
-    config_repo.set_info(s, t.id, "Horaires", "12h-22h")
-    text = config_repo.build_fiche_text(s, t.id)
-    assert "12h-22h" in text and "11h-23h" not in text
+    cfg = config_repo.get_config(s, t.id)
+    assert cfg["sector"] == "" and cfg["infos"] == [] and cfg["tables"] == []

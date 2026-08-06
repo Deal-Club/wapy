@@ -3,6 +3,7 @@
 Toute table tenant-scoped porte `tenant_id`. Isolation garantie côté requêtes.
 """
 from sqlalchemy import (
+    JSON,
     Boolean,
     Column,
     DateTime,
@@ -66,6 +67,22 @@ class Faq(Base):
     tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
     question = Column(Text, default="")
     reponse = Column(Text, default="")
+
+
+class BusinessConfig(Base):
+    """Config flexible de l'établissement (multi-secteurs), stockée en JSON.
+
+    data = {
+      "sector": str, "description": str,
+      "infos": [{"label", "value"}],
+      "tables": [{"name", "columns": [str], "rows": [{col: val}]}],
+      "faq": [{"question", "reponse"}],
+      "consignes": [{"situation", "action"}]
+    }
+    """
+    __tablename__ = "business_config"
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), primary_key=True)
+    data = Column(JSON, default=dict)
 
 
 class WaSession(Base):

@@ -66,3 +66,19 @@ def get_status(tenant) -> str:
     )
     r.raise_for_status()
     return r.json().get("status", "UNKNOWN")
+
+
+def logout(tenant) -> None:
+    """Déconnecte et supprime la session WhatsApp du tenant (pour en lier une autre)."""
+    sname = session_name(tenant.id)
+    for method, path in (
+        ("post", f"/api/sessions/{sname}/logout"),
+        ("post", f"/api/sessions/{sname}/stop"),
+        ("delete", f"/api/sessions/{sname}"),
+    ):
+        try:
+            getattr(requests, method)(
+                f"{WAHA_BASE_URL}{path}", headers=_headers(), timeout=15
+            )
+        except Exception:
+            pass

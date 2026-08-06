@@ -112,6 +112,9 @@ class _FakeWa:
     def get_status(self, tenant):
         return "SCAN_QR_CODE"
 
+    def logout(self, tenant):
+        self.started.append(("logout", tenant.id))
+
 
 def _token(client):
     r = client.post("/auth/signup", json={"email": "a@b.com", "password": "secret123", "resto_nom": "Chez Test"})
@@ -126,16 +129,37 @@ def test_config_put_then_get():
     c = TestClient(create_app(session_factory=_factory()))
     tok = _token(c)
     body = {
-        "infos": [{"rubrique": "Horaires", "contenu": "11h-23h"}],
-        "menu": [{"categorie": "Plat", "plat": "Poulet", "prix": "3000 FCFA"}],
+        "sector": "Restaurant",
+        "infos": [{"label": "Horaires", "value": "11h-23h"}],
+        "tables": [{"name": "Menu", "columns": ["Plat", "Prix"], "rows": [{"Plat": "Poulet", "Prix": "3000"}]}],
         "faq": [{"question": "Terrasse ?", "reponse": "Oui"}],
         "staff_numbers": "22961040461@c.us",
     }
     assert c.put("/api/config", json=body, headers=_auth(tok)).status_code == 200
     cfg = c.get("/api/config", headers=_auth(tok)).json()
-    assert cfg["infos"][0]["contenu"] == "11h-23h"
-    assert cfg["menu"][0]["plat"] == "Poulet"
+    assert cfg["sector"] == "Restaurant"
+    assert cfg["infos"][0]["value"] == "11h-23h"
+    assert cfg["tables"][0]["rows"][0]["Plat"] == "Poulet"
     assert cfg["staff_numbers"] == "22961040461@c.us"
+
+
+def test_sectors_list():
+    c = TestClient(create_app(session_factory=_factory()))
+    r = c.get("/api/sectors")
+    assert r.status_code == 200 and "Restaurant" in r.json()["sectors"]
+
+
+def test_ai_generate_config():
+    def fake_gen(tenant, sector, description):
+        return {"sector": sector, "description": description, "infos": [{"label": "Horaires", "value": "9h-18h"}], "tables": [], "consignes": [], "faq": []}
+
+    c = TestClient(create_app(session_factory=_factory(), ai_generate=fake_gen))
+    tok = _token(c)
+    r = c.post("/api/ai/generate", json={"sector": "Salon", "description": "moderne"}, headers=_auth(tok))
+    assert r.status_code == 200
+    cfg = r.json()["config"]
+    assert cfg["sector"] == "Salon"
+    assert cfg["infos"][0]["value"] == "9h-18h"
 
 
 def test_config_requires_auth():
@@ -168,38 +192,43 @@ def _make_xlsx():
     return b.getvalue()
 
 
-def test_import_xlsx():
+def test_import_xlsx_returns_config():
     c = TestClient(create_app(session_factory=_factory()))
     tok = _token(c)
     files = {"file": ("fiche.xlsx", _make_xlsx(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")}
     r = c.post("/api/import", files=files, headers=_auth(tok))
     assert r.status_code == 200
-    assert r.json()["counts"]["menu"] == 1
-    cfg = c.get("/api/config", headers=_auth(tok)).json()
-    assert any(m["plat"] == "Poulet braisé" for m in cfg["menu"])
+    cfg = r.json()["config"]  # renvoyé pour pré-remplir le formulaire
+    menu = next(t for t in cfg["tables"] if t["name"] == "Menu")
+    assert any(row.get("Plat") == "Poulet braisé" for row in menu["rows"])
+    # persisté en base
+    got = c.get("/api/config", headers=_auth(tok)).json()
+    assert any(t["name"] == "Menu" for t in got["tables"])
 
 
-def test_wa_connect_status_qr_with_fake():
+def test_wa_connect_status_qr_logout_with_fake():
     fake = _FakeWa()
     c = TestClient(create_app(session_factory=_factory(), wa_module=fake))
     tok = _token(c)
     r = c.post("/api/wa/connect", headers=_auth(tok))
     assert r.status_code == 200 and r.json()["session"].startswith("t")
-    assert len(fake.started) == 1
     assert c.get("/api/wa/status", headers=_auth(tok)).json()["status"] == "SCAN_QR_CODE"
     qr = c.get("/api/wa/qr", headers=_auth(tok))
     assert qr.status_code == 200 and qr.content == b"PNGDATA"
+    lo = c.post("/api/wa/logout", headers=_auth(tok))
+    assert lo.status_code == 200 and lo.json()["status"] == "logged_out"
+    assert ("logout", 1) in fake.started
 
 
 def test_settings_update_without_wiping_config():
     c = TestClient(create_app(session_factory=_factory()))
     tok = _token(c)
-    c.put("/api/config", json={"menu": [{"plat": "Poulet", "prix": "3000"}]}, headers=_auth(tok))
+    c.put("/api/config", json={"tables": [{"name": "Menu", "columns": ["Plat"], "rows": [{"Plat": "Poulet"}]}]}, headers=_auth(tok))
     r = c.put("/api/settings", json={"staff_numbers": "229x@c.us"}, headers=_auth(tok))
     assert r.status_code == 200
     cfg = c.get("/api/config", headers=_auth(tok)).json()
     assert cfg["staff_numbers"] == "229x@c.us"
-    assert cfg["menu"][0]["plat"] == "Poulet"  # config préservée
+    assert cfg["tables"][0]["rows"][0]["Plat"] == "Poulet"  # config préservée
 
 
 def test_conversations_usage_and_handoff_web():
