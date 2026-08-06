@@ -75,6 +75,17 @@ class StaffExcludeIn(BaseModel):
     chat_id: str
 
 
+class InviteIn(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class AdminTenantIn(BaseModel):
+    plan: str | None = None
+    status: str | None = None
+    wapy_model: str | None = None
+
+
 # --- Helpers config ---
 def parse_workbook(data: bytes) -> dict:
     """Parse un .xlsx en config JSON flexible.
@@ -138,16 +149,40 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         finally:
             s.close()
 
-    def current_tenant(authorization: str = Header(None), s=Depends(db)):
+    def _decode(authorization):
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="token manquant")
         try:
-            data = auth.decode_token(authorization[7:])
+            return auth.decode_token(authorization[7:])
         except Exception:
             raise HTTPException(status_code=401, detail="token invalide")
-        tenant = s.get(models.Tenant, data.get("tid"))
+
+    def current_tenant(authorization: str = Header(None), s=Depends(db)):
+        tenant = s.get(models.Tenant, _decode(authorization).get("tid"))
         if not tenant:
             raise HTTPException(status_code=401, detail="tenant introuvable")
+        return tenant
+
+    def current_user(authorization: str = Header(None), s=Depends(db)):
+        user = s.get(models.User, _decode(authorization).get("uid"))
+        if not user:
+            raise HTTPException(status_code=401, detail="utilisateur introuvable")
+        return user
+
+    def require_owner(user=Depends(current_user)):
+        if user.role != "owner" and not auth.is_admin(user.email):
+            raise HTTPException(status_code=403, detail="Réservé au propriétaire du compte")
+        return user
+
+    def require_admin(user=Depends(current_user)):
+        if not auth.is_admin(user.email):
+            raise HTTPException(status_code=403, detail="Accès administrateur requis")
+        return user
+
+    def owner_tenant(tenant=Depends(current_tenant), user=Depends(current_user)):
+        """Tenant courant, mais réservé au propriétaire (les agents ne configurent pas)."""
+        if user.role != "owner" and not auth.is_admin(user.email):
+            raise HTTPException(status_code=403, detail="Réservé au propriétaire du compte")
         return tenant
 
     # --- Santé ---
@@ -171,6 +206,89 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             raise HTTPException(status_code=401, detail="identifiants invalides")
         return {"token": auth.create_token(user.id, user.tenant_id)}
 
+    @app.get("/api/me")
+    def me(user=Depends(current_user), s=Depends(db)):
+        tenant = s.get(models.Tenant, user.tenant_id)
+        return {
+            "email": user.email,
+            "role": user.role,
+            "is_admin": auth.is_admin(user.email),
+            "tenant": {"id": tenant.id, "name": tenant.name} if tenant else None,
+        }
+
+    # --- Équipe (owner invite des agents) ---
+    @app.get("/api/team")
+    def list_team(user=Depends(require_owner), s=Depends(db)):
+        rows = s.query(models.User).filter_by(tenant_id=user.tenant_id).order_by(models.User.id).all()
+        return {"members": [{"id": u.id, "email": u.email, "role": u.role} for u in rows]}
+
+    @app.post("/api/team/invite")
+    def invite_member(body: InviteIn, user=Depends(require_owner), s=Depends(db)):
+        try:
+            agent = auth.create_agent(s, user.tenant_id, body.email, body.password)
+        except auth.SignupError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return {"id": agent.id, "email": agent.email, "role": agent.role}
+
+    @app.delete("/api/team/{uid}")
+    def remove_member(uid: int, user=Depends(require_owner), s=Depends(db)):
+        target = s.get(models.User, uid)
+        if not target or target.tenant_id != user.tenant_id:
+            raise HTTPException(status_code=404, detail="Membre introuvable")
+        if target.id == user.id:
+            raise HTTPException(status_code=400, detail="Impossible de se retirer soi-même")
+        s.delete(target)
+        s.commit()
+        return {"status": "removed"}
+
+    # --- Super-admin plateforme (opérateur Wapy) ---
+    @app.get("/api/admin/tenants")
+    def admin_tenants(_=Depends(require_admin), s=Depends(db)):
+        out = []
+        for t in s.query(models.Tenant).order_by(models.Tenant.id).all():
+            u = usage.totals(s, t.id)
+            sess = s.query(models.WaSession).filter_by(tenant_id=t.id).first()
+            owner = s.query(models.User).filter_by(tenant_id=t.id, role="owner").first()
+            out.append({
+                "id": t.id, "name": t.name,
+                "plan": t.plan, "status": getattr(t, "status", "active") or "active",
+                "model": t.wapy_model,
+                "owner": owner.email if owner else "",
+                "messages_in": u.get("messages_in", 0), "messages_out": u.get("messages_out", 0),
+                "wa_status": sess.status if sess else "—",
+                "staff_ok": bool(t.staff_numbers),
+            })
+        return {"tenants": out}
+
+    @app.put("/api/admin/tenants/{tid}")
+    def admin_update_tenant(tid: int, body: AdminTenantIn, _=Depends(require_admin), s=Depends(db)):
+        t = s.get(models.Tenant, tid)
+        if not t:
+            raise HTTPException(status_code=404, detail="Tenant introuvable")
+        if body.plan is not None:
+            t.plan = body.plan
+        if body.status is not None:
+            t.status = body.status
+        if body.wapy_model is not None:
+            t.wapy_model = body.wapy_model
+        s.commit()
+        return {"status": "saved"}
+
+    @app.get("/api/admin/tenants/{tid}/conversations")
+    def admin_tenant_conversations(tid: int, _=Depends(require_admin), s=Depends(db)):
+        t = s.get(models.Tenant, tid)
+        if not t:
+            raise HTTPException(status_code=404, detail="Tenant introuvable")
+        rows = (
+            s.query(models.Conversation).filter_by(tenant_id=tid)
+            .order_by(models.Conversation.id.desc()).limit(400).all()
+        )
+        seen: dict = {}
+        for r in rows:
+            if r.chat_id not in seen:
+                seen[r.chat_id] = {"chat_id": r.chat_id, "last": (r.content or "")[:140]}
+        return {"conversations": list(seen.values())}
+
     # --- Secteurs ---
     @app.get("/api/sectors")
     def list_sectors():
@@ -186,7 +304,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         return cfg
 
     @app.put("/api/config")
-    def put_config(body: dict = Body(...), tenant=Depends(current_tenant), s=Depends(db)):
+    def put_config(body: dict = Body(...), tenant=Depends(owner_tenant), s=Depends(db)):
         cfg = {k: body.get(k) for k in ("sector", "description", "infos", "tables", "consignes", "faq") if k in body}
         config_repo.save_config(s, tenant.id, {**config_repo.get_config(s, tenant.id), **cfg})
         if body.get("staff_numbers") is not None:
@@ -200,7 +318,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
 
     # --- Génération assistée par l'IA ---
     @app.post("/api/ai/generate")
-    def ai_generate_config(body: AiGenIn, tenant=Depends(current_tenant)):
+    def ai_generate_config(body: AiGenIn, tenant=Depends(owner_tenant)):
         gen = ai_generate
         if gen is None:
             import anthropic
@@ -213,7 +331,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         return {"config": data}
 
     @app.put("/api/settings")
-    def put_settings(body: SettingsIn, tenant=Depends(current_tenant), s=Depends(db)):
+    def put_settings(body: SettingsIn, tenant=Depends(owner_tenant), s=Depends(db)):
         if body.staff_numbers is not None:
             tenant.staff_numbers = phone.to_jids_csv(body.staff_numbers)
         if body.staff_inbound_ids is not None:
@@ -225,7 +343,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
 
     # --- Vérification du numéro staff par code (OTP envoyé sur WhatsApp) ---
     @app.post("/api/staff/verify/start")
-    def staff_verify_start(body: StaffVerifyStartIn, tenant=Depends(current_tenant), s=Depends(db)):
+    def staff_verify_start(body: StaffVerifyStartIn, tenant=Depends(owner_tenant), s=Depends(db)):
         channel = (channel_factory or wam.channel_for)(tenant)
         # Résout le VRAI chatId via WAHA (WhatsApp normalise ; ex. Bénin 229... -> 8 chiffres).
         # Envoyer au chatId canonique = délivrance garantie, sans deviner le format.
@@ -265,7 +383,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         return {"status": "sent", "masked": phone.mask(resolved[0])}
 
     @app.post("/api/staff/verify/confirm")
-    def staff_verify_confirm(body: StaffVerifyConfirmIn, tenant=Depends(current_tenant), s=Depends(db)):
+    def staff_verify_confirm(body: StaffVerifyConfirmIn, tenant=Depends(owner_tenant), s=Depends(db)):
         row = s.get(models.StaffVerification, tenant.id)
         if not row or not row.code:
             raise HTTPException(status_code=400, detail="Aucun code en attente. Renvoyez un code.")
@@ -283,7 +401,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         return [x.strip() for x in (tenant.staff_inbound_ids or "").split(",") if x.strip()]
 
     @app.post("/api/staff/exclude")
-    def staff_exclude(body: StaffExcludeIn, tenant=Depends(current_tenant), s=Depends(db)):
+    def staff_exclude(body: StaffExcludeIn, tenant=Depends(owner_tenant), s=Depends(db)):
         ids = _inbound_set(tenant)
         if body.chat_id and body.chat_id not in ids:
             ids.append(body.chat_id)
@@ -294,7 +412,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         return {"status": "excluded", "staff_inbound_ids": tenant.staff_inbound_ids}
 
     @app.post("/api/staff/exclude/remove")
-    def staff_unexclude(body: StaffExcludeIn, tenant=Depends(current_tenant), s=Depends(db)):
+    def staff_unexclude(body: StaffExcludeIn, tenant=Depends(owner_tenant), s=Depends(db)):
         ids = [x for x in _inbound_set(tenant) if x != body.chat_id]
         tenant.staff_inbound_ids = ",".join(ids)
         s.commit()
@@ -302,7 +420,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
 
     # --- Suggestions IA (l'assistant apprend des conversations, tu valides) ---
     @app.post("/api/ai/learn")
-    def ai_learn_run(tenant=Depends(current_tenant), s=Depends(db)):
+    def ai_learn_run(tenant=Depends(owner_tenant), s=Depends(db)):
         # Rassemble les dernières conversations (clients uniquement).
         rows = (
             s.query(models.Conversation)
@@ -363,7 +481,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         ]}
 
     @app.post("/api/suggestions/{sid}/accept")
-    def accept_suggestion(sid: int, tenant=Depends(current_tenant), s=Depends(db)):
+    def accept_suggestion(sid: int, tenant=Depends(owner_tenant), s=Depends(db)):
         row = s.get(models.Suggestion, sid)
         if not row or row.tenant_id != tenant.id:
             raise HTTPException(status_code=404, detail="Suggestion introuvable")
@@ -373,7 +491,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         return {"status": "accepted"}
 
     @app.post("/api/suggestions/{sid}/reject")
-    def reject_suggestion(sid: int, tenant=Depends(current_tenant), s=Depends(db)):
+    def reject_suggestion(sid: int, tenant=Depends(owner_tenant), s=Depends(db)):
         row = s.get(models.Suggestion, sid)
         if not row or row.tenant_id != tenant.id:
             raise HTTPException(status_code=404, detail="Suggestion introuvable")
@@ -394,7 +512,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         )
 
     @app.post("/api/upload")
-    async def upload_image(file: UploadFile = File(...), tenant=Depends(current_tenant)):
+    async def upload_image(file: UploadFile = File(...), tenant=Depends(owner_tenant)):
         ct = (file.content_type or "").lower()
         if not ct.startswith("image/"):
             raise HTTPException(status_code=400, detail="Seules les images sont acceptées")
@@ -408,7 +526,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         return {"url": f"/media/{name}"}
 
     @app.post("/api/import")
-    async def import_xlsx(file: UploadFile = File(...), tenant=Depends(current_tenant), s=Depends(db)):
+    async def import_xlsx(file: UploadFile = File(...), tenant=Depends(owner_tenant), s=Depends(db)):
         data = await file.read()
         try:
             parsed = parse_workbook(data)
@@ -510,7 +628,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
 
     # --- WhatsApp ---
     @app.post("/api/wa/connect")
-    def wa_connect(tenant=Depends(current_tenant), s=Depends(db)):
+    def wa_connect(tenant=Depends(owner_tenant), s=Depends(db)):
         wam.start_session(tenant, WEBHOOK_URL)
         sname = wam.session_name(tenant.id)
         row = s.query(models.WaSession).filter_by(tenant_id=tenant.id).first()
@@ -536,7 +654,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         return {"status": status}
 
     @app.post("/api/wa/logout")
-    def wa_logout(tenant=Depends(current_tenant), s=Depends(db)):
+    def wa_logout(tenant=Depends(owner_tenant), s=Depends(db)):
         wam.logout(tenant)
         row = s.query(models.WaSession).filter_by(tenant_id=tenant.id).first()
         if row:
@@ -552,6 +670,8 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         tenant = wam.tenant_for_session(s, payload.get("session", ""))
         if tenant is None:
             return {"status": "unknown-session"}
+        if (getattr(tenant, "status", "active") or "active") != "active":
+            return {"status": "suspended"}
         channel = (channel_factory or wam.channel_for)(tenant)
         br = brain
         if br is None:

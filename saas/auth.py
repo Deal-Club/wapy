@@ -38,6 +38,28 @@ def decode_token(token: str) -> dict:
     return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
 
 
+def admin_emails() -> set[str]:
+    """Emails super-admin plateforme (opérateur Wapy), depuis l'env ADMIN_EMAILS."""
+    return {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
+
+
+def is_admin(email: str) -> bool:
+    return (email or "").strip().lower() in admin_emails()
+
+
+def create_agent(session, tenant_id: int, email: str, password: str):
+    """Crée un membre d'équipe (rôle agent) rattaché à un tenant existant."""
+    email = email.strip().lower()
+    if session.query(models.User).filter_by(email=email).first():
+        raise SignupError("email déjà utilisé")
+    user = models.User(
+        tenant_id=tenant_id, email=email, password_hash=hash_password(password), role="agent"
+    )
+    session.add(user)
+    session.commit()
+    return user
+
+
 def _slug(name: str) -> str:
     s = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
     return s or "resto"

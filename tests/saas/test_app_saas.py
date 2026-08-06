@@ -265,6 +265,50 @@ def test_conversations_usage_and_handoff_web():
     assert c.post("/api/handoff/close", json={"chat_id": "cl@c.us"}, headers=_auth(tok)).json()["status"] == "closed"
 
 
+def test_me_team_invite_and_agent_gating():
+    c = TestClient(create_app(session_factory=_factory()))
+    tok = _token(c)  # owner a@b.com
+    me = c.get("/api/me", headers=_auth(tok)).json()
+    assert me["role"] == "owner" and me["is_admin"] is False
+    r = c.post("/api/team/invite", json={"email": "agent@b.com", "password": "secret123"}, headers=_auth(tok))
+    assert r.status_code == 200 and r.json()["role"] == "agent"
+    atok = c.post("/auth/login", json={"email": "agent@b.com", "password": "secret123"}).json()["token"]
+    assert c.get("/api/me", headers=_auth(atok)).json()["role"] == "agent"
+    # agent : peut lire les conversations, PAS configurer ni inviter
+    assert c.get("/api/conversations", headers=_auth(atok)).status_code == 200
+    assert c.put("/api/config", json={"sector": "X"}, headers=_auth(atok)).status_code == 403
+    assert c.post("/api/team/invite", json={"email": "x@b.com", "password": "secret123"}, headers=_auth(atok)).status_code == 403
+
+
+def test_admin_endpoints_require_admin_email(monkeypatch):
+    c = TestClient(create_app(session_factory=_factory()))
+    tok = _token(c)  # a@b.com
+    assert c.get("/api/admin/tenants", headers=_auth(tok)).status_code == 403
+    monkeypatch.setenv("ADMIN_EMAILS", "a@b.com")
+    r = c.get("/api/admin/tenants", headers=_auth(tok))
+    assert r.status_code == 200 and len(r.json()["tenants"]) >= 1
+    assert c.get("/api/me", headers=_auth(tok)).json()["is_admin"] is True
+    tid = r.json()["tenants"][0]["id"]
+    assert c.put(f"/api/admin/tenants/{tid}", json={"status": "suspended"}, headers=_auth(tok)).status_code == 200
+
+
+def test_suspended_tenant_webhook_skips():
+    sf = _factory()
+    ch = _Ch()
+    app = create_app(session_factory=sf, channel_factory=lambda t: ch, brain=_Brain(Decision("reply", "hi", "x")))
+    s = sf()
+    _, tenant = auth.signup(s, "a@b.com", "x", "T")
+    tenant.status = "suspended"
+    s.add(models.WaSession(tenant_id=tenant.id, session_name=wa.session_name(tenant.id), status="WORKING"))
+    s.commit()
+    r = TestClient(app).post(
+        "/webhook",
+        json={"event": "message", "session": wa.session_name(tenant.id), "payload": {"from": "cl@c.us", "body": "hi", "id": "m1"}},
+    )
+    assert r.json()["status"] == "suspended"
+    assert ch.sent == []
+
+
 def test_staff_verify_otp_flow():
     import re
 

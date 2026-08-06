@@ -41,6 +41,23 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password }),
     }),
+  me: () => req("/api/me"),
+  getTeam: () => req("/api/team"),
+  inviteMember: (email: string, password: string) =>
+    req("/api/team/invite", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    }),
+  removeMember: (id: number) => req(`/api/team/${id}`, { method: "DELETE" }),
+  adminTenants: () => req("/api/admin/tenants"),
+  adminUpdateTenant: (id: number, patch: any) =>
+    req(`/api/admin/tenants/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    }),
+  adminTenantConversations: (id: number) => req(`/api/admin/tenants/${id}/conversations`),
   getSectors: () => req("/api/sectors"),
   aiGenerate: (sector: string, description: string) =>
     req("/api/ai/generate", {

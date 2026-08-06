@@ -26,6 +26,7 @@ services:
       - WAHA_BASE_URL=http://waha:3000
       - WHATSAPP_API_KEY=${WHATSAPP_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - ADMIN_EMAILS=${ADMIN_EMAILS:-admin@wapy.io}
       - WEBHOOK_URL=http://api:8000/webhook
       - MEDIA_INTERNAL_BASE=http://api:8000
       - MEDIA_DIR=/app/media

@@ -7,32 +7,43 @@ import WhatsAppConnect from "@/components/WhatsAppConnect";
 import StaffAlertVerify from "@/components/StaffAlertVerify";
 import Suggestions from "@/components/Suggestions";
 
-type Tab = "conversations" | "records" | "config" | "suggestions" | "whatsapp" | "usage";
-const TABS: { id: Tab; label: string }[] = [
+type Tab = "conversations" | "records" | "config" | "suggestions" | "whatsapp" | "team" | "usage";
+const ALL_TABS: { id: Tab; label: string; ownerOnly?: boolean }[] = [
   { id: "conversations", label: "Conversations" },
   { id: "records", label: "Carnet" },
-  { id: "config", label: "Configuration" },
-  { id: "suggestions", label: "Suggestions" },
-  { id: "whatsapp", label: "WhatsApp" },
+  { id: "config", label: "Configuration", ownerOnly: true },
+  { id: "suggestions", label: "Suggestions", ownerOnly: true },
+  { id: "whatsapp", label: "WhatsApp", ownerOnly: true },
+  { id: "team", label: "Équipe", ownerOnly: true },
   { id: "usage", label: "Usage" },
 ];
 
 export default function Dashboard() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("conversations");
+  const [me, setMe] = useState<any | null>(null);
   useEffect(() => {
-    if (!getToken()) router.replace("/login");
+    if (!getToken()) { router.replace("/login"); return; }
+    api.me().then(setMe).catch(() => {});
   }, [router]);
+
+  const isOwner = !me || me.role === "owner" || me.is_admin;
+  const tabs = ALL_TABS.filter((t) => !t.ownerOnly || isOwner);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div className="font-display text-2xl font-semibold text-brand">Wapy</div>
-        <button className="btn-ghost text-sm" onClick={() => { clearToken(); router.replace("/login"); }}>Déconnexion</button>
+        <div className="flex items-center gap-2">
+          {me?.is_admin && (
+            <a className="btn-ghost text-sm" href="/admin">Admin</a>
+          )}
+          <button className="btn-ghost text-sm" onClick={() => { clearToken(); router.replace("/login"); }}>Déconnexion</button>
+        </div>
       </div>
 
-      <div className="mb-6 flex gap-1 rounded-full border border-line bg-surface p-1">
-        {TABS.map((t) => (
+      <div className="mb-6 flex gap-1 overflow-x-auto rounded-full border border-line bg-surface p-1">
+        {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -46,14 +57,15 @@ export default function Dashboard() {
       <div className="rise">
         {tab === "conversations" && <Conversations />}
         {tab === "records" && <RecordsTab />}
-        {tab === "config" && <ConfigTab />}
-        {tab === "suggestions" && <Suggestions />}
-        {tab === "whatsapp" && (
+        {tab === "config" && isOwner && <ConfigTab />}
+        {tab === "suggestions" && isOwner && <Suggestions />}
+        {tab === "whatsapp" && isOwner && (
           <div className="mx-auto max-w-md space-y-4">
             <div className="card"><WhatsAppConnect /></div>
             <div className="card"><StaffAlertVerify /></div>
           </div>
         )}
+        {tab === "team" && isOwner && <TeamTab />}
         {tab === "usage" && <UsageTab />}
       </div>
     </main>
@@ -247,6 +259,65 @@ function RecordsTab() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function TeamTab() {
+  const [members, setMembers] = useState<any[]>([]);
+  const [email, setEmail] = useState("");
+  const [pwd, setPwd] = useState("");
+  const [msg, setMsg] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function load() { try { setMembers((await api.getTeam()).members); } catch {} }
+  useEffect(() => { load(); }, []);
+
+  async function invite() {
+    setBusy(true); setMsg("");
+    try {
+      await api.inviteMember(email.trim(), pwd);
+      setEmail(""); setPwd(""); await load();
+    } catch (e: any) { setMsg(e.message || "Échec"); }
+    finally { setBusy(false); }
+  }
+  async function remove(id: number) { await api.removeMember(id); load(); }
+
+  return (
+    <div className="card space-y-4">
+      <div>
+        <h3 className="font-display text-xl">Votre équipe</h3>
+        <p className="text-sm text-muted">
+          Invitez des collègues. Un agent gère les conversations et le carnet, mais ne
+          voit pas la configuration, la facturation ni la connexion WhatsApp.
+        </p>
+      </div>
+
+      <div className="space-y-2">
+        {members.map((m) => (
+          <div key={m.id} className="flex items-center justify-between rounded-xl border border-line bg-surface/60 px-4 py-2.5">
+            <div>
+              <span className="font-medium">{m.email}</span>
+              <span className="pill ml-2 bg-brand-soft text-brand-dark">{m.role === "owner" ? "propriétaire" : "agent"}</span>
+            </div>
+            {m.role !== "owner" && (
+              <button className="btn-ghost text-xs" onClick={() => remove(m.id)}>Retirer</button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="border-t border-line pt-4">
+        <div className="label">Inviter un agent</div>
+        <div className="flex flex-wrap gap-2">
+          <input className="input flex-1" type="email" placeholder="email@collegue.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input className="input flex-1" type="password" placeholder="mot de passe temporaire" value={pwd} onChange={(e) => setPwd(e.target.value)} />
+          <button className="btn" onClick={invite} disabled={busy || !email.trim() || pwd.length < 6}>
+            {busy ? "…" : "Inviter"}
+          </button>
+        </div>
+        {msg && <p className="mt-2 text-sm text-brand">{msg}</p>}
+      </div>
     </div>
   );
 }
