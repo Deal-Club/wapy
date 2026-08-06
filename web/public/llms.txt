@@ -1,0 +1,22 @@
+# Wapy
+
+> Wapy est un assistant WhatsApp intelligent (IA) qui répond automatiquement aux clients des entreprises, dans leur ton et à partir de leurs propres informations. Conçu pour l'Afrique, pour tout secteur d'activité, sans code.
+
+## Ce que fait Wapy
+- Répond 24h/24 aux clients sur WhatsApp : questions, prix, horaires, disponibilité.
+- Se configure en quelques minutes : l'IA génère une fiche complète (infos, catalogue, FAQ) à partir d'une simple description de l'activité.
+- Tableaux 100% personnalisables (menu, prestations, catalogue) avec colonnes libres.
+- Passe la main à un humain pour les réservations, commandes et réclamations.
+- Tableau de bord : conversations en direct, réponse depuis le web, statistiques d'usage.
+
+## Pour qui
+Restaurants, maquis, salons de beauté, boutiques, hôtels, pharmacies, cliniques, écoles, transport, immobilier, artisans, e-commerce et tout autre secteur.
+
+## Points clés
+- Sans code, prêt en 5 minutes.
+- Réponses fondées uniquement sur les informations de l'entreprise (pas d'invention).
+- Données isolées par entreprise, accès sécurisés.
+- Adapté aux usages locaux : Mobile Money, français, ton chaleureux.
+
+## Commencer
+Créer un compte gratuitement puis scanner le WhatsApp de l'entreprise.
