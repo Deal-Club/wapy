@@ -22,6 +22,9 @@ class _Ch:
     def send_text(self, chat_id, text):
         self.sent.append((chat_id, text))
 
+    def send_image(self, chat_id, url, caption=""):
+        self.sent.append(("IMG", chat_id, url, caption))
+
 
 class _Brain:
     def __init__(self, decision):
@@ -89,6 +92,15 @@ def test_handle_reply():
     r = handle_message(ch, store, brain, "## Infos", ["s@c.us"], ["s@c.us"], _msg())
     assert r["status"] == "replied"
     assert ("c@c.us", "On ouvre à 12h.") in ch.sent
+
+
+def test_handle_reply_with_image():
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("reply", "Voici le plat 😋", "photo", image="/media/x.jpg"))
+    r = handle_message(ch, store, brain, "x", [], [], _msg())
+    assert r["status"] == "replied"
+    img = [s for s in ch.sent if isinstance(s, tuple) and s and s[0] == "IMG"]
+    assert img and img[0][2].endswith("/media/x.jpg") and img[0][3] == "Voici le plat 😋"
 
 
 def test_handle_escalate_then_staff_relay_and_forward():

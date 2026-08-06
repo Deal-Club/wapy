@@ -5,6 +5,7 @@ mais paramétrée par tenant (config, store, numéros staff).
 `process_incoming` câble le tenant (store DB + fiche DB + config staff).
 """
 import logging
+import os
 
 from safety.guards import is_group, is_broadcast, detect_optout
 from handoff.handoff import escalate_to_staff
@@ -16,6 +17,8 @@ logger = logging.getLogger("wapy.saas")
 
 HISTORY_LIMIT = 20
 HANDBACK_CMDS = {"/fin", "fin", "/bot", "terminé", "termine"}
+# Base interne pour que WAHA récupère les images servies par l'API.
+MEDIA_BASE = os.environ.get("MEDIA_INTERNAL_BASE", "http://api:8000")
 # Statuts qui ont émis un message sortant (compteur d'usage).
 _SENT_STATUSES = {"replied", "escalated", "relayed", "forwarded", "handback"}
 
@@ -80,7 +83,15 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
     history = store.get_history(msg.chat_id, HISTORY_LIMIT)
     decision = brain.decide(fiche_text, history, msg.text)
     if decision.action == "reply":
-        channel.send_text(msg.chat_id, decision.message)
+        img = getattr(decision, "image", "") or ""
+        if img and hasattr(channel, "send_image"):
+            url = img if img.startswith("http") else MEDIA_BASE + img
+            try:
+                channel.send_image(msg.chat_id, url, caption=decision.message)
+            except Exception:
+                channel.send_text(msg.chat_id, decision.message)
+        else:
+            channel.send_text(msg.chat_id, decision.message)
         store.append(msg.chat_id, "assistant", decision.message)
         return {"status": "replied"}
 

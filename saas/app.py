@@ -6,10 +6,14 @@ P2 : endpoints d'onboarding (config, modèle Excel, import xlsx, WhatsApp connec
 import io
 import os
 import sys
+import uuid
 
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, UploadFile, File
 from fastapi.responses import Response, StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
+
+MEDIA_DIR = os.environ.get("MEDIA_DIR", "media")
 
 from saas.db import SessionLocal, init_db
 from saas import auth, config_repo, models, sectors, usage, wa
@@ -101,6 +105,10 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     app = FastAPI(title="Wapy Platform")
     sf = session_factory or SessionLocal
     wam = wa_module or wa
+
+    # Fichiers média (images des catalogues) servis publiquement + accessibles à WAHA.
+    os.makedirs(MEDIA_DIR, exist_ok=True)
+    app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 
     if init:
         @app.on_event("startup")
@@ -210,6 +218,20 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             headers={"Content-Disposition": "attachment; filename=wapy-fiche-modele.xlsx"},
         )
+
+    @app.post("/api/upload")
+    async def upload_image(file: UploadFile = File(...), tenant=Depends(current_tenant)):
+        ct = (file.content_type or "").lower()
+        if not ct.startswith("image/"):
+            raise HTTPException(status_code=400, detail="Seules les images sont acceptées")
+        ext = os.path.splitext(file.filename or "")[1].lower() or ".jpg"
+        if ext not in (".jpg", ".jpeg", ".png", ".webp", ".gif"):
+            ext = ".jpg"
+        name = f"{tenant.id}_{uuid.uuid4().hex}{ext}"
+        data = await file.read()
+        with open(os.path.join(MEDIA_DIR, name), "wb") as f:
+            f.write(data)
+        return {"url": f"/media/{name}"}
 
     @app.post("/api/import")
     async def import_xlsx(file: UploadFile = File(...), tenant=Depends(current_tenant), s=Depends(db)):

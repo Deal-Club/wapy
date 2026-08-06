@@ -1,9 +1,11 @@
 "use client";
 import { useMemo, useState } from "react";
+import { api } from "@/lib/api";
 
 type Table = { name: string; columns: string[]; rows: Record<string, string>[] };
 
 const PAGE = 6;
+const isImageCol = (c: string) => /image|photo/i.test(c);
 
 export default function EditableTable({
   table,
@@ -53,6 +55,12 @@ export default function EditableTable({
   function setCell(ri: number, col: string, val: string) {
     const rows = table.rows.map((r, i) => (i === ri ? { ...r, [col]: val } : r));
     onChange({ ...table, rows });
+  }
+  async function uploadFor(ri: number, col: string, file: File) {
+    try {
+      const r = await api.uploadImage(file);
+      setCell(ri, col, r.url);
+    } catch {}
   }
   function addRow() {
     const blank: Record<string, string> = {};
@@ -113,11 +121,34 @@ export default function EditableTable({
               <tr key={i} className="group">
                 {table.columns.map((col) => (
                   <td key={col} className="border-b border-line/60 p-1">
-                    <input
-                      className="w-full rounded-md px-2 py-1.5 outline-none focus:bg-brand-soft/30"
-                      value={r[col] ?? ""}
-                      onChange={(e) => setCell(i, col, e.target.value)}
-                    />
+                    {isImageCol(col) ? (
+                      <div className="flex items-center gap-2">
+                        {r[col] ? (
+                          <img src={api.mediaUrl(r[col])} alt="" className="h-10 w-10 rounded object-cover" />
+                        ) : null}
+                        <label className="chip cursor-pointer text-xs">
+                          {r[col] ? "Changer" : "Ajouter"}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (f) uploadFor(i, col, f);
+                            }}
+                          />
+                        </label>
+                        {r[col] && (
+                          <button type="button" onClick={() => setCell(i, col, "")} className="text-muted hover:text-brand">×</button>
+                        )}
+                      </div>
+                    ) : (
+                      <input
+                        className="w-full rounded-md px-2 py-1.5 outline-none focus:bg-brand-soft/30"
+                        value={r[col] ?? ""}
+                        onChange={(e) => setCell(i, col, e.target.value)}
+                      />
+                    )}
                   </td>
                 ))}
                 <td className="border-b border-line/60 p-1 text-center">

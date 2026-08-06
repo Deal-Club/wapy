@@ -40,6 +40,20 @@ class WahaProvider(WhatsAppChannel):
         )
         r.raise_for_status()
 
+    def send_image(self, chat_id: str, url: str, caption: str = "") -> None:
+        r = requests.post(
+            f"{self.base_url}/api/sendImage",
+            json={
+                "session": self.session,
+                "chatId": chat_id,
+                "file": {"url": url},
+                "caption": caption,
+            },
+            headers=self._headers,
+            timeout=60,
+        )
+        r.raise_for_status()
+
     def session_status(self) -> str:
         r = requests.get(
             f"{self.base_url}/api/sessions/{self.session}",

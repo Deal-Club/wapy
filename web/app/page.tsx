@@ -4,9 +4,9 @@ import type { Metadata } from "next";
 const SITE = "https://wapy.51.210.108.173.sslip.io";
 
 export const metadata: Metadata = {
-  title: "Wapy — Assistant WhatsApp IA pour répondre à vos clients 24h/24",
+  title: "Wapy · Assistant WhatsApp IA pour répondre à vos clients 24h/24",
   description:
-    "Wapy répond automatiquement à vos clients sur WhatsApp — questions, commandes, réservations — dans votre ton, avec vos informations. Pour tout secteur. Sans code. Essai gratuit.",
+    "Wapy répond automatiquement à vos clients sur WhatsApp (questions, commandes, réservations), dans votre ton, avec vos informations. Pour tout secteur. Sans code. Essai gratuit.",
   keywords: [
     "assistant WhatsApp",
     "chatbot WhatsApp",
@@ -23,13 +23,13 @@ export const metadata: Metadata = {
     locale: "fr_FR",
     url: SITE,
     siteName: "Wapy",
-    title: "Wapy — Assistant WhatsApp IA pour vos clients, 24h/24",
+    title: "Wapy · Assistant WhatsApp IA pour vos clients, 24h/24",
     description:
       "Répondez automatiquement à vos clients sur WhatsApp, dans votre ton, avec vos infos. Tout secteur. Sans code.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Wapy — Assistant WhatsApp IA pour vos clients",
+    title: "Wapy · Assistant WhatsApp IA pour vos clients",
     description: "Répondez à vos clients sur WhatsApp automatiquement. Tout secteur. Sans code.",
   },
   robots: { index: true, follow: true },
@@ -135,7 +135,7 @@ export default function Landing() {
               Ne perdez plus jamais un client sur <span className="text-brand">WhatsApp</span>.
             </h1>
             <p className="mt-5 max-w-xl text-lg text-muted">
-              Wapy répond automatiquement à vos clients — questions, commandes, réservations — dans votre ton, avec vos informations. Pour tout secteur. Sans code.
+              Wapy répond automatiquement à vos clients (questions, commandes, réservations), dans votre ton, avec vos informations. Pour tout secteur. Sans code.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link href="/signup" className="btn text-base">Créer mon assistant gratuitement</Link>
@@ -239,7 +239,7 @@ export default function Landing() {
           <div>
             <h2 className="font-display text-3xl font-semibold">Conçu au plus près du terrain</h2>
             <p className="mt-3 text-muted">
-              Wapy est né d'un constat simple : les entreprises perdent des ventes parce qu'elles ne répondent pas assez vite sur WhatsApp. Nous avons construit un assistant qui répond avec exactitude — jamais d'invention — et qui sait passer la main à un humain quand il le faut.
+              Wapy est né d'un constat simple : les entreprises perdent des ventes parce qu'elles ne répondent pas assez vite sur WhatsApp. Nous avons construit un assistant qui répond avec exactitude, jamais d'invention, et qui sait passer la main à un humain quand il le faut.
             </p>
             <ul className="mt-4 space-y-2 text-sm">
               <li>✓ Réponses fondées uniquement sur vos informations</li>
@@ -250,7 +250,7 @@ export default function Landing() {
           </div>
           <div className="card">
             <p className="font-display text-2xl leading-snug">« Un client qui attend une réponse est un client qui va ailleurs. »</p>
-            <p className="mt-3 text-muted">Wapy répond à sa place, tout de suite — et vous reprenez la main quand vous voulez.</p>
+            <p className="mt-3 text-muted">Wapy répond à sa place, tout de suite, et vous reprenez la main quand vous voulez.</p>
           </div>
         </div>
       </section>

@@ -67,6 +67,12 @@ export const api = {
     fd.append("file", file);
     return req("/api/import", { method: "POST", body: fd });
   },
+  uploadImage: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return req("/api/upload", { method: "POST", body: fd });
+  },
+  mediaUrl: (p: string) => (!p ? "" : p.startsWith("http") ? p : BASE + p),
   templateUrl: () => BASE + "/api/template.xlsx",
   getConversations: () => req("/api/conversations"),
   getThread: (chatId: string) => req(`/api/conversations/${encodeURIComponent(chatId)}`),

@@ -16,7 +16,7 @@ const sans = Instrument_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "Wapy — Votre assistant WhatsApp intelligent",
+  title: "Wapy · Votre assistant WhatsApp intelligent",
   description: "Répondez à vos clients sur WhatsApp, automatiquement. Pour tout secteur d'activité.",
 };
 

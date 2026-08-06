@@ -27,6 +27,10 @@ services:
       - WHATSAPP_API_KEY=${WHATSAPP_API_KEY}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - WEBHOOK_URL=http://api:8000/webhook
+      - MEDIA_INTERNAL_BASE=http://api:8000
+      - MEDIA_DIR=/app/media
+    volumes:
+      - media:/app/media
     depends_on:
       - postgres
       - waha
@@ -56,3 +60,4 @@ volumes:
   pgdata:
   caddy_data:
   caddy_config:
+  media:

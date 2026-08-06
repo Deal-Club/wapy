@@ -260,3 +260,13 @@ def test_conversations_usage_and_handoff_web():
     assert ("cl@c.us", "Bonjour du web") in ch.sent
 
     assert c.post("/api/handoff/close", json={"chat_id": "cl@c.us"}, headers=_auth(tok)).json()["status"] == "closed"
+
+
+def test_upload_image_and_reject_non_image():
+    c = TestClient(create_app(session_factory=_factory()))
+    tok = _token(c)
+    png = b"\x89PNG\r\n\x1a\n" + b"0" * 32
+    r = c.post("/api/upload", files={"file": ("p.png", png, "image/png")}, headers=_auth(tok))
+    assert r.status_code == 200 and r.json()["url"].startswith("/media/")
+    r2 = c.post("/api/upload", files={"file": ("x.txt", b"hi", "text/plain")}, headers=_auth(tok))
+    assert r2.status_code == 400

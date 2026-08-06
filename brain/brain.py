@@ -13,8 +13,9 @@ DECISION_SCHEMA = {
         "action": {"type": "string", "enum": ["reply", "escalate"]},
         "message": {"type": "string"},
         "reason": {"type": "string"},
+        "image": {"type": "string"},
     },
-    "required": ["action", "message", "reason"],
+    "required": ["action", "message", "reason", "image"],
     "additionalProperties": False,
 }
 
@@ -24,6 +25,7 @@ class Decision:
     action: str
     message: str
     reason: str
+    image: str = ""
 
 
 def build_system_prompt(fiche_text: str) -> str:
@@ -48,7 +50,12 @@ def build_system_prompt(fiche_text: str) -> str:
         "couvre.\n"
         "4. Sinon action='reply' — y compris quand une consigne te dit d'envoyer un "
         "lien ou une info : mets-le dans ta réponse.\n"
-        "5. Renseigne toujours 'reason' (courte justification interne).\n\n"
+        "5. Renseigne toujours 'reason' (courte justification interne).\n"
+        "6. IMAGES : si un article de la fiche possède une image (une valeur de type "
+        "chemin, ex. « /media/xxx.jpg », souvent dans une colonne Image/Photo) et que "
+        "le client demande à VOIR l'article ou une photo, réponds action='reply' avec "
+        "un court message ET copie le chemin EXACT de l'image dans le champ 'image'. "
+        "Sinon, laisse 'image' vide (\"\").\n\n"
         "TON DES RÉPONSES (action='reply') :\n"
         "- Chaleureux, humain et professionnel, comme un employé du resto.\n"
         "- Concis et précis, va droit au but. Jamais de tiret long (—).\n"
@@ -77,4 +84,9 @@ class Brain:
         )
         text = next(b.text for b in resp.content if b.type == "text")
         data = json.loads(text)
-        return Decision(action=data["action"], message=data["message"], reason=data["reason"])
+        return Decision(
+            action=data["action"],
+            message=data["message"],
+            reason=data["reason"],
+            image=data.get("image", ""),
+        )

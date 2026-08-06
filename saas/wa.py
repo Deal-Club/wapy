@@ -36,8 +36,19 @@ def _headers() -> dict:
     return {"X-Api-Key": WAHA_API_KEY} if WAHA_API_KEY else {}
 
 
+def _delete_session(sname: str) -> None:
+    for method, path in (("post", f"/api/sessions/{sname}/stop"), ("delete", f"/api/sessions/{sname}")):
+        try:
+            getattr(requests, method)(f"{WAHA_BASE_URL}{path}", headers=_headers(), timeout=15)
+        except Exception:
+            pass
+
+
 def start_session(tenant, webhook_url: str) -> None:
+    """Démarre une session WhatsApp propre (repart de zéro pour éviter l'état FAILED
+    / le 422 'already exists', et permettre de lier un autre numéro)."""
     sname = session_name(tenant.id)
+    _delete_session(sname)
     requests.post(
         f"{WAHA_BASE_URL}/api/sessions",
         json={
