@@ -32,8 +32,12 @@ def escalate_to_staff(channel, store, chat_id, incoming_text, staff_numbers, rea
     for num in staff_numbers:
         store.open_handoff(num, chat_id)
         try:
-            channel.send_text(num, alerte)
+            mid = channel.send_text(num, alerte)
             delivered += 1
+            # Mémorise l'alerte -> client : le responsable peut CITER ce message pour
+            # répondre au bon client même avec plusieurs conversations en parallèle.
+            if mid and hasattr(store, "map_alert"):
+                store.map_alert(mid, chat_id)
         except Exception as e:
             # Ne casse pas le traitement, mais l'échec doit être VISIBLE (diagnostic ban / mauvais numéro).
             logger.error("Alerte staff non envoyée à %s : %s", num, e)

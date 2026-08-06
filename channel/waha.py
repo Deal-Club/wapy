@@ -21,10 +21,21 @@ class WahaProvider(WhatsAppChannel):
         p = payload.get("payload", {})
         chat_id = p.get("from", "")
         body = p.get("body", "")
-        if not chat_id or not body:
-            return None
         data = p.get("_data") or {}
+        media = p.get("media") or {}
+        media_url = media.get("url", "") if isinstance(media, dict) else ""
+        has_media = bool(media_url or p.get("hasMedia") or (p.get("type") and p.get("type") not in ("chat", "text")))
+        if not chat_id:
+            return None
+        if not body and not has_media:
+            return None
+        if not body and has_media:
+            # Message média sans légende (ex. capture de paiement) : on ne l'ignore plus.
+            body = "[Le client a envoyé une pièce jointe, probablement un justificatif de paiement.]"
         name = p.get("notifyName") or data.get("notifyName") or data.get("pushName") or ""
+        quoted = p.get("replyTo") or data.get("quotedStanzaID") or ""
+        if isinstance(quoted, dict):
+            quoted = quoted.get("id") or quoted.get("_serialized") or ""
         return IncomingMessage(
             chat_id=chat_id,
             text=body,
@@ -32,9 +43,11 @@ class WahaProvider(WhatsAppChannel):
             is_group=chat_id.endswith("@g.us"),
             id=str(p.get("id", "")),
             sender_name=str(name),
+            media_url=str(media_url or ""),
+            quoted_id=str(quoted or ""),
         )
 
-    def send_text(self, chat_id: str, text: str) -> None:
+    def send_text(self, chat_id: str, text: str) -> str | None:
         r = requests.post(
             f"{self.base_url}/api/sendText",
             json={"session": self.session, "chatId": chat_id, "text": text},
@@ -42,6 +55,13 @@ class WahaProvider(WhatsAppChannel):
             timeout=30,
         )
         r.raise_for_status()
+        try:
+            mid = r.json().get("id")
+            if isinstance(mid, dict):
+                mid = mid.get("_serialized") or mid.get("id")
+            return str(mid) if mid else None
+        except Exception:
+            return None
 
     def send_image(self, chat_id: str, url: str, caption: str = "") -> None:
         r = requests.post(

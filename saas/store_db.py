@@ -118,6 +118,25 @@ class DbStore:
         )
         return row.client_id if row else None
 
+    def map_alert(self, msg_id: str, client_id: str) -> None:
+        """Associe l'id d'un message envoyé au staff au client concerné."""
+        if not msg_id:
+            return
+        self.s.add(models.StaffAlert(tenant_id=self.tid, msg_id=str(msg_id), client_id=client_id))
+        self.s.commit()
+
+    def client_for_alert(self, msg_id: str) -> str | None:
+        """Retrouve le client visé quand le staff cite (reply) un message d'alerte."""
+        if not msg_id:
+            return None
+        row = (
+            self.s.query(models.StaffAlert)
+            .filter_by(tenant_id=self.tid, msg_id=str(msg_id))
+            .order_by(models.StaffAlert.id.desc())
+            .first()
+        )
+        return row.client_id if row else None
+
     def resolve_handoffs_for_client(self, client_id: str) -> None:
         for h in (
             self.s.query(models.Handoff)

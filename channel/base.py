@@ -12,6 +12,8 @@ class IncomingMessage:
     is_group: bool
     id: str = ""  # identifiant WAHA du message (pour l'idempotence)
     sender_name: str = ""  # pushName WhatsApp (affichage lisible d'un @lid)
+    media_url: str = ""  # URL de la pièce jointe (image/doc), ex. justificatif de paiement
+    quoted_id: str = ""  # id du message cité (réponse WhatsApp) -> cible du relais staff
 
 
 class WhatsAppChannel(ABC):
@@ -19,7 +21,7 @@ class WhatsAppChannel(ABC):
     def parse_incoming(self, payload: dict) -> IncomingMessage | None: ...
 
     @abstractmethod
-    def send_text(self, chat_id: str, text: str) -> None: ...
+    def send_text(self, chat_id: str, text: str) -> str | None: ...
 
     @abstractmethod
     def session_status(self) -> str: ...

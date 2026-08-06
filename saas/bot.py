@@ -51,19 +51,24 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
 
     logger.info("IN %s : %s", msg.chat_id, msg.text[:200])
 
-    # Relais boss <-> client
+    # Relais boss <-> client. Cible = le client dont le responsable a CITÉ le message
+    # (multi-conversations), sinon la dernière escalade ouverte.
     if msg.chat_id in staff_recognize:
-        client_id = store.latest_open_handoff_client()
+        target = None
+        if getattr(msg, "quoted_id", "") and hasattr(store, "client_for_alert"):
+            target = store.client_for_alert(msg.quoted_id)
+        if not target:
+            target = store.latest_open_handoff_client()
         if msg.text.strip().lower() in HANDBACK_CMDS:
-            if client_id:
-                store.resolve_handoffs_for_client(client_id)
-                store.clear_escalated(client_id)
+            if target:
+                store.resolve_handoffs_for_client(target)
+                store.clear_escalated(target)
                 _safe_send(channel, msg.chat_id, "🔁 Conversation rendue au bot.")
                 return {"status": "handback"}
             _safe_send(channel, msg.chat_id, "Aucune conversation en cours.")
             return {"status": "staff-idle"}
-        if client_id:
-            channel.send_text(client_id, msg.text)
+        if target:
+            channel.send_text(target, msg.text)
             return {"status": "relayed"}
         return {"status": "staff-idle"}
 
@@ -76,9 +81,19 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
 
     # Handoff bidirectionnel : message du client transmis au staff
     if store.is_escalated(msg.chat_id):
-        label = f"💬 Client {msg.chat_id} :\n{msg.text}"
+        label = f"💬 Client {msg.chat_id} :\n{msg.text}\n(Citez ce message pour lui répondre.)"
         for num in staff_send:
-            _safe_send(channel, num, label)
+            try:
+                mid = channel.send_text(num, label)
+                if mid and hasattr(store, "map_alert"):
+                    store.map_alert(mid, msg.chat_id)
+            except Exception:
+                pass
+            if getattr(msg, "media_url", "") and hasattr(channel, "send_image"):
+                try:
+                    channel.send_image(num, msg.media_url, caption=f"Pièce jointe du client {msg.chat_id}")
+                except Exception:
+                    pass
         return {"status": "forwarded"}
 
     # Bot
@@ -110,6 +125,12 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
         )
         for num in staff_send:
             _safe_send(channel, num, note)
+            # Transfère le justificatif (capture de paiement) au responsable pour vérif.
+            if getattr(msg, "media_url", "") and hasattr(channel, "send_image"):
+                try:
+                    channel.send_image(num, msg.media_url, caption="Justificatif reçu du client")
+                except Exception:
+                    pass
         return {"status": "recorded"}
 
     escalate_to_staff(channel, store, msg.chat_id, msg.text, staff_send, decision.reason)

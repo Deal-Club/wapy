@@ -30,7 +30,7 @@ class Tenant(Base):
     # @lid pour reconnaître les messages entrants du staff — cf. WAHA/NOWEB).
     staff_numbers = Column(Text, default="")
     staff_inbound_ids = Column(Text, default="")
-    wapy_model = Column(String(80), default="claude-sonnet-4-6")  # rapide + suffisant pour le bot
+    wapy_model = Column(String(80), default="claude-haiku-4-5-20251001")  # le moins cher (multi-tenant)
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -124,6 +124,18 @@ class Handoff(Base):
     client_id = Column(String(120), nullable=False)
     resolved = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=func.now())
+
+
+class StaffAlert(Base):
+    """Mappe l'id d'un message envoyé au staff (alerte / message client transféré)
+    vers le client concerné. Permet au responsable de répondre au bon client en
+    CITANT le message dans WhatsApp, même avec plusieurs conversations en parallèle."""
+    __tablename__ = "staff_alerts"
+    id = Column(Integer, primary_key=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    msg_id = Column(String(255), nullable=False, index=True)
+    client_id = Column(String(120), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class ProcessedMessage(Base):

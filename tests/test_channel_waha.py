@@ -37,6 +37,26 @@ def test_parse_incoming_ignores_empty_body():
     assert _provider().parse_incoming(payload) is None
 
 
+def test_parse_incoming_media_without_caption_not_ignored():
+    payload = {
+        "event": "message",
+        "payload": {"from": "c@c.us", "fromMe": False, "body": "", "type": "image",
+                    "media": {"url": "http://waha/f.jpg"}, "id": "m1"},
+    }
+    msg = _provider().parse_incoming(payload)
+    assert msg is not None
+    assert msg.media_url == "http://waha/f.jpg"
+    assert msg.text  # placeholder non vide -> le bot peut réagir
+
+
+def test_parse_incoming_reads_quoted_id():
+    payload = {
+        "event": "message",
+        "payload": {"from": "s@c.us", "body": "ok", "replyTo": "alertX", "id": "r1"},
+    }
+    assert _provider().parse_incoming(payload).quoted_id == "alertX"
+
+
 def test_send_text_posts_to_waha_with_api_key(monkeypatch):
     captured = {}
 

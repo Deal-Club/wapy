@@ -16,11 +16,13 @@ class _Ch:
         p = payload["payload"]
         cid = p["from"]
         return IncomingMessage(
-            cid, p["body"], p.get("fromMe", False), cid.endswith("@g.us"), p.get("id", "")
+            cid, p.get("body", ""), p.get("fromMe", False), cid.endswith("@g.us"),
+            p.get("id", ""), media_url=p.get("media_url", ""), quoted_id=p.get("replyTo", ""),
         )
 
     def send_text(self, chat_id, text):
         self.sent.append((chat_id, text))
+        return None
 
     def send_image(self, chat_id, url, caption=""):
         self.sent.append(("IMG", chat_id, url, caption))
@@ -39,6 +41,14 @@ class _Brain:
 class _Store:
     def __init__(self):
         self.msgs, self.esc, self.opt, self.processed, self.handoffs = [], set(), set(), set(), []
+        self.alerts = {}
+
+    def map_alert(self, msg_id, client_id):
+        if msg_id:
+            self.alerts[str(msg_id)] = client_id
+
+    def client_for_alert(self, msg_id):
+        return self.alerts.get(str(msg_id))
 
     def append(self, cid, role, text):
         self.msgs.append((cid, role, text))
@@ -145,6 +155,32 @@ def test_process_incoming_record_saved_in_db():
     assert r["status"] == "recorded"
     recs = s.query(models.Record).filter_by(tenant_id=tenant.id).all()
     assert len(recs) == 1 and recs[0].kind == "Réservation" and "5 pers" in recs[0].content
+
+
+def test_relay_targets_quoted_client_among_several():
+    ch, store = _Ch(), _Store()
+    esc = _Brain(Decision("escalate", "", "humain"))
+    handle_message(ch, store, esc, "x", ["s@c.us"], ["s@c.us"], _msg(cid="A@c.us", body="un humain svp", mid="a1"))
+    handle_message(ch, store, esc, "x", ["s@c.us"], ["s@c.us"], _msg(cid="B@c.us", body="un humain svp", mid="b1"))
+    store.map_alert("altA", "A@c.us")  # l'alerte de A a l'id "altA"
+    # le boss CITE l'alerte de A -> relais vers A (pas B qui est le plus récent)
+    m = _msg(cid="s@c.us", body="votre table est prête", mid="r1")
+    m["payload"]["replyTo"] = "altA"
+    r = handle_message(ch, store, esc, "x", ["s@c.us"], ["s@c.us"], m)
+    assert r["status"] == "relayed"
+    assert ("A@c.us", "votre table est prête") in ch.sent
+
+
+def test_record_forwards_payment_proof_to_staff():
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("record", "Bien reçu, je transmets pour validation.", "paiement",
+                            record_type="Paiement", record="justificatif reçu, à vérifier"))
+    m = _msg(body="[pièce jointe]", mid="p1")
+    m["payload"]["media_url"] = "http://waha/file.jpg"
+    r = handle_message(ch, store, brain, "x", ["s@c.us"], ["s@c.us"], m)
+    assert r["status"] == "recorded"
+    imgs = [x for x in ch.sent if len(x) == 4 and x[0] == "IMG"]
+    assert any(x[1] == "s@c.us" and x[2] == "http://waha/file.jpg" for x in imgs)
 
 
 def test_duplicate_ignored():
