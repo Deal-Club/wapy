@@ -95,6 +95,18 @@ class WaSession(Base):
     session_name = Column(String(120), unique=True, nullable=False)
     status = Column(String(50), default="UNKNOWN")
     linked_number = Column(String(120), default="")
+    last_seen = Column(DateTime)  # dernière fois vue WORKING (supervision)
+
+
+class SessionIncident(Base):
+    """Historique des changements d'état problématiques d'une session WhatsApp
+    (déconnexion, QR réapparu, échec/ban). Alimente la supervision + les alertes."""
+    __tablename__ = "session_incidents"
+    id = Column(Integer, primary_key=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    status = Column(String(50), default="")
+    note = Column(String(255), default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
 
 
 class Conversation(Base):

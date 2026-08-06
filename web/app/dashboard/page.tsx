@@ -42,6 +42,8 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <HealthBanner isOwner={isOwner} onGoWhatsApp={() => setTab("whatsapp")} />
+
       <div className="mb-6 flex gap-1 overflow-x-auto rounded-full border border-line bg-surface p-1">
         {tabs.map((t) => (
           <button
@@ -259,6 +261,32 @@ function RecordsTab() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function HealthBanner({ isOwner, onGoWhatsApp }: { isOwner: boolean; onGoWhatsApp: () => void }) {
+  const [h, setH] = useState<any | null>(null);
+  useEffect(() => {
+    const f = () => api.waHealth().then(setH).catch(() => {});
+    f();
+    const i = setInterval(f, 30000);
+    return () => clearInterval(i);
+  }, []);
+  if (!h || h.health === "ok" || h.health === "unknown") return null;
+  const scan = h.health === "scan";
+  return (
+    <div className={`mb-4 rounded-2xl border px-4 py-3 text-sm ${scan ? "border-brand/40 bg-brand-soft/50" : "border-brand/50 bg-brand-soft/70"}`}>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span>
+          {scan
+            ? "⚠️ Votre WhatsApp n'est plus lié (QR à scanner). Le bot ne peut pas répondre tant qu'il n'est pas reconnecté."
+            : "🚨 Votre session WhatsApp est hors ligne. Le bot ne reçoit plus les messages."}
+        </span>
+        {isOwner && (
+          <button className="btn text-xs" onClick={onGoWhatsApp}>Reconnecter</button>
+        )}
+      </div>
     </div>
   );
 }

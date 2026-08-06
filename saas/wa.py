@@ -55,7 +55,7 @@ def start_session(tenant, webhook_url: str) -> None:
             "name": sname,
             "start": True,
             "config": {
-                "webhooks": [{"url": webhook_url, "events": ["message"]}],
+                "webhooks": [{"url": webhook_url, "events": ["message", "session.status"]}],
                 # Store NOWEB : nécessaire pour résoudre @lid -> numéro (reconnaissance
                 # auto du personnel qui répond depuis son téléphone). Cf. resolve_lid.
                 "noweb": {"store": {"enabled": True, "fullSync": True}},
@@ -73,6 +73,14 @@ def get_qr(tenant) -> bytes:
     )
     r.raise_for_status()
     return r.content
+
+
+def list_sessions() -> list[dict]:
+    """Liste toutes les sessions WAHA et leur statut (pour la supervision)."""
+    r = requests.get(f"{WAHA_BASE_URL}/api/sessions", headers=_headers(), timeout=20)
+    r.raise_for_status()
+    data = r.json()
+    return data if isinstance(data, list) else []
 
 
 def get_status(tenant) -> str:

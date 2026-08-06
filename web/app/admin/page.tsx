@@ -12,12 +12,14 @@ const MODELS = [
 export default function Admin() {
   const router = useRouter();
   const [tenants, setTenants] = useState<any[]>([]);
+  const [incidents, setIncidents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
 
   async function load() {
     try {
       setTenants((await api.adminTenants()).tenants);
+      setIncidents((await api.adminIncidents()).incidents);
     } catch (e: any) {
       if ((e.message || "").includes("administrateur") || (e.message || "").includes("403")) setDenied(true);
     } finally {
@@ -46,13 +48,21 @@ export default function Admin() {
 
   const badge = (s: string) =>
     s === "WORKING" ? "bg-emerald-soft text-emerald-dark" : s === "SCAN_QR_CODE" ? "bg-brand-soft text-brand-dark" : "bg-surface text-muted";
+  const ago = (iso: string) => {
+    if (!iso) return "—";
+    return iso.replace("T", " ").slice(0, 16);
+  };
+  const unhealthy = tenants.filter((t) => t.wa_status && t.wa_status !== "WORKING" && t.wa_status !== "—").length;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <div className="font-display text-2xl font-semibold text-brand">Wapy · Admin</div>
-          <p className="text-sm text-muted">{tenants.length} comptes clients</p>
+          <p className="text-sm text-muted">
+            {tenants.length} comptes clients
+            {unhealthy > 0 && <span className="ml-2 text-brand">· {unhealthy} session(s) à surveiller</span>}
+          </p>
         </div>
         <div className="flex gap-2">
           <a className="btn-ghost text-sm" href="/dashboard">Mon tableau de bord</a>
@@ -68,6 +78,7 @@ export default function Admin() {
               <th className="p-2">Établissement</th>
               <th className="p-2">Propriétaire</th>
               <th className="p-2">WhatsApp</th>
+              <th className="p-2">Vu (WORKING)</th>
               <th className="p-2">Reçus / Envoyés</th>
               <th className="p-2">Modèle</th>
               <th className="p-2">Plan</th>
@@ -84,6 +95,7 @@ export default function Admin() {
                 </td>
                 <td className="p-2 text-muted">{t.owner || "—"}</td>
                 <td className="p-2"><span className={`pill ${badge(t.wa_status)}`}>{t.wa_status}</span></td>
+                <td className="p-2 text-xs text-muted">{ago(t.last_seen)}</td>
                 <td className="p-2 text-muted">{t.messages_in} / {t.messages_out}</td>
                 <td className="p-2">
                   <select className="input py-1 text-xs" value={t.model} onChange={(e) => patch(t.id, "wapy_model", e.target.value)}>
@@ -109,6 +121,22 @@ export default function Admin() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="card mt-6">
+        <h3 className="mb-3 font-display text-lg">Incidents récents (sessions WhatsApp)</h3>
+        {incidents.length === 0 ? (
+          <p className="text-sm text-muted">Aucun incident. Toutes les sessions sont stables.</p>
+        ) : (
+          <div className="space-y-1.5">
+            {incidents.map((i, k) => (
+              <div key={k} className="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm">
+                <span><b>{i.tenant}</b> · <span className="text-brand">{i.status}</span> <span className="text-muted">({i.note})</span></span>
+                <span className="text-xs text-muted">{ago(i.at)}</span>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </main>
   );

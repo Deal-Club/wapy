@@ -142,6 +142,12 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         def _startup():
             init_db()
 
+        @app.on_event("startup")
+        async def _start_health():
+            import asyncio
+            from saas.health import run_health_loop
+            asyncio.create_task(run_health_loop(sf, wam))
+
     def db():
         s = sf()
         try:
@@ -256,9 +262,23 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
                 "owner": owner.email if owner else "",
                 "messages_in": u.get("messages_in", 0), "messages_out": u.get("messages_out", 0),
                 "wa_status": sess.status if sess else "—",
+                "last_seen": sess.last_seen.isoformat() if sess and sess.last_seen else "",
                 "staff_ok": bool(t.staff_numbers),
             })
         return {"tenants": out}
+
+    @app.get("/api/admin/incidents")
+    def admin_incidents(_=Depends(require_admin), s=Depends(db)):
+        names = {t.id: t.name for t in s.query(models.Tenant).all()}
+        rows = (
+            s.query(models.SessionIncident)
+            .order_by(models.SessionIncident.id.desc()).limit(100).all()
+        )
+        return {"incidents": [
+            {"tenant": names.get(r.tenant_id, str(r.tenant_id)), "status": r.status,
+             "note": r.note, "at": r.created_at.isoformat() if r.created_at else ""}
+            for r in rows
+        ]}
 
     @app.put("/api/admin/tenants/{tid}")
     def admin_update_tenant(tid: int, body: AdminTenantIn, _=Depends(require_admin), s=Depends(db)):
@@ -644,6 +664,17 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     def wa_qr(tenant=Depends(current_tenant)):
         return Response(content=wam.get_qr(tenant), media_type="image/png")
 
+    @app.get("/api/wa/health")
+    def wa_health(tenant=Depends(current_tenant), s=Depends(db)):
+        from saas.health import classify
+        row = s.query(models.WaSession).filter_by(tenant_id=tenant.id).first()
+        status = row.status if row else "UNKNOWN"
+        return {
+            "status": status,
+            "health": classify(status),
+            "last_seen": row.last_seen.isoformat() if row and row.last_seen else "",
+        }
+
     @app.get("/api/wa/status")
     def wa_status(tenant=Depends(current_tenant), s=Depends(db)):
         status = wam.get_status(tenant)
@@ -670,6 +701,18 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         tenant = wam.tenant_for_session(s, payload.get("session", ""))
         if tenant is None:
             return {"status": "unknown-session"}
+        # Supervision : WAHA pousse les changements d'état de session.
+        if payload.get("event") == "session.status":
+            new = (payload.get("payload") or {}).get("status") or ""
+            row = s.query(models.WaSession).filter_by(tenant_id=tenant.id).first()
+            if row and new:
+                if row.status == "WORKING" and new != "WORKING":
+                    s.add(models.SessionIncident(tenant_id=tenant.id, status=new, note=f"{row.status} -> {new}"))
+                row.status = new
+                if new == "WORKING":
+                    row.last_seen = datetime.utcnow()
+                s.commit()
+            return {"status": "session-status"}
         if (getattr(tenant, "status", "active") or "active") != "active":
             return {"status": "suspended"}
         channel = (channel_factory or wam.channel_for)(tenant)

@@ -58,6 +58,8 @@ export const api = {
       body: JSON.stringify(patch),
     }),
   adminTenantConversations: (id: number) => req(`/api/admin/tenants/${id}/conversations`),
+  adminIncidents: () => req("/api/admin/incidents"),
+  waHealth: () => req("/api/wa/health"),
   getSectors: () => req("/api/sectors"),
   aiGenerate: (sector: string, description: string) =>
     req("/api/ai/generate", {

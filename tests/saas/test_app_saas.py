@@ -292,6 +292,19 @@ def test_admin_endpoints_require_admin_email(monkeypatch):
     assert c.put(f"/api/admin/tenants/{tid}", json={"status": "suspended"}, headers=_auth(tok)).status_code == 200
 
 
+def test_webhook_session_status_records_incident():
+    sf = _factory()
+    app = create_app(session_factory=sf)
+    s = sf()
+    _, tenant = auth.signup(s, "a@b.com", "x", "T")
+    s.add(models.WaSession(tenant_id=tenant.id, session_name=wa.session_name(tenant.id), status="WORKING"))
+    s.commit()
+    c = TestClient(app)
+    r = c.post("/webhook", json={"event": "session.status", "session": wa.session_name(tenant.id), "payload": {"status": "FAILED"}})
+    assert r.json()["status"] == "session-status"
+    assert len(sf().query(models.SessionIncident).filter_by(tenant_id=tenant.id).all()) == 1
+
+
 def test_suspended_tenant_webhook_skips():
     sf = _factory()
     ch = _Ch()
