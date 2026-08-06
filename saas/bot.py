@@ -123,6 +123,27 @@ def process_incoming(session, channel, brain, tenant, payload):
     # partait dans le vide (WAHA renvoie 201 mais ne délivre pas).
     staff_send = [phone.to_jid(n) for n in _csv(tenant.staff_numbers) if phone.to_jid(n)]
     staff_recognize = list(set(staff_send) | set(_csv(tenant.staff_inbound_ids)))
+
+    # Auto-reconnaissance du personnel : quand une escalade est ouverte et qu'un
+    # message arrive d'un @lid inconnu, on résout son vrai numéro via WAHA. S'il
+    # correspond à un numéro staff, on l'enregistre (le boss répond depuis son tel
+    # avec un @lid ≠ du @c.us d'alerte -> sinon le bot lui répond comme à un client).
+    from_id = (payload.get("payload") or {}).get("from", "")
+    if (
+        from_id.endswith("@lid")
+        and from_id not in staff_recognize
+        and staff_send
+        and hasattr(channel, "resolve_lid")
+        and store.latest_open_handoff_client()
+    ):
+        pn = channel.resolve_lid(from_id)
+        if pn and pn in set(staff_send):
+            ids = _csv(tenant.staff_inbound_ids)
+            if from_id not in ids:
+                tenant.staff_inbound_ids = ",".join(ids + [from_id])
+                session.commit()
+            staff_recognize = list(set(staff_recognize) | {from_id})
+
     result = handle_message(
         channel, store, brain, fiche_text, staff_send, staff_recognize, payload
     )

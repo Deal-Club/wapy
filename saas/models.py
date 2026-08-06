@@ -30,7 +30,7 @@ class Tenant(Base):
     # @lid pour reconnaître les messages entrants du staff — cf. WAHA/NOWEB).
     staff_numbers = Column(Text, default="")
     staff_inbound_ids = Column(Text, default="")
-    wapy_model = Column(String(80), default="claude-opus-4-8")
+    wapy_model = Column(String(80), default="claude-sonnet-4-6")  # rapide + suffisant pour le bot
     created_at = Column(DateTime, server_default=func.now())
 
 

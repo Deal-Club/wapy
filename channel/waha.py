@@ -78,6 +78,30 @@ class WahaProvider(WhatsAppChannel):
             pass
         return None
 
+    def resolve_lid(self, lid: str) -> str | None:
+        """Résout un @lid (identifiant anonymisé NOWEB) vers le vrai numéro @c.us.
+
+        Nécessite le store NOWEB activé sur la session. Sert à reconnaître le
+        personnel qui répond depuis son téléphone (WAHA rapporte son message avec
+        un @lid ≠ du @c.us d'envoi). Renvoie None si indisponible."""
+        num = "".join(ch for ch in (lid or "") if ch.isdigit())
+        if not num:
+            return None
+        try:
+            r = requests.get(
+                f"{self.base_url}/api/{self.session}/lids/{num}",
+                headers=self._headers,
+                timeout=15,
+            )
+            if r.status_code == 200:
+                data = r.json()
+                pn = data.get("pn") or data.get("phoneNumber") or data.get("number") or ""
+                if pn:
+                    return pn if pn.endswith("@c.us") else "".join(c for c in pn if c.isdigit()) + "@c.us"
+        except Exception:
+            pass
+        return None
+
     def session_status(self) -> str:
         r = requests.get(
             f"{self.base_url}/api/sessions/{self.session}",

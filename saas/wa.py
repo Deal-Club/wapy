@@ -54,7 +54,12 @@ def start_session(tenant, webhook_url: str) -> None:
         json={
             "name": sname,
             "start": True,
-            "config": {"webhooks": [{"url": webhook_url, "events": ["message"]}]},
+            "config": {
+                "webhooks": [{"url": webhook_url, "events": ["message"]}],
+                # Store NOWEB : nécessaire pour résoudre @lid -> numéro (reconnaissance
+                # auto du personnel qui répond depuis son téléphone). Cf. resolve_lid.
+                "noweb": {"store": {"enabled": True, "fullSync": True}},
+            },
         },
         headers=_headers(),
         timeout=30,
