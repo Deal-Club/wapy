@@ -37,11 +37,13 @@ services:
     depends_on:
       - api
 
+  # Reverse-proxy interne. Sur ce serveur (Plesk détient 80/443), Caddy est exposé
+  # uniquement sur loopback:8080 ; nginx (Plesk) termine l'HTTPS et proxy vers 8080.
+  # Cf. deploy/https-nginx.md pour la config nginx + certificat.
   caddy:
     image: caddy:2
     ports:
-      - "80:80"
-      - "443:443"
+      - "127.0.0.1:8080:80"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data

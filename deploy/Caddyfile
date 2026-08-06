@@ -1,10 +1,9 @@
-wapy.51.210.108.173.sslip.io {
-	# API FastAPI (auth, endpoints /api, webhook WAHA)
+# Reverse-proxy interne (HTTP). L'HTTPS est terminé par nginx en amont (cf. https-nginx.md).
+:80 {
 	@backend path /api/* /auth/* /webhook
 	handle @backend {
 		reverse_proxy api:8000
 	}
-	# Front Next.js (tout le reste)
 	handle {
 		reverse_proxy web:3001
 	}
