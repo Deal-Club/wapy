@@ -89,6 +89,7 @@ export const api = {
       body: JSON.stringify({ chat_id }),
     }),
   getUsage: () => req("/api/usage"),
+  getRecords: () => req("/api/records"),
   staffVerifyStart: (number: string, dialcode: string) =>
     req("/api/staff/verify/start", {
       method: "POST",

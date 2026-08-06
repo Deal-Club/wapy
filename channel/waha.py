@@ -57,6 +57,27 @@ class WahaProvider(WhatsAppChannel):
         )
         r.raise_for_status()
 
+    def resolve_chat_id(self, phone: str) -> str | None:
+        """Résout le vrai chatId WhatsApp d'un numéro via WAHA (check-exists).
+
+        WhatsApp normalise côté serveur (ex. Bénin : 2290161040461 -> 22961040461).
+        Envoyer au chatId canonique garantit la délivrance. Renvoie None si le numéro
+        n'a pas de compte WhatsApp ou si la vérif échoue."""
+        try:
+            r = requests.get(
+                f"{self.base_url}/api/contacts/check-exists",
+                params={"phone": phone, "session": self.session},
+                headers=self._headers,
+                timeout=25,
+            )
+            if r.status_code == 200:
+                data = r.json()
+                if data.get("numberExists"):
+                    return data.get("chatId") or (phone + "@c.us")
+        except Exception:
+            pass
+        return None
+
     def session_status(self) -> str:
         r = requests.get(
             f"{self.base_url}/api/sessions/{self.session}",

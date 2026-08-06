@@ -166,6 +166,20 @@ class StaffVerification(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class Record(Base):
+    """Action conclue par le bot en autonomie (réservation, commande, paiement, lead).
+
+    Le bot mène l'échange, enregistre ici le résultat structuré, et NOTIFIE le
+    responsable (sans lui passer la main). kind ex. « Réservation », « Commande »."""
+    __tablename__ = "records"
+    id = Column(Integer, primary_key=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    chat_id = Column(String(120), nullable=False, index=True)
+    kind = Column(String(60), default="")
+    content = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Suggestion(Base):
     """Amélioration de config proposée par l'IA à partir des conversations.
 

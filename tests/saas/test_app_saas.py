@@ -25,6 +25,9 @@ class _Ch:
     def send_text(self, chat_id, text):
         self.sent.append((chat_id, text))
 
+    def resolve_chat_id(self, phone):
+        return phone + "@c.us"  # identité en test (pas de WAHA)
+
 
 class _Brain:
     def __init__(self, decision):

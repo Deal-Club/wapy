@@ -20,7 +20,7 @@ HANDBACK_CMDS = {"/fin", "fin", "/bot", "terminé", "termine"}
 # Base interne pour que WAHA récupère les images servies par l'API.
 MEDIA_BASE = os.environ.get("MEDIA_INTERNAL_BASE", "http://api:8000")
 # Statuts qui ont émis un message sortant (compteur d'usage).
-_SENT_STATUSES = {"replied", "escalated", "relayed", "forwarded", "handback"}
+_SENT_STATUSES = {"replied", "recorded", "escalated", "relayed", "forwarded", "handback"}
 
 
 def _safe_send(channel, to: str, text: str) -> None:
@@ -97,6 +97,20 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
             channel.send_text(msg.chat_id, decision.message)
         store.append(msg.chat_id, "assistant", decision.message)
         return {"status": "replied"}
+
+    if decision.action == "record":
+        # Le bot conclut l'action lui-même, l'enregistre, NOTIFIE le staff sans lui passer la main.
+        channel.send_text(msg.chat_id, decision.message)
+        store.append(msg.chat_id, "assistant", decision.message)
+        if hasattr(store, "add_record"):
+            store.add_record(msg.chat_id, decision.record_type, decision.record)
+        note = (
+            f"📝 {decision.record_type or 'Demande'} enregistrée par l'assistant\n"
+            f"Client {msg.chat_id} :\n{decision.record}"
+        )
+        for num in staff_send:
+            _safe_send(channel, num, note)
+        return {"status": "recorded"}
 
     escalate_to_staff(channel, store, msg.chat_id, msg.text, staff_send, decision.reason)
     return {"status": "escalated"}

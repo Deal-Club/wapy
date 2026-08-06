@@ -42,6 +42,25 @@ def to_jid(number: str, dialcode: str = "") -> str:
     return e + CUS if e else ""
 
 
+def candidate_numbers(number: str, dialcode: str = "") -> list[str]:
+    """Variantes de chiffres (sans @c.us) à soumettre à WAHA pour résoudre le vrai
+    chatId. Couvre l'ambiguïté du '0' de tête sans deviner."""
+    n = (number or "").strip()
+    if n.endswith(_JID_SUFFIXES):
+        return [digits(n)]
+    d = digits(n)
+    cc = digits(dialcode)
+    if not d:
+        return []
+    if cc and d.startswith(cc):
+        bases = {d}
+    elif cc:
+        bases = {cc + d, cc + d.lstrip("0")}
+    else:
+        bases = {d, d.lstrip("0")}
+    return sorted({b for b in bases if b}, key=len, reverse=True)
+
+
 def candidate_jids(number: str, dialcode: str = "") -> list[str]:
     """Variantes plausibles d'un même numéro, pour envoyer l'OTP à toutes.
 

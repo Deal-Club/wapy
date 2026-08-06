@@ -10,12 +10,14 @@ from dataclasses import dataclass
 DECISION_SCHEMA = {
     "type": "object",
     "properties": {
-        "action": {"type": "string", "enum": ["reply", "escalate"]},
+        "action": {"type": "string", "enum": ["reply", "record", "escalate"]},
         "message": {"type": "string"},
         "reason": {"type": "string"},
         "image": {"type": "string"},
+        "record_type": {"type": "string"},
+        "record": {"type": "string"},
     },
-    "required": ["action", "message", "reason", "image"],
+    "required": ["action", "message", "reason", "image", "record_type", "record"],
     "additionalProperties": False,
 }
 
@@ -26,6 +28,8 @@ class Decision:
     message: str
     reason: str
     image: str = ""
+    record_type: str = ""
+    record: str = ""
 
 
 def build_system_prompt(fiche_text: str) -> str:
@@ -35,9 +39,25 @@ def build_system_prompt(fiche_text: str) -> str:
         "PRINCIPE : tout ce que tu dis vient de la fiche ci-dessous (Infos, Menu/"
         "catalogue, FAQ et surtout les CONSIGNES de l'établissement). N'invente JAMAIS "
         "une donnée absente (prix, horaire, disponibilité, identité du personnel...).\n\n"
-        "SOIS AUTONOME : tu es la première ligne. Règle toi-même le maximum de demandes "
-        "sans déranger le responsable. On ne transmet à un humain que le strict "
-        "nécessaire.\n\n"
+        "SOIS TRÈS AUTONOME : tu es un vrai agent, pas un standardiste. Tu MÈNES les "
+        "échanges jusqu'au bout et tu CONCLUS toi-même : tu prends les réservations, "
+        "tu enregistres les commandes, tu guides le paiement, tu réponds aux questions. "
+        "Tu ne déranges le responsable que pour le strict nécessaire, et le plus souvent "
+        "juste pour le NOTIFIER (pas pour lui passer la main).\n\n"
+        "CONCLURE UNE ACTION (action='record') : quand un client veut réserver, "
+        "commander, ou payer :\n"
+        "1) Récolte ce qui manque en posant des questions COURTES (ex. dates, nombre de "
+        "personnes, articles, nom). Une question à la fois si besoin.\n"
+        "2) Quand tu as l'essentiel, propose le paiement selon la fiche (moyen + numéro/"
+        "lien de la fiche) si c'est pertinent, et CONFIRME au client (message clair).\n"
+        "3) Mets action='record', 'record_type' = « Réservation » / « Commande » / "
+        "« Paiement » / « Lead », et 'record' = un résumé structuré et complet (nom du "
+        "client si connu, dates, nb de personnes, articles, montants, statut paiement). "
+        "Le responsable reçoit une notification, TOI tu continues la conversation.\n"
+        "N'utilise 'record' que lorsque l'action est aboutie (assez d'infos pour que le "
+        "responsable puisse agir) ; tant qu'il manque des infos, reste en action='reply' "
+        "et pose tes questions. Ne JAMAIS inventer un prix/dispo absent de la fiche : "
+        "demande ou propose de vérifier.\n\n"
         "RÈGLES :\n"
         "1. Réponds toi-même, depuis la fiche, à tout ce que tu peux déduire (menu, "
         "prix, horaires, adresse, moyens de paiement, livraison, disponibilité d'un "
@@ -47,8 +67,9 @@ def build_system_prompt(fiche_text: str) -> str:
         "sur quoi faire dans certains cas (ex. « pour une réservation, envoie ce lien "
         ": ... », « pour telle demande, transmets au responsable »). Suis TOUJOURS ces "
         "consignes.\n"
-        "3. action='escalate' (déranger un humain) est RARE et RÉSERVÉ aux cas qui "
-        "exigent vraiment un humain :\n"
+        "3. action='escalate' (PASSER LA MAIN à un humain, qui devra répondre) est RARE. "
+        "Une réservation/commande/paiement ne s'escalade PAS : tu la CONCLUS toi-même via "
+        "action='record'. N'escalade que si un humain est vraiment indispensable :\n"
         "   a) le client demande explicitement à parler à une personne / au responsable ;\n"
         "   b) réclamation, litige, mécontentement, urgence ou sujet sensible ;\n"
         "   c) un engagement ferme que toi seul ne peux pas acter (confirmer une "
@@ -103,4 +124,6 @@ class Brain:
             message=data["message"],
             reason=data["reason"],
             image=data.get("image", ""),
+            record_type=data.get("record_type", ""),
+            record=data.get("record", ""),
         )

@@ -226,21 +226,28 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     # --- Vérification du numéro staff par code (OTP envoyé sur WhatsApp) ---
     @app.post("/api/staff/verify/start")
     def staff_verify_start(body: StaffVerifyStartIn, tenant=Depends(current_tenant), s=Depends(db)):
-        # Plusieurs variantes plausibles (0 gardé/retiré) : seule la vraie ligne reçoit.
-        jids = phone.candidate_jids(body.number, body.dialcode)
-        if not jids:
+        channel = (channel_factory or wam.channel_for)(tenant)
+        # Résout le VRAI chatId via WAHA (WhatsApp normalise ; ex. Bénin 229... -> 8 chiffres).
+        # Envoyer au chatId canonique = délivrance garantie, sans deviner le format.
+        resolved: list[str] = []
+        for num in phone.candidate_numbers(body.number, body.dialcode):
+            jid = None
+            if hasattr(channel, "resolve_chat_id"):
+                jid = channel.resolve_chat_id(num)
+            jid = jid or (num + "@c.us")  # repli si WAHA ne répond pas
+            if jid not in resolved:
+                resolved.append(jid)
+        if not resolved:
             raise HTTPException(status_code=400, detail="Numéro invalide")
         code = f"{random.randint(0, 9999):04d}"
-        jids_csv = ",".join(jids)
         row = s.get(models.StaffVerification, tenant.id)
         if row:
-            row.jid, row.code, row.created_at = jids_csv, code, datetime.utcnow()
+            row.jid, row.code, row.created_at = ",".join(resolved), code, datetime.utcnow()
         else:
-            s.add(models.StaffVerification(tenant_id=tenant.id, jid=jids_csv, code=code))
+            s.add(models.StaffVerification(tenant_id=tenant.id, jid=",".join(resolved), code=code))
         s.commit()
-        channel = (channel_factory or wam.channel_for)(tenant)
         sent = 0
-        for jid in jids:
+        for jid in resolved:
             try:
                 channel.send_text(
                     jid,
@@ -255,7 +262,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
                 status_code=400,
                 detail="Impossible d'envoyer le code. Vérifiez que WhatsApp est connecté et que le numéro est correct.",
             )
-        return {"status": "sent", "masked": phone.mask(jids[0])}
+        return {"status": "sent", "masked": phone.mask(resolved[0])}
 
     @app.post("/api/staff/verify/confirm")
     def staff_verify_confirm(body: StaffVerifyConfirmIn, tenant=Depends(current_tenant), s=Depends(db)):
@@ -477,6 +484,29 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     @app.get("/api/usage")
     def get_usage(tenant=Depends(current_tenant), s=Depends(db)):
         return usage.totals(s, tenant.id)
+
+    # --- Carnet : réservations/commandes/paiements conclus par le bot ---
+    @app.get("/api/records")
+    def list_records(tenant=Depends(current_tenant), s=Depends(db)):
+        names = {c.chat_id: c.name for c in s.query(models.Contact).filter_by(tenant_id=tenant.id).all()}
+        rows = (
+            s.query(models.Record)
+            .filter_by(tenant_id=tenant.id)
+            .order_by(models.Record.id.desc())
+            .limit(300)
+            .all()
+        )
+        return {"records": [
+            {
+                "id": r.id,
+                "kind": r.kind,
+                "content": r.content,
+                "chat_id": r.chat_id,
+                "name": names.get(r.chat_id, ""),
+                "created_at": r.created_at.isoformat() if r.created_at else "",
+            }
+            for r in rows
+        ]}
 
     # --- WhatsApp ---
     @app.post("/api/wa/connect")

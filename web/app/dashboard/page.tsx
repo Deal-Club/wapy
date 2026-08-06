@@ -7,9 +7,10 @@ import WhatsAppConnect from "@/components/WhatsAppConnect";
 import StaffAlertVerify from "@/components/StaffAlertVerify";
 import Suggestions from "@/components/Suggestions";
 
-type Tab = "conversations" | "config" | "suggestions" | "whatsapp" | "usage";
+type Tab = "conversations" | "records" | "config" | "suggestions" | "whatsapp" | "usage";
 const TABS: { id: Tab; label: string }[] = [
   { id: "conversations", label: "Conversations" },
+  { id: "records", label: "Carnet" },
   { id: "config", label: "Configuration" },
   { id: "suggestions", label: "Suggestions" },
   { id: "whatsapp", label: "WhatsApp" },
@@ -44,6 +45,7 @@ export default function Dashboard() {
 
       <div className="rise">
         {tab === "conversations" && <Conversations />}
+        {tab === "records" && <RecordsTab />}
         {tab === "config" && <ConfigTab />}
         {tab === "suggestions" && <Suggestions />}
         {tab === "whatsapp" && (
@@ -203,6 +205,48 @@ function Conversations() {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+function RecordsTab() {
+  const [records, setRecords] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    api.getRecords().then((r) => setRecords(r.records)).catch(() => {}).finally(() => setLoading(false));
+    const i = setInterval(() => api.getRecords().then((r) => setRecords(r.records)).catch(() => {}), 8000);
+    return () => clearInterval(i);
+  }, []);
+
+  return (
+    <div className="card space-y-4">
+      <div>
+        <h3 className="font-display text-xl">Carnet</h3>
+        <p className="text-sm text-muted">
+          Réservations, commandes et paiements conclus automatiquement par l'assistant.
+          Le responsable est notifié sur WhatsApp à chaque nouvelle entrée.
+        </p>
+      </div>
+      {loading ? (
+        <p className="text-sm text-muted">Chargement…</p>
+      ) : records.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">
+          Rien pour l'instant. Les réservations/commandes prises par le bot apparaîtront ici.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {records.map((r) => (
+            <div key={r.id} className="rounded-xl border border-line bg-surface/60 p-4">
+              <div className="mb-1 flex items-center justify-between gap-2">
+                <span className="pill bg-emerald-soft text-emerald-dark">{r.kind || "Demande"}</span>
+                <span className="text-xs text-muted">{r.created_at?.replace("T", " ").slice(0, 16)}</span>
+              </div>
+              <div className="whitespace-pre-wrap text-sm">{r.content}</div>
+              <div className="mt-1 text-xs text-muted">Client : {r.name || r.chat_id.replace(/@.*/, "")}</div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

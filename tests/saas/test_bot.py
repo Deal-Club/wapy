@@ -119,6 +119,34 @@ def test_handle_escalate_then_staff_relay_and_forward():
     assert any(to == "s@c.us" and "nous serons 5" in txt for to, txt in ch.sent)
 
 
+def test_handle_record_replies_and_notifies_without_escalating():
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("record", "C'est noté, réservation confirmée !", "résa",
+                            record_type="Réservation", record="For Private, 5 pers, 15-20 déc"))
+    r = handle_message(ch, store, brain, "x", ["s@c.us"], ["s@c.us"], _msg(body="je réserve"))
+    assert r["status"] == "recorded"
+    pairs = [x for x in ch.sent if len(x) == 2]
+    # client reçoit la confirmation, staff reçoit une notification
+    assert ("c@c.us", "C'est noté, réservation confirmée !") in pairs
+    assert any(to == "s@c.us" and "Réservation" in txt for to, txt in pairs)
+    # le bot GARDE la main (pas d'escalade)
+    assert not store.is_escalated("c@c.us")
+
+
+def test_process_incoming_record_saved_in_db():
+    s = _session()
+    _, tenant = auth.signup(s, "a@b.com", "x", "T")
+    tenant.staff_numbers = "s@c.us"
+    s.commit()
+    ch = _Ch()
+    brain = _Brain(Decision("record", "Réservation confirmée.", "ok",
+                            record_type="Réservation", record="5 pers, 15-20 déc"))
+    r = process_incoming(s, ch, brain, tenant, _msg(body="réserver 5"))
+    assert r["status"] == "recorded"
+    recs = s.query(models.Record).filter_by(tenant_id=tenant.id).all()
+    assert len(recs) == 1 and recs[0].kind == "Réservation" and "5 pers" in recs[0].content
+
+
 def test_duplicate_ignored():
     ch, store = _Ch(), _Store()
     brain = _Brain(Decision("reply", "ok", "y"))

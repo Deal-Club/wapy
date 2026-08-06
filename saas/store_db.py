@@ -37,6 +37,13 @@ class DbStore:
         )
         return [{"role": r.role, "content": r.content} for r in reversed(rows)]
 
+    def add_record(self, chat_id: str, kind: str, content: str) -> None:
+        """Enregistre une action conclue par le bot (réservation, commande, paiement...)."""
+        self.s.add(
+            models.Record(tenant_id=self.tid, chat_id=chat_id, kind=(kind or "")[:60], content=content or "")
+        )
+        self.s.commit()
+
     # --- État de conversation ---
     def _state(self, chat_id: str, create: bool = False):
         st = (
