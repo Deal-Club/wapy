@@ -371,6 +371,7 @@ function Conversations() {
   const [active, setActive] = useState<string | null>(null);
   const [thread, setThread] = useState<any | null>(null);
   const [reply, setReply] = useState("");
+  const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
   const endRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<string | null>(null);
@@ -399,6 +400,11 @@ function Conversations() {
     lenRef.current = 0;
     refreshThread(true);
   }
+  function closeThread() {
+    setActive(null);
+    activeRef.current = null;
+    setThread(null);
+  }
   // Temps réel : liste + fil actif rafraîchis toutes les 5 s.
   useEffect(() => {
     load();
@@ -421,36 +427,47 @@ function Conversations() {
     load();
   }
 
+  const shown = convs.filter((c) => {
+    const s = q.trim().toLowerCase();
+    return !s || (label(c) + " " + (c.last || "")).toLowerCase().includes(s);
+  });
+
   return (
     <div className="grid gap-4 md:grid-cols-3">
-      {/* Liste des conversations, style WhatsApp */}
-      <div className="card max-h-[78vh] overflow-auto p-0 md:col-span-1">
-        {loading ? <p className="p-4 text-sm text-muted">Chargement…</p>
-          : convs.length === 0 ? <p className="p-4 text-sm text-muted">Aucune conversation.</p>
-          : convs.map((c) => (
-            <button key={c.chat_id} onClick={() => openThread(c.chat_id)}
-              className={`flex w-full items-center gap-3 border-b border-line/60 px-3 py-2.5 text-left transition hover:bg-surface ${active === c.chat_id ? "bg-surface" : ""}`}>
-              <Avatar name={label(c)} />
-              <span className="min-w-0 flex-1">
-                <span className="flex items-center justify-between gap-2">
-                  <span className="truncate font-medium">{label(c)}</span>
-                  <span className="flex shrink-0 items-center gap-1">
-                    {c.staff && <span className="pill bg-ink/10 text-ink text-[10px]">personnel</span>}
-                    {c.escalated && <span className="pill bg-brand-soft text-brand-dark text-[10px]">humain</span>}
+      {/* Liste (style WhatsApp) : plein écran sur mobile, masquée quand un fil est ouvert */}
+      <div className={`card max-h-[80vh] overflow-hidden p-0 md:col-span-1 md:block ${active ? "hidden" : "block"}`}>
+        <div className="border-b border-line bg-surface p-2">
+          <input className="input w-full rounded-full text-sm" placeholder="Rechercher une conversation…" value={q} onChange={(e) => setQ(e.target.value)} />
+        </div>
+        <div className="max-h-[72vh] overflow-auto">
+          {loading ? <p className="p-4 text-sm text-muted">Chargement…</p>
+            : shown.length === 0 ? <p className="p-4 text-sm text-muted">{q ? "Aucun résultat." : "Aucune conversation."}</p>
+            : shown.map((c) => (
+              <button key={c.chat_id} onClick={() => openThread(c.chat_id)}
+                className={`flex w-full items-center gap-3 border-b border-line/60 px-3 py-2.5 text-left transition hover:bg-surface ${active === c.chat_id ? "bg-surface" : ""}`}>
+                <Avatar name={label(c)} />
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center justify-between gap-2">
+                    <span className="truncate font-medium">{label(c)}</span>
+                    <span className="flex shrink-0 items-center gap-1">
+                      {c.staff && <span className="pill bg-ink/10 text-ink text-[10px]">personnel</span>}
+                      {c.escalated && <span className="pill bg-brand-soft text-brand-dark text-[10px]">humain</span>}
+                    </span>
                   </span>
+                  <span className="block truncate text-xs text-muted">{c.last}</span>
                 </span>
-                <span className="block truncate text-xs text-muted">{c.last}</span>
-              </span>
-            </button>
-          ))}
+              </button>
+            ))}
+        </div>
       </div>
 
-      {/* Fil de discussion, style WhatsApp */}
-      <div className="card flex max-h-[78vh] flex-col overflow-hidden p-0 md:col-span-2">
+      {/* Fil (style WhatsApp) : plein écran sur mobile quand ouvert, avec bouton retour */}
+      <div className={`card max-h-[80vh] flex-col overflow-hidden p-0 md:col-span-2 md:flex ${active ? "flex" : "hidden md:flex"}`}>
         {!thread ? <p className="m-auto p-6 text-sm text-muted">Sélectionnez une conversation.</p> : (
           <>
             <div className="flex items-center justify-between gap-2 border-b border-line bg-surface px-3 py-2">
               <span className="flex items-center gap-2.5">
+                <button className="md:hidden -ml-1 mr-0.5 text-xl text-muted" onClick={closeThread} aria-label="Retour">‹</button>
                 <Avatar name={label(thread)} size={36} />
                 <span>
                   <span className="block font-medium leading-tight">{label(thread)}</span>

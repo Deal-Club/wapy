@@ -1,8 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, setToken } from "@/lib/api";
+import { api, setToken, getToken } from "@/lib/api";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -12,6 +12,10 @@ export default function SignupPage() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (getToken()) router.replace("/dashboard");
+  }, [router]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr("");
@@ -19,7 +23,7 @@ export default function SignupPage() {
     try {
       const r = await api.signup(email, password, resto);
       setToken(r.token);
-      router.push("/onboarding");
+      router.replace("/onboarding");
     } catch (e: any) {
       setErr(e.message || "Erreur");
     } finally {

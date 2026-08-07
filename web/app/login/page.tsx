@@ -1,8 +1,8 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, setToken } from "@/lib/api";
+import { api, setToken, getToken } from "@/lib/api";
 import InstallPrompt from "@/components/InstallPrompt";
 
 export default function LoginPage() {
@@ -12,6 +12,11 @@ export default function LoginPage() {
   const [err, setErr] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Déjà connecté (ex. retour arrière) -> on renvoie au tableau de bord.
+  useEffect(() => {
+    if (getToken()) router.replace("/dashboard");
+  }, [router]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr("");
@@ -19,7 +24,7 @@ export default function LoginPage() {
     try {
       const r = await api.login(email, password);
       setToken(r.token);
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } catch (e: any) {
       setErr(e.message || "Erreur");
     } finally {
