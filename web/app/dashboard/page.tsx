@@ -336,6 +336,33 @@ function KnowledgeDocs() {
 function label(c: any): string {
   return c?.name?.trim() || (c?.chat_id || "").replace(/@.*/, "");
 }
+function initials(s: string): string {
+  const parts = (s || "").trim().split(/\s+/);
+  const a = parts[0]?.[0] || "";
+  const b = parts.length > 1 ? parts[parts.length - 1][0] : "";
+  return (a + b).toUpperCase() || "?";
+}
+const AV_COLORS = ["#1FA463", "#C2502F", "#2563EB", "#8B5CF6", "#EA580C", "#0EA5E9", "#DB2777", "#0D9488"];
+function avatarColor(s: string): string {
+  let h = 0;
+  for (const ch of s || "") h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return AV_COLORS[h % AV_COLORS.length];
+}
+function hhmm(iso: string): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d.getTime()) ? "" : d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+}
+function Avatar({ name, size = 40 }: { name: string; size?: number }) {
+  return (
+    <span
+      className="flex shrink-0 items-center justify-center rounded-full font-semibold text-white"
+      style={{ width: size, height: size, background: avatarColor(name), fontSize: size * 0.4 }}
+    >
+      {initials(name)}
+    </span>
+  );
+}
 
 function Conversations() {
   const [convs, setConvs] = useState<any[]>([]);
@@ -394,50 +421,68 @@ function Conversations() {
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
-      <div className="card max-h-[72vh] overflow-auto p-2 md:col-span-1">
-        {loading ? <p className="p-3 text-sm text-muted">Chargement…</p>
-          : convs.length === 0 ? <p className="p-3 text-sm text-muted">Aucune conversation.</p>
+      {/* Liste des conversations, style WhatsApp */}
+      <div className="card max-h-[78vh] overflow-auto p-0 md:col-span-1">
+        {loading ? <p className="p-4 text-sm text-muted">Chargement…</p>
+          : convs.length === 0 ? <p className="p-4 text-sm text-muted">Aucune conversation.</p>
           : convs.map((c) => (
             <button key={c.chat_id} onClick={() => openThread(c.chat_id)}
-              className={`mb-1 block w-full rounded-xl p-3 text-left transition hover:bg-brand-soft ${active === c.chat_id ? "bg-brand-soft" : ""}`}>
-              <div className="flex items-center justify-between gap-2">
-                <span className="truncate font-medium">{label(c)}</span>
-                <span className="flex shrink-0 items-center gap-1">
-                  {c.staff && <span className="pill bg-ink/10 text-ink">personnel</span>}
-                  {c.escalated && <span className="pill bg-brand-soft text-brand-dark">humain</span>}
+              className={`flex w-full items-center gap-3 border-b border-line/60 px-3 py-2.5 text-left transition hover:bg-surface ${active === c.chat_id ? "bg-surface" : ""}`}>
+              <Avatar name={label(c)} />
+              <span className="min-w-0 flex-1">
+                <span className="flex items-center justify-between gap-2">
+                  <span className="truncate font-medium">{label(c)}</span>
+                  <span className="flex shrink-0 items-center gap-1">
+                    {c.staff && <span className="pill bg-ink/10 text-ink text-[10px]">personnel</span>}
+                    {c.escalated && <span className="pill bg-brand-soft text-brand-dark text-[10px]">humain</span>}
+                  </span>
                 </span>
-              </div>
-              <div className="truncate text-xs text-muted">{c.last}</div>
+                <span className="block truncate text-xs text-muted">{c.last}</span>
+              </span>
             </button>
           ))}
       </div>
 
-      <div className="card flex max-h-[72vh] flex-col md:col-span-2">
-        {!thread ? <p className="m-auto text-sm text-muted">Sélectionnez une conversation.</p> : (
+      {/* Fil de discussion, style WhatsApp */}
+      <div className="card flex max-h-[78vh] flex-col overflow-hidden p-0 md:col-span-2">
+        {!thread ? <p className="m-auto p-6 text-sm text-muted">Sélectionnez une conversation.</p> : (
           <>
-            <div className="mb-2 flex items-center justify-between gap-2 border-b border-line pb-2">
-              <span className="flex items-center gap-2 font-medium">
-                {label(thread)}
-                {thread.staff && <span className="pill bg-ink/10 text-ink">personnel</span>}
+            <div className="flex items-center justify-between gap-2 border-b border-line bg-surface px-3 py-2">
+              <span className="flex items-center gap-2.5">
+                <Avatar name={label(thread)} size={36} />
+                <span>
+                  <span className="block font-medium leading-tight">{label(thread)}</span>
+                  <span className="block text-xs text-muted">
+                    {thread.staff ? "Membre du personnel" : thread.escalated ? "En attente d'un humain" : "Assistant actif"}
+                  </span>
+                </span>
               </span>
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-1">
                 {thread.escalated && <button className="btn-ghost text-xs" onClick={async () => { await api.handoffClose(thread.chat_id); openThread(thread.chat_id); load(); }}>Rendre au bot</button>}
                 <button className="btn-ghost text-xs" onClick={toggleStaff}>
-                  {thread.staff ? "Retirer du personnel" : "C'est un membre du personnel"}
+                  {thread.staff ? "Retirer du personnel" : "Personnel"}
                 </button>
               </span>
             </div>
-            <div className="flex-1 space-y-2 overflow-auto py-2">
-              {thread.messages.map((m: any, i: number) => (
-                <div key={i} className={`flex ${m.role === "user" ? "justify-start" : "justify-end"}`}>
-                  <div className={`max-w-[75%] rounded-2xl px-3.5 py-2 text-sm ${m.role === "user" ? "bg-cream border border-line" : "bg-emerald text-white"}`}>{m.content}</div>
-                </div>
-              ))}
+
+            <div className="flex-1 space-y-1.5 overflow-auto px-3 py-3" style={{ background: "#efeae2" }}>
+              {thread.messages.map((m: any, i: number) => {
+                const mine = m.role !== "user"; // sortant (établissement/bot) à droite
+                return (
+                  <div key={i} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+                    <div className={`max-w-[80%] rounded-lg px-2.5 py-1.5 text-sm shadow-sm ${mine ? "rounded-tr-none bg-[#d9fdd3] text-ink" : "rounded-tl-none bg-white text-ink"}`}>
+                      <span className="whitespace-pre-wrap">{m.content}</span>
+                      {hhmm(m.at) && <span className="ml-2 inline-block align-bottom text-[10px] text-black/40">{hhmm(m.at)}</span>}
+                    </div>
+                  </div>
+                );
+              })}
               <div ref={endRef} />
             </div>
-            <div className="mt-2 flex gap-2 border-t border-line pt-2">
-              <input className="input flex-1" value={reply} onChange={(e) => setReply(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendReply()} placeholder="Répondre au client…" />
-              <button className="btn" onClick={sendReply}>Envoyer</button>
+
+            <div className="flex items-center gap-2 border-t border-line bg-surface px-3 py-2">
+              <input className="input flex-1 rounded-full" value={reply} onChange={(e) => setReply(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendReply()} placeholder="Répondre au client…" />
+              <button className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald text-white" onClick={sendReply} aria-label="Envoyer">➤</button>
             </div>
           </>
         )}

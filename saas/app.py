@@ -712,7 +712,11 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             "name": contact.name if contact else "",
             "escalated": bool(st and st.escalated),
             "staff": chat_id in set(_inbound_set(tenant)),
-            "messages": [{"role": r.role, "content": r.content} for r in rows],
+            "messages": [
+                {"role": r.role, "content": r.content,
+                 "at": r.created_at.isoformat() if r.created_at else ""}
+                for r in rows
+            ],
         }
 
     @app.post("/api/handoff/reply")
