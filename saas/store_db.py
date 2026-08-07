@@ -126,16 +126,27 @@ class DbStore:
         self.s.commit()
 
     def client_for_alert(self, msg_id: str) -> str | None:
-        """Retrouve le client visé quand le staff cite (reply) un message d'alerte."""
+        """Retrouve le client visé quand le staff cite (reply) un message d'alerte.
+
+        Match tolérant : l'id cité entrant peut être la strophe brute (Baileys)
+        alors qu'on a stocké l'id sérialisé (`true_...@c.us_STANZA`). On compare
+        donc aussi le suffixe après le dernier '_'."""
         if not msg_id:
             return None
-        row = (
+        key = str(msg_id)
+        stanza = key.split("_")[-1]
+        rows = (
             self.s.query(models.StaffAlert)
-            .filter_by(tenant_id=self.tid, msg_id=str(msg_id))
+            .filter_by(tenant_id=self.tid)
             .order_by(models.StaffAlert.id.desc())
-            .first()
+            .limit(80)
+            .all()
         )
-        return row.client_id if row else None
+        for r in rows:
+            rid = r.msg_id or ""
+            if rid == key or (stanza and rid.split("_")[-1] == stanza):
+                return r.client_id
+        return None
 
     def resolve_handoffs_for_client(self, client_id: str) -> None:
         for h in (

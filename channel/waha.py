@@ -22,6 +22,7 @@ class WahaProvider(WhatsAppChannel):
         chat_id = p.get("from", "")
         body = p.get("body", "")
         data = p.get("_data") or {}
+        ctx = data.get("contextInfo") or {}
         media = p.get("media") or {}
         media_url = media.get("url", "") if isinstance(media, dict) else ""
         has_media = bool(media_url or p.get("hasMedia") or (p.get("type") and p.get("type") not in ("chat", "text")))
@@ -39,7 +40,10 @@ class WahaProvider(WhatsAppChannel):
             else:
                 body = "[Le client a envoyé une pièce jointe.]"
         name = p.get("notifyName") or data.get("notifyName") or data.get("pushName") or ""
-        quoted = p.get("replyTo") or data.get("quotedStanzaID") or ""
+        quoted = (
+            p.get("replyTo") or data.get("quotedStanzaID") or data.get("quotedMsgId")
+            or ctx.get("stanzaId") or ""
+        )
         if isinstance(quoted, dict):
             quoted = quoted.get("id") or quoted.get("_serialized") or ""
         return IncomingMessage(
@@ -62,7 +66,10 @@ class WahaProvider(WhatsAppChannel):
         )
         r.raise_for_status()
         try:
-            mid = r.json().get("id")
+            d = r.json()
+            mid = d.get("id")
+            if not mid and isinstance(d.get("key"), dict):
+                mid = d["key"].get("id")
             if isinstance(mid, dict):
                 mid = mid.get("_serialized") or mid.get("id")
             return str(mid) if mid else None

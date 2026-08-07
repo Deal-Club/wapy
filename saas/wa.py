@@ -57,8 +57,9 @@ def start_session(tenant, webhook_url: str) -> None:
             "config": {
                 "webhooks": [{"url": webhook_url, "events": ["message", "session.status"]}],
                 # Store NOWEB : nécessaire pour résoudre @lid -> numéro (reconnaissance
-                # auto du personnel qui répond depuis son téléphone). Cf. resolve_lid.
-                "noweb": {"store": {"enabled": True, "fullSync": True}},
+                # auto du personnel). WAHA attend `full_sync` (snake_case) selon la version ;
+                # on met les deux orthographes par sécurité. Cf. resolve_lid.
+                "noweb": {"store": {"enabled": True, "fullSync": True, "full_sync": True}},
             },
         },
         headers=_headers(),

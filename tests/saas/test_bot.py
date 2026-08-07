@@ -22,7 +22,7 @@ class _Ch:
 
     def send_text(self, chat_id, text):
         self.sent.append((chat_id, text))
-        return None
+        return f"true_{chat_id}_{len(self.sent)}"  # id de message façon WAHA
 
     def send_image(self, chat_id, url, caption=""):
         self.sent.append(("IMG", chat_id, url, caption))
@@ -239,6 +239,30 @@ def test_vision_injects_analysis_then_records_and_forwards():
     assert "MoMo" in brain.last
     # le justificatif (image) est transféré au responsable
     assert any(len(x) == 4 and x[0] == "IMG" and x[1] == "st@c.us" for x in ch.sent)
+
+
+def test_staff_auto_recognized_when_quoting_alert():
+    """Le responsable répond en CITANT l'alerte -> reconnu comme staff et relayé au
+    client, sans @lid préenregistré ni store WAHA."""
+    s = _session()
+    _, tenant = auth.signup(s, "a@b.com", "x", "T")
+    tenant.staff_numbers = "22961413177@c.us"
+    s.commit()
+    ch = _Ch()
+    esc = _Brain(Decision("escalate", "", "humain"))
+    # 1) le client demande un humain -> escalade + alerte au staff (mappée)
+    process_incoming(s, ch, esc, tenant, _msg(cid="client@lid", body="je veux le responsable", mid="c1"))
+    alert = s.query(models.StaffAlert).filter_by(tenant_id=tenant.id).first()
+    assert alert is not None  # l'alerte est bien mappée au client
+
+    # 2) le responsable (un @lid inconnu) répond en CITANT l'alerte
+    m = _msg(cid="resp@lid", body="Votre chambre est prête", mid="r1")
+    m["payload"]["replyTo"] = alert.msg_id
+    r = process_incoming(s, ch, esc, tenant, m)
+    assert r["status"] == "relayed"
+    assert ("client@lid", "Votre chambre est prête") in ch.sent
+    # et il est désormais enregistré comme personnel (messages suivants reconnus)
+    assert "resp@lid" in (tenant.staff_inbound_ids or "")
 
 
 def test_process_incoming_end_to_end_db():

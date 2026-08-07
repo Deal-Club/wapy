@@ -160,25 +160,31 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
     staff_send = [phone.to_jid(n) for n in _csv(tenant.staff_numbers) if phone.to_jid(n)]
     staff_recognize = list(set(staff_send) | set(_csv(tenant.staff_inbound_ids)))
 
-    # Auto-reconnaissance du personnel : quand une escalade est ouverte et qu'un
-    # message arrive d'un @lid inconnu, on résout son vrai numéro via WAHA. S'il
-    # correspond à un numéro staff, on l'enregistre (le boss répond depuis son tel
-    # avec un @lid ≠ du @c.us d'alerte -> sinon le bot lui répond comme à un client).
-    from_id = (payload.get("payload") or {}).get("from", "")
-    if (
-        from_id.endswith("@lid")
-        and from_id not in staff_recognize
-        and staff_send
-        and hasattr(channel, "resolve_lid")
-        and store.latest_open_handoff_client()
-    ):
-        pn = channel.resolve_lid(from_id)
-        if pn and pn in set(staff_send):
+    # Auto-reconnaissance du personnel (le responsable répond depuis son tel avec un
+    # @lid ≠ du @c.us d'alerte -> sinon le bot lui répond comme à un client) :
+    #  1) SIGNAL CERTAIN : il a CITÉ (reply) une de nos alertes -> c'est le staff.
+    #  2) Secours : son @lid se résout (via WAHA store) vers un numéro staff.
+    raw = channel.parse_incoming(payload)
+    if raw and raw.chat_id not in staff_recognize:
+        is_staff = False
+        if getattr(raw, "quoted_id", "") and store.client_for_alert(raw.quoted_id):
+            is_staff = True
+        elif (
+            raw.chat_id.endswith("@lid")
+            and staff_send
+            and hasattr(channel, "resolve_lid")
+            and store.latest_open_handoff_client()
+        ):
+            pn = channel.resolve_lid(raw.chat_id)
+            if pn and pn in set(staff_send):
+                is_staff = True
+        if is_staff:
             ids = _csv(tenant.staff_inbound_ids)
-            if from_id not in ids:
-                tenant.staff_inbound_ids = ",".join(ids + [from_id])
+            if raw.chat_id not in ids:
+                tenant.staff_inbound_ids = ",".join(ids + [raw.chat_id])
                 session.commit()
-            staff_recognize = list(set(staff_recognize) | {from_id})
+            staff_recognize = list(set(staff_recognize) | {raw.chat_id})
+            logger.info("Staff auto-reconnu (%s) : %s", "citation" if raw.quoted_id else "résolution @lid", raw.chat_id)
 
     result = handle_message(
         channel, store, brain, fiche_text, staff_send, staff_recognize, payload
