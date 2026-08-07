@@ -1,8 +1,13 @@
 # API FastAPI de la plateforme Wapy (contexte de build = racine du repo wapy/)
 FROM python:3.11-slim
 WORKDIR /app
+# libgomp1 : requis par ctranslate2 (faster-whisper) pour la transcription vocale.
+RUN apt-get update && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+# Pré-télécharge le modèle Whisper dans l'image (pas de téléchargement au runtime).
+RUN python -c "from faster_whisper import WhisperModel; WhisperModel('small', device='cpu', compute_type='int8')"
 COPY . .
 EXPOSE 8000
 CMD ["uvicorn", "saas.app:app", "--host", "0.0.0.0", "--port", "8000"]
