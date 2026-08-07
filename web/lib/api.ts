@@ -122,6 +122,14 @@ export const api = {
     }),
   getUsage: () => req("/api/usage"),
   getRecords: () => req("/api/records"),
+  getPayments: () => req("/api/payments"),
+  getPaymentConfig: () => req("/api/payment-config"),
+  putPaymentConfig: (cfg: any) =>
+    req("/api/payment-config", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(cfg),
+    }),
   staffVerifyStart: (number: string, dialcode: string) =>
     req("/api/staff/verify/start", {
       method: "POST",

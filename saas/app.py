@@ -92,6 +92,14 @@ class AdminTenantIn(BaseModel):
     wapy_model: str | None = None
 
 
+class PaymentConfigIn(BaseModel):
+    api_key: str | None = None
+    api_secret: str | None = None
+    webhook_secret: str | None = None
+    mode: str | None = None
+    enabled: bool | None = None
+
+
 # --- Helpers config ---
 def parse_workbook(data: bytes) -> dict:
     """Parse un .xlsx en config JSON flexible.
@@ -703,6 +711,96 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     @app.get("/api/usage")
     def get_usage(tenant=Depends(current_tenant), s=Depends(db)):
         return usage.totals(s, tenant.id)
+
+    # --- Paiement en ligne (GeniusPay), clés par établissement ---
+    @app.get("/api/payment-config")
+    def get_payment_config(tenant=Depends(current_tenant), s=Depends(db)):
+        cfg = s.get(models.PaymentConfig, tenant.id)
+        webhook_url = f"{PUBLIC_URL}/webhook/geniuspay/{tenant.id}"
+        if not cfg:
+            return {"enabled": False, "mode": "sandbox", "has_secret": False, "api_key": "", "webhook_url": webhook_url}
+        return {
+            "enabled": bool(cfg.enabled), "mode": cfg.mode or "sandbox",
+            "api_key": cfg.api_key or "", "has_secret": bool(cfg.api_secret),
+            "has_webhook_secret": bool(cfg.webhook_secret), "webhook_url": webhook_url,
+        }
+
+    @app.put("/api/payment-config")
+    def put_payment_config(body: PaymentConfigIn, tenant=Depends(owner_tenant), s=Depends(db)):
+        cfg = s.get(models.PaymentConfig, tenant.id)
+        if not cfg:
+            cfg = models.PaymentConfig(tenant_id=tenant.id)
+            s.add(cfg)
+        if body.api_key is not None:
+            cfg.api_key = body.api_key.strip()
+        if body.api_secret is not None and body.api_secret.strip():  # ne pas écraser par vide
+            cfg.api_secret = body.api_secret.strip()
+        if body.webhook_secret is not None and body.webhook_secret.strip():
+            cfg.webhook_secret = body.webhook_secret.strip()
+        if body.mode is not None:
+            cfg.mode = body.mode
+        if body.enabled is not None:
+            cfg.enabled = body.enabled
+        s.commit()
+        return {"status": "saved"}
+
+    @app.get("/api/payments")
+    def list_payments(tenant=Depends(current_tenant), s=Depends(db)):
+        names = {c.chat_id: c.name for c in s.query(models.Contact).filter_by(tenant_id=tenant.id).all()}
+        rows = (
+            s.query(models.Payment).filter_by(tenant_id=tenant.id)
+            .order_by(models.Payment.id.desc()).limit(200).all()
+        )
+        return {"payments": [
+            {"reference": r.reference, "amount": r.amount, "currency": r.currency, "status": r.status,
+             "description": r.description, "chat_id": r.chat_id, "name": names.get(r.chat_id, ""),
+             "created_at": r.created_at.isoformat() if r.created_at else ""}
+            for r in rows
+        ]}
+
+    # --- Webhook GeniusPay (par tenant) : confirme le paiement au client ---
+    @app.post("/webhook/geniuspay/{tid}")
+    async def geniuspay_webhook(tid: int, request: Request, s=Depends(db)):
+        from saas import geniuspay
+        raw = (await request.body()).decode("utf-8")
+        sig = request.headers.get("X-Webhook-Signature") or request.headers.get("X-GeniusPay-Signature") or ""
+        ts = request.headers.get("X-Webhook-Timestamp") or request.headers.get("X-GeniusPay-Timestamp") or ""
+        cfg = s.get(models.PaymentConfig, tid)
+        if not cfg or not geniuspay.verify_webhook(cfg.webhook_secret, ts, raw, sig):
+            raise HTTPException(status_code=401, detail="Invalid signature")
+        import json as _json
+        payload = _json.loads(raw or "{}")
+        event = payload.get("event") or request.headers.get("X-Webhook-Event", "")
+        data = payload.get("data") or {}
+        ref = data.get("reference", "")
+        pay = s.query(models.Payment).filter_by(tenant_id=tid, reference=ref).first() if ref else None
+        if event == "payment.success":
+            if pay:
+                pay.status = "completed"
+            tenant = s.get(models.Tenant, tid)
+            chat_id = (data.get("metadata") or {}).get("chat_id") or (pay.chat_id if pay else "")
+            amount = int(data.get("amount") or (pay.amount if pay else 0) or 0)
+            channel = (channel_factory or wam.channel_for)(tenant) if tenant else None
+            if channel and chat_id:
+                try:
+                    channel.send_text(chat_id, f"✅ Paiement de {amount} XOF bien reçu, merci ! C'est confirmé.")
+                except Exception:
+                    pass
+            if channel and tenant:
+                for n in [x.strip() for x in (tenant.staff_numbers or "").split(",") if x.strip()]:
+                    jid = phone.to_jid(n)
+                    if jid:
+                        try:
+                            channel.send_text(jid, f"💳 Paiement reçu : {amount} XOF (client {chat_id}, réf {ref}).")
+                        except Exception:
+                            pass
+            s.add(models.Record(tenant_id=tid, chat_id=chat_id, kind="Paiement",
+                                content=f"Paiement reçu : {amount} XOF (réf {ref})"))
+            s.commit()
+        elif event in ("payment.failed", "payment.cancelled", "payment.refunded") and pay:
+            pay.status = event.split(".")[1]
+            s.commit()
+        return {"status": "ok"}
 
     # --- Carnet : réservations/commandes/paiements conclus par le bot ---
     @app.get("/api/records")

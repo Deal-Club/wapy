@@ -430,6 +430,37 @@ def test_conversation_shows_contact_name():
     assert convs[0]["name"] == "Yann"
 
 
+def test_payment_config_and_webhook_success():
+    import hashlib
+    import hmac
+    import json
+
+    sf = _factory()
+    ch = _Ch()
+    app = create_app(session_factory=sf, channel_factory=lambda t: ch)
+    c = TestClient(app)
+    tok = _token(c)
+    c.put("/api/payment-config", json={"api_key": "pk", "api_secret": "sk", "webhook_secret": "whsec_1", "mode": "sandbox", "enabled": True}, headers=_auth(tok))
+    cfg = c.get("/api/payment-config", headers=_auth(tok)).json()
+    assert cfg["enabled"] and cfg["has_secret"] and cfg["has_webhook_secret"]
+    tid = cfg["webhook_url"].rstrip("/").split("/")[-1]
+    # paiement en attente (comme si le bot avait envoyé un lien)
+    s = sf()
+    s.add(models.Payment(tenant_id=int(tid), chat_id="cl@c.us", reference="R1", amount=15000, status="pending"))
+    s.commit()
+    body = json.dumps({"event": "payment.success", "data": {"reference": "R1", "amount": 15000, "metadata": {"chat_id": "cl@c.us"}}})
+    ts = "123"
+    sig = hmac.new(b"whsec_1", f"{ts}.{body}".encode(), hashlib.sha256).hexdigest()
+    r = c.post(f"/webhook/geniuspay/{tid}", content=body,
+               headers={"X-Webhook-Signature": sig, "X-Webhook-Timestamp": ts, "X-Webhook-Event": "payment.success", "Content-Type": "application/json"})
+    assert r.status_code == 200
+    # client confirmé + paiement marqué payé
+    assert any(to == "cl@c.us" and "Paiement" in txt for to, txt in ch.sent)
+    assert c.get("/api/payments", headers=_auth(tok)).json()["payments"][0]["status"] == "completed"
+    # signature invalide rejetée
+    assert c.post(f"/webhook/geniuspay/{tid}", content=body, headers={"X-Webhook-Signature": "bad", "X-Webhook-Timestamp": ts}).status_code == 401
+
+
 def test_knowledge_upload_list_fiche_and_remove():
     sf = _factory()
     c = TestClient(create_app(session_factory=sf))

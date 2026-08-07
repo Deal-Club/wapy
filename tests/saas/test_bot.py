@@ -202,6 +202,31 @@ def test_relay_and_forward_are_stored_in_history():
     assert ("c@c.us", "user", "ok merci") in store.msgs  # message client rangé
 
 
+def test_pay_action_sends_link_and_notifies_staff():
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("pay", "Voici votre lien de paiement :", "paiement", pay_amount=15000))
+    seen = {}
+
+    def pay_link(amount, desc, chat_id):
+        seen["amount"] = amount
+        return "https://pay.genius.ci/checkout/abc"
+
+    r = handle_message(ch, store, brain, "x", ["s@c.us"], ["s@c.us"], _msg(body="je paie"), pay_link=pay_link)
+    assert r["status"] == "pay-link"
+    pairs = [x for x in ch.sent if len(x) == 2]
+    assert any(to == "c@c.us" and "pay.genius.ci/checkout/abc" in txt for to, txt in pairs)
+    assert seen["amount"] == 15000
+    assert any(to == "s@c.us" and "Lien de paiement" in txt for to, txt in pairs)
+
+
+def test_pay_action_without_provider_falls_back_to_message():
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("pay", "Payez au 07 00 00 00 par MoMo.", "paiement", pay_amount=15000))
+    r = handle_message(ch, store, brain, "x", [], [], _msg(body="je paie"), pay_link=None)
+    assert r["status"] == "replied"
+    assert ("c@c.us", "Payez au 07 00 00 00 par MoMo.") in ch.sent
+
+
 def test_duplicate_ignored():
     ch, store = _Ch(), _Store()
     brain = _Brain(Decision("reply", "ok", "y"))

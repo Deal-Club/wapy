@@ -116,6 +116,89 @@ function ConfigTab() {
         </div>
       </div>
       <KnowledgeDocs />
+      <GeniusPayConfig />
+    </div>
+  );
+}
+
+function GeniusPayConfig() {
+  const [cfg, setCfg] = useState<any>(null);
+  const [apiKey, setApiKey] = useState("");
+  const [apiSecret, setApiSecret] = useState("");
+  const [webhookSecret, setWebhookSecret] = useState("");
+  const [mode, setMode] = useState("sandbox");
+  const [enabled, setEnabled] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    api.getPaymentConfig().then((c) => {
+      setCfg(c); setApiKey(c.api_key || ""); setMode(c.mode || "sandbox"); setEnabled(!!c.enabled);
+    }).catch(() => {});
+  }, []);
+
+  async function save() {
+    const body: any = { api_key: apiKey, mode, enabled };
+    if (apiSecret.trim()) body.api_secret = apiSecret.trim();
+    if (webhookSecret.trim()) body.webhook_secret = webhookSecret.trim();
+    await api.putPaymentConfig(body);
+    setApiSecret(""); setWebhookSecret("");
+    setSaved(true); setTimeout(() => setSaved(false), 2500);
+    api.getPaymentConfig().then(setCfg).catch(() => {});
+  }
+
+  if (!cfg) return null;
+  return (
+    <div className="card space-y-3">
+      <div>
+        <h3 className="font-display text-xl">Paiement en ligne (GeniusPay)</h3>
+        <p className="text-sm text-muted">
+          Activez pour que le bot envoie des liens de paiement (Wave, Orange, MTN, carte).
+          Vos clés restent privées ; c'est vous qui encaissez.
+        </p>
+      </div>
+
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} />
+        Activer le paiement en ligne
+      </label>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div>
+          <div className="label">Clé API (pk_...)</div>
+          <input className="input w-full" value={apiKey} onChange={(e) => setApiKey(e.target.value)} placeholder="pk_live_..." />
+        </div>
+        <div>
+          <div className="label">Mode</div>
+          <select className="input w-full" value={mode} onChange={(e) => setMode(e.target.value)}>
+            <option value="sandbox">Test (sandbox)</option>
+            <option value="live">Réel (live)</option>
+          </select>
+        </div>
+        <div>
+          <div className="label">Clé secrète (sk_...) {cfg.has_secret && <span className="text-emerald-dark">· enregistrée</span>}</div>
+          <input className="input w-full" type="password" value={apiSecret} onChange={(e) => setApiSecret(e.target.value)} placeholder={cfg.has_secret ? "•••••• (laisser vide pour garder)" : "sk_live_..."} />
+        </div>
+        <div>
+          <div className="label">Secret webhook (whsec_...) {cfg.has_webhook_secret && <span className="text-emerald-dark">· enregistré</span>}</div>
+          <input className="input w-full" type="password" value={webhookSecret} onChange={(e) => setWebhookSecret(e.target.value)} placeholder={cfg.has_webhook_secret ? "•••••• (laisser vide pour garder)" : "whsec_..."} />
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-line bg-surface/60 p-3 text-sm">
+        <div className="label">URL de webhook à coller dans votre tableau de bord GeniusPay</div>
+        <div className="flex items-center gap-2">
+          <code className="flex-1 break-all text-xs">{cfg.webhook_url}</code>
+          <button className="chip text-xs" onClick={() => { navigator.clipboard?.writeText(cfg.webhook_url); setCopied(true); setTimeout(() => setCopied(false), 1500); }}>
+            {copied ? "Copié ✓" : "Copier"}
+          </button>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-end gap-3">
+        {saved && <span className="text-sm text-emerald-dark">✓ Enregistré</span>}
+        <button className="btn" onClick={save}>Enregistrer</button>
+      </div>
     </div>
   );
 }
@@ -286,14 +369,36 @@ function Conversations() {
 
 function RecordsTab() {
   const [records, setRecords] = useState<any[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   useEffect(() => {
-    api.getRecords().then((r) => setRecords(r.records)).catch(() => {}).finally(() => setLoading(false));
-    const i = setInterval(() => api.getRecords().then((r) => setRecords(r.records)).catch(() => {}), 8000);
+    const load = () => {
+      api.getRecords().then((r) => setRecords(r.records)).catch(() => {});
+      api.getPayments().then((r) => setPayments(r.payments)).catch(() => {});
+    };
+    load(); setLoading(false);
+    const i = setInterval(load, 8000);
     return () => clearInterval(i);
   }, []);
 
+  const payBadge = (st: string) =>
+    st === "completed" ? "bg-emerald-soft text-emerald-dark" : st === "pending" ? "bg-brand-soft text-brand-dark" : "bg-surface text-muted";
+
   return (
+    <div className="space-y-4">
+    {payments.length > 0 && (
+      <div className="card space-y-3">
+        <h3 className="font-display text-xl">Paiements en ligne</h3>
+        <div className="space-y-1.5">
+          {payments.map((p, k) => (
+            <div key={k} className="flex items-center justify-between rounded-lg border border-line px-3 py-2 text-sm">
+              <span><b>{p.amount} {p.currency}</b> <span className="text-muted">· {p.name || p.chat_id.replace(/@.*/, "")} · {p.description}</span></span>
+              <span className={`pill ${payBadge(p.status)}`}>{p.status}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
     <div className="card space-y-4">
       <div>
         <h3 className="font-display text-xl">Carnet</h3>
@@ -322,6 +427,7 @@ function RecordsTab() {
           ))}
         </div>
       )}
+    </div>
     </div>
   );
 }

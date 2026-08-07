@@ -1,6 +1,6 @@
 # Reverse-proxy interne (HTTP). L'HTTPS est terminé par nginx en amont (cf. https-nginx.md).
 :80 {
-	@backend path /api/* /auth/* /webhook /media/*
+	@backend path /api/* /auth/* /webhook /webhook/* /media/*
 	handle @backend {
 		reverse_proxy api:8000
 	}

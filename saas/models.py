@@ -206,6 +206,33 @@ class Record(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class PaymentConfig(Base):
+    """Clés GeniusPay d'un établissement (il encaisse ses propres paiements)."""
+    __tablename__ = "payment_configs"
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), primary_key=True)
+    provider = Column(String(30), default="geniuspay")
+    api_key = Column(String(255), default="")
+    api_secret = Column(String(255), default="")
+    webhook_secret = Column(String(255), default="")
+    mode = Column(String(20), default="sandbox")  # sandbox | live
+    enabled = Column(Boolean, default=False)
+
+
+class Payment(Base):
+    """Paiement en ligne initié par le bot (lien GeniusPay) et suivi via webhook."""
+    __tablename__ = "payments"
+    id = Column(Integer, primary_key=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    chat_id = Column(String(120), default="")
+    reference = Column(String(120), default="", index=True)
+    amount = Column(Integer, default=0)
+    currency = Column(String(10), default="XOF")
+    status = Column(String(30), default="pending")  # pending|completed|failed|cancelled|refunded
+    description = Column(Text, default="")
+    checkout_url = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Suggestion(Base):
     """Amélioration de config proposée par l'IA à partir des conversations.
 
