@@ -69,6 +69,9 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
             return {"status": "staff-idle"}
         if target:
             channel.send_text(target, msg.text)
+            # Range la réponse humaine dans l'historique du client : le cerveau saura
+            # que la demande a été traitée et ne ré-escaladera pas au prochain message.
+            store.append(target, "assistant", msg.text)
             return {"status": "relayed"}
         return {"status": "staff-idle"}
 
@@ -81,6 +84,7 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
 
     # Handoff bidirectionnel : message du client transmis au staff
     if store.is_escalated(msg.chat_id):
+        store.append(msg.chat_id, "user", msg.text)  # garde l'historique complet
         label = f"💬 Client {msg.chat_id} :\n{msg.text}\n(Citez ce message pour lui répondre.)"
         for num in staff_send:
             try:

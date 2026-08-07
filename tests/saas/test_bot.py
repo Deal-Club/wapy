@@ -188,6 +188,19 @@ def test_record_forwards_payment_proof_to_staff():
     assert any(x[1] == "s@c.us" and x[2] == "http://waha/file.jpg" for x in imgs)
 
 
+def test_relay_and_forward_are_stored_in_history():
+    """La réponse du responsable et le message client (pendant escalade) entrent dans
+    l'historique -> le cerveau ne ré-escalade pas au message suivant."""
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("escalate", "", "humain"))
+    handle_message(ch, store, brain, "x", ["s@c.us"], ["s@c.us"], _msg(cid="c@c.us", body="je veux un humain", mid="1"))
+    assert store.is_escalated("c@c.us")
+    handle_message(ch, store, brain, "x", ["s@c.us"], ["s@c.us"], _msg(cid="s@c.us", body="on arrive", mid="2"))
+    assert ("c@c.us", "assistant", "on arrive") in store.msgs  # réponse humaine rangée
+    handle_message(ch, store, brain, "x", ["s@c.us"], ["s@c.us"], _msg(cid="c@c.us", body="ok merci", mid="3"))
+    assert ("c@c.us", "user", "ok merci") in store.msgs  # message client rangé
+
+
 def test_duplicate_ignored():
     ch, store = _Ch(), _Store()
     brain = _Brain(Decision("reply", "ok", "y"))
