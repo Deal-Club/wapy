@@ -128,7 +128,7 @@ def parse_workbook(data: bytes) -> dict:
     return {"infos": infos, "tables": tables, "faq": faq, "consignes": []}
 
 
-def create_app(session_factory=None, channel_factory=None, brain=None, wa_module=None, ai_generate=None, ai_learn=None, init=False):
+def create_app(session_factory=None, channel_factory=None, brain=None, wa_module=None, ai_generate=None, ai_learn=None, vision_analyze=None, init=False):
     app = FastAPI(title="Wapy Platform")
     sf = session_factory or SessionLocal
     wam = wa_module or wa
@@ -717,12 +717,19 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             return {"status": "suspended"}
         channel = (channel_factory or wam.channel_for)(tenant)
         br = brain
+        vision_fn = vision_analyze
         if br is None:
             import anthropic
             from brain.brain import Brain
 
-            br = Brain(anthropic.Anthropic(), tenant.wapy_model)
-        return process_incoming(s, channel, br, tenant, payload)
+            client = anthropic.Anthropic()
+            br = Brain(client, tenant.wapy_model)
+            if vision_fn is None:
+                from saas.vision import analyze_image
+
+                def vision_fn(image_bytes, media_type, _c=client, _m=tenant.wapy_model):
+                    return analyze_image(_c, _m, image_bytes, media_type)
+        return process_incoming(s, channel, br, tenant, payload, vision_analyze=vision_fn)
 
     return app
 

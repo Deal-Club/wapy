@@ -137,7 +137,22 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
     return {"status": "escalated"}
 
 
-def process_incoming(session, channel, brain, tenant, payload):
+def process_incoming(session, channel, brain, tenant, payload, vision_analyze=None):
+    # Vision : si le client envoie une image (souvent un justificatif de paiement),
+    # on la LIT et on injecte l'analyse dans le texte pour que le bot en tienne compte.
+    if vision_analyze and hasattr(channel, "fetch_media"):
+        raw = channel.parse_incoming(payload)
+        if raw and getattr(raw, "media_url", ""):
+            media = channel.fetch_media(raw.media_url)
+            if media and (media[1] or "").startswith("image/"):
+                try:
+                    desc = vision_analyze(media[0], media[1])
+                except Exception:
+                    desc = ""
+                if desc:
+                    p = payload.setdefault("payload", {})
+                    p["body"] = ((p.get("body") or "") + f"\n[Image reçue, analyse : {desc}]").strip()
+
     store = DbStore(session, tenant.id)
     fiche_text = build_fiche_text(session, tenant.id)
     # Normalise en JID @c.us : une valeur legacy sans suffixe (ex. "22961040461")

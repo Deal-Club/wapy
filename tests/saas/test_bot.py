@@ -27,14 +27,19 @@ class _Ch:
     def send_image(self, chat_id, url, caption=""):
         self.sent.append(("IMG", chat_id, url, caption))
 
+    def fetch_media(self, url):
+        return (b"imgbytes", "image/jpeg")
+
 
 class _Brain:
     def __init__(self, decision):
         self.decision = decision
         self.called = False
+        self.last = ""
 
     def decide(self, fiche_text, history, incoming_text):
         self.called = True
+        self.last = incoming_text
         return self.decision
 
 
@@ -215,6 +220,25 @@ def test_dbstore_set_name_upsert():
     st.set_name("198406064615659@lid", "Yann R.")  # mise à jour
     row = s.query(models.Contact).filter_by(chat_id="198406064615659@lid").first()
     assert row.name == "Yann R."
+
+
+def test_vision_injects_analysis_then_records_and_forwards():
+    s = _session()
+    _, tenant = auth.signup(s, "a@b.com", "x", "T")
+    tenant.staff_numbers = "st@c.us"
+    s.commit()
+    ch = _Ch()
+    brain = _Brain(Decision("record", "Paiement bien reçu, merci !", "paiement",
+                            record_type="Paiement", record="5000 FCFA MoMo réf ABC (à vérifier)"))
+    vision = lambda b, mt: "Capture MTN MoMo : 5000 FCFA, réf ABC123, de 22990000000"
+    m = _msg(body="", mid="pay1")
+    m["payload"]["media_url"] = "http://waha/f.jpg"
+    r = process_incoming(s, ch, brain, tenant, m, vision_analyze=vision)
+    assert r["status"] == "recorded"
+    # le cerveau a reçu l'analyse de l'image dans le texte
+    assert "MoMo" in brain.last
+    # le justificatif (image) est transféré au responsable
+    assert any(len(x) == 4 and x[0] == "IMG" and x[1] == "st@c.us" for x in ch.sent)
 
 
 def test_process_incoming_end_to_end_db():

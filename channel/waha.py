@@ -30,8 +30,14 @@ class WahaProvider(WhatsAppChannel):
         if not body and not has_media:
             return None
         if not body and has_media:
-            # Message média sans légende (ex. capture de paiement) : on ne l'ignore plus.
-            body = "[Le client a envoyé une pièce jointe, probablement un justificatif de paiement.]"
+            # Message média sans légende : on ne l'ignore plus, on qualifie le type.
+            mtype = p.get("type", "")
+            if mtype in ("audio", "ptt", "voice"):
+                body = "[Le client a envoyé une note vocale.]"
+            elif mtype == "image":
+                body = "[Le client a envoyé une image, probablement un justificatif de paiement.]"
+            else:
+                body = "[Le client a envoyé une pièce jointe.]"
         name = p.get("notifyName") or data.get("notifyName") or data.get("pushName") or ""
         quoted = p.get("replyTo") or data.get("quotedStanzaID") or ""
         if isinstance(quoted, dict):
@@ -94,6 +100,16 @@ class WahaProvider(WhatsAppChannel):
                 data = r.json()
                 if data.get("numberExists"):
                     return data.get("chatId") or (phone + "@c.us")
+        except Exception:
+            pass
+        return None
+
+    def fetch_media(self, url: str):
+        """Télécharge une pièce jointe (image) servie par WAHA. Renvoie (bytes, mime) ou None."""
+        try:
+            r = requests.get(url, headers=self._headers, timeout=30)
+            if r.status_code == 200 and r.content:
+                return r.content, r.headers.get("content-type", "image/jpeg").split(";")[0].strip()
         except Exception:
             pass
         return None
