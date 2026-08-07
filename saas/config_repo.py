@@ -18,7 +18,11 @@ EMPTY = {
     "tables": [],
     "consignes": [],
     "faq": [],
+    "documents": [],  # [{name, text}] : base de connaissances (PDF/texte uploadés)
 }
+
+# Longueur max de texte de document injectée dans le prompt (garde-fou coût/latence).
+DOC_CHARS = 6000
 
 
 def get_config(session, tenant_id: int) -> dict:
@@ -104,6 +108,15 @@ def build_fiche_text(session, tenant_id: int) -> str:
             a = (cg.get("action") or "").strip()
             if s:
                 parts.append(f"- {s} : {a}")
+
+    docs = c.get("documents", [])
+    if docs:
+        parts += ["", "## Documents de référence"]
+        for d in docs:
+            name = (d.get("name") or "Document").strip()
+            text = (d.get("text") or "").strip()[:DOC_CHARS]
+            if text:
+                parts += [f"### {name}", text]
 
     parts += ["", "## FAQ"]
     for f in c.get("faq", []):

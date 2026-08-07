@@ -86,6 +86,13 @@ export const api = {
     fd.append("file", file);
     return req("/api/import", { method: "POST", body: fd });
   },
+  getKnowledge: () => req("/api/knowledge"),
+  addKnowledge: (file: File) => {
+    const fd = new FormData();
+    fd.append("file", file);
+    return req("/api/knowledge", { method: "POST", body: fd });
+  },
+  removeKnowledge: (index: number) => req(`/api/knowledge/${index}`, { method: "DELETE" }),
   uploadImage: (file: File) => {
     const fd = new FormData();
     fd.append("file", file);

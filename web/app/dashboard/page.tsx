@@ -100,12 +100,66 @@ function ConfigTab() {
   }
 
   return (
-    <div className="card space-y-5">
-      <ConfigEditor value={config} onChange={setConfig} staff={staff} onStaffChange={setStaff} />
-      <div className="flex items-center justify-end gap-3 border-t border-line pt-4">
-        {saved && <span className="text-sm text-emerald-dark">✓ Enregistré</span>}
-        <button className="btn" onClick={save} disabled={saving}>{saving ? "…" : "Enregistrer"}</button>
+    <div className="space-y-5">
+      <div className="card space-y-5">
+        <ConfigEditor value={config} onChange={setConfig} staff={staff} onStaffChange={setStaff} />
+        <div className="flex items-center justify-end gap-3 border-t border-line pt-4">
+          {saved && <span className="text-sm text-emerald-dark">✓ Enregistré</span>}
+          <button className="btn" onClick={save} disabled={saving}>{saving ? "…" : "Enregistrer"}</button>
+        </div>
       </div>
+      <KnowledgeDocs />
+    </div>
+  );
+}
+
+function KnowledgeDocs() {
+  const [docs, setDocs] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function load() { try { setDocs((await api.getKnowledge()).documents); } catch {} }
+  useEffect(() => { load(); }, []);
+
+  async function upload(file: File) {
+    setBusy(true); setMsg("");
+    try { await api.addKnowledge(file); await load(); }
+    catch (e: any) { setMsg(e.message || "Échec de l'import"); }
+    finally { setBusy(false); }
+  }
+  async function remove(i: number) { await api.removeKnowledge(i); load(); }
+
+  return (
+    <div className="card space-y-3">
+      <div>
+        <h3 className="font-display text-xl">Documents de référence</h3>
+        <p className="text-sm text-muted">
+          Ajoutez un PDF ou un texte (CGV, brochure, tarifs détaillés, procédures).
+          Le bot s'en sert pour répondre, en plus de la fiche ci-dessus.
+        </p>
+      </div>
+
+      {docs.length > 0 && (
+        <div className="space-y-1.5">
+          {docs.map((d, i) => (
+            <div key={i} className="flex items-center justify-between rounded-xl border border-line bg-surface/60 px-3 py-2 text-sm">
+              <span>📄 {d.name} <span className="text-muted">({d.chars} caractères)</span></span>
+              <button className="btn-ghost text-xs" onClick={() => remove(i)}>Retirer</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <label className="chip cursor-pointer">
+        {busy ? "Import…" : "+ Ajouter un document (PDF ou .txt)"}
+        <input
+          type="file"
+          accept=".pdf,.txt,text/plain,application/pdf"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); }}
+        />
+      </label>
+      {msg && <p className="text-sm text-brand">{msg}</p>}
     </div>
   );
 }

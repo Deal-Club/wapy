@@ -7,7 +7,7 @@ from sqlalchemy.orm import sessionmaker
 from channel.base import IncomingMessage
 from brain.brain import Decision
 from saas.db import Base, make_engine
-from saas import auth, models, wa
+from saas import auth, config_repo, models, wa
 from saas.app import create_app
 
 
@@ -405,6 +405,24 @@ def test_conversation_shows_contact_name():
     s.commit()
     convs = c.get("/api/conversations", headers=_auth(tok)).json()["conversations"]
     assert convs[0]["name"] == "Yann"
+
+
+def test_knowledge_upload_list_fiche_and_remove():
+    sf = _factory()
+    c = TestClient(create_app(session_factory=sf))
+    tok = _token(c)
+    files = {"file": ("cgv.txt", b"Politique: annulation gratuite jusqu'a 48h avant.", "text/plain")}
+    r = c.post("/api/knowledge", files=files, headers=_auth(tok))
+    assert r.status_code == 200 and r.json()["chars"] > 0
+    lst = c.get("/api/knowledge", headers=_auth(tok)).json()["documents"]
+    assert len(lst) == 1 and lst[0]["name"] == "cgv.txt"
+    # le texte du document nourrit la fiche du bot
+    s = sf()
+    tid = s.query(models.Tenant).first().id
+    assert "annulation gratuite" in config_repo.build_fiche_text(s, tid)
+    # suppression
+    assert c.delete("/api/knowledge/0", headers=_auth(tok)).status_code == 200
+    assert c.get("/api/knowledge", headers=_auth(tok)).json()["documents"] == []
 
 
 def test_upload_image_and_reject_non_image():

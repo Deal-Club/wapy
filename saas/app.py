@@ -545,6 +545,45 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             f.write(data)
         return {"url": f"/media/{name}"}
 
+    # --- Base de connaissances : documents (PDF/texte) que le bot exploite ---
+    def _extract_text(filename: str, data: bytes) -> str:
+        if (filename or "").lower().endswith(".pdf"):
+            from pypdf import PdfReader
+            reader = PdfReader(io.BytesIO(data))
+            return "\n".join((p.extract_text() or "") for p in reader.pages)
+        return data.decode("utf-8", errors="ignore")
+
+    @app.get("/api/knowledge")
+    def list_knowledge(tenant=Depends(current_tenant), s=Depends(db)):
+        docs = config_repo.get_config(s, tenant.id).get("documents", [])
+        return {"documents": [{"name": d.get("name", ""), "chars": len((d.get("text") or ""))} for d in docs]}
+
+    @app.post("/api/knowledge")
+    async def add_knowledge(file: UploadFile = File(...), tenant=Depends(owner_tenant), s=Depends(db)):
+        data = await file.read()
+        try:
+            text = _extract_text(file.filename or "", data).strip()
+        except Exception:
+            raise HTTPException(status_code=400, detail="Document illisible (PDF ou texte attendu)")
+        if not text:
+            raise HTTPException(status_code=400, detail="Aucun texte extrait du document")
+        cfg = config_repo.get_config(s, tenant.id)
+        docs = cfg.get("documents", [])
+        docs.append({"name": file.filename or "Document", "text": text})
+        cfg["documents"] = docs
+        config_repo.save_config(s, tenant.id, cfg)
+        return {"status": "added", "name": file.filename, "chars": len(text)}
+
+    @app.delete("/api/knowledge/{index}")
+    def remove_knowledge(index: int, tenant=Depends(owner_tenant), s=Depends(db)):
+        cfg = config_repo.get_config(s, tenant.id)
+        docs = cfg.get("documents", [])
+        if 0 <= index < len(docs):
+            docs.pop(index)
+            cfg["documents"] = docs
+            config_repo.save_config(s, tenant.id, cfg)
+        return {"status": "removed"}
+
     @app.post("/api/import")
     async def import_xlsx(file: UploadFile = File(...), tenant=Depends(owner_tenant), s=Depends(db)):
         data = await file.read()
