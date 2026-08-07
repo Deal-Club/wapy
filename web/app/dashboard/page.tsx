@@ -124,23 +124,41 @@ function ConfigTab() {
 
 function BillingTab() {
   const [b, setB] = useState<any | null>(null);
-  const [busy, setBusy] = useState("");
+  const [plan, setPlan] = useState("");
+  const [addons, setAddons] = useState<string[]>([]);
+  const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
-  useEffect(() => { api.getBilling().then(setB).catch(() => {}); }, []);
+  useEffect(() => {
+    api.getBilling().then((d) => {
+      setB(d);
+      setPlan(d.plan || d.catalogue?.plans?.[0]?.key || "");
+      setAddons(d.addons || []);
+    }).catch(() => {});
+  }, []);
 
-  async function subscribe(plan: string) {
-    setBusy(plan); setMsg("");
+  if (!b) return <p className="text-sm text-muted">Chargement…</p>;
+  const cat = b.catalogue;
+  const featLabel = (f: string) => cat.features[f] || f;
+  const statusLabel: Record<string, string> = { active: "Actif ✅", trial: "Essai gratuit", expired: "Expiré ⚠️" };
+  const selectedPlan = cat.plans.find((p: any) => p.key === plan);
+  const total = (selectedPlan?.price || 0) + addons.reduce((sum, k) => sum + (cat.addons.find((a: any) => a.key === k)?.price || 0), 0);
+  // Fonctionnalités déjà incluses par le plan choisi (add-on inutile).
+  const planFeatures: string[] = selectedPlan?.features || [];
+
+  function toggleAddon(k: string) {
+    setAddons((xs) => (xs.includes(k) ? xs.filter((x) => x !== k) : [...xs, k]));
+  }
+  async function subscribe() {
+    setBusy(true); setMsg("");
     try {
-      const r = await api.subscribe(plan);
+      const r = await api.subscribe(plan, addons);
       if (r.checkout_url) window.location.href = r.checkout_url;
       else setMsg("Lien de paiement indisponible.");
     } catch (e: any) { setMsg(e.message || "Échec"); }
-    finally { setBusy(""); }
+    finally { setBusy(false); }
   }
 
-  if (!b) return <p className="text-sm text-muted">Chargement…</p>;
-  const statusLabel: Record<string, string> = { active: "Actif ✅", trial: "Essai", expired: "Expiré ⚠️" };
   return (
     <div className="space-y-4">
       <div className="card">
@@ -150,22 +168,58 @@ function BillingTab() {
           {b.plan && <> · Formule : <b>{b.plan}</b></>}
           {b.current_period_end && <> · Jusqu'au {b.current_period_end.slice(0, 10)}</>}
         </p>
-        {!b.enabled && <p className="mt-2 text-sm text-muted">Le paiement en ligne n'est pas encore activé par Wapy. Contactez-nous pour vous abonner.</p>}
+        {b.status === "trial" && <p className="mt-1 text-sm text-muted">Essai gratuit de {cat.trial_days} jours, tout inclus. Choisissez une formule avant la fin pour ne pas être coupé.</p>}
+        {b.features?.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {b.features.map((f: string) => <span key={f} className="pill bg-emerald-soft text-emerald-dark text-xs">{featLabel(f)}</span>)}
+          </div>
+        )}
+        {!b.enabled && <p className="mt-2 text-sm text-brand">Le paiement n'est pas encore activé par Wapy.</p>}
       </div>
 
       {b.enabled && (
-        <div className="grid gap-4 sm:grid-cols-3">
-          {b.plans.map((p: any) => (
-            <div key={p.key} className="card flex flex-col">
-              <div className="font-display text-lg">{p.label}</div>
-              <div className="mt-1 font-display text-3xl text-brand">{p.price.toLocaleString("fr-FR")} <span className="text-base text-muted">XOF/mois</span></div>
-              <p className="mt-2 flex-1 text-sm text-muted">{p.desc}</p>
-              <button className="btn mt-3" onClick={() => subscribe(p.key)} disabled={!!busy}>
-                {busy === p.key ? "…" : "S'abonner"}
+        <>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {cat.plans.map((p: any) => (
+              <button key={p.key} type="button" onClick={() => setPlan(p.key)}
+                className={`card flex flex-col text-left transition ${plan === p.key ? "ring-2 ring-brand" : "hover:border-brand/40"}`}>
+                <div className="font-display text-lg">{p.label}</div>
+                <div className="mt-1 font-display text-3xl text-brand">{p.price.toLocaleString("fr-FR")} <span className="text-base text-muted">{cat.currency}/mois</span></div>
+                <ul className="mt-2 space-y-0.5 text-xs text-muted">
+                  {p.features.map((f: string) => <li key={f}>✓ {featLabel(f)}</li>)}
+                  <li>✓ {p.limits.conversations ? `${p.limits.conversations} conversations/mois` : "Conversations illimitées"}</li>
+                  <li>✓ {p.limits.agents ? `${p.limits.agents} agent(s)` : "Agents illimités"}</li>
+                </ul>
               </button>
+            ))}
+          </div>
+
+          <div className="card">
+            <div className="label">Options à la carte</div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {cat.addons.map((a: any) => {
+                const included = a.feature && planFeatures.includes(a.feature);
+                return (
+                  <label key={a.key} className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm ${included ? "border-line bg-surface/40 opacity-60" : "border-line"}`}>
+                    <span className="flex items-center gap-2">
+                      <input type="checkbox" disabled={included} checked={included || addons.includes(a.key)} onChange={() => toggleAddon(a.key)} />
+                      {a.label} {included && <span className="text-xs text-emerald-dark">· déjà inclus</span>}
+                    </span>
+                    <span className="text-muted">+{a.price.toLocaleString("fr-FR")}</span>
+                  </label>
+                );
+              })}
             </div>
-          ))}
-        </div>
+          </div>
+
+          <div className="card flex items-center justify-between">
+            <div>
+              <div className="text-sm text-muted">Total mensuel</div>
+              <div className="font-display text-3xl text-brand">{total.toLocaleString("fr-FR")} <span className="text-base text-muted">{cat.currency}/mois</span></div>
+            </div>
+            <button className="btn" onClick={subscribe} disabled={busy || !plan}>{busy ? "…" : "S'abonner et payer"}</button>
+          </div>
+        </>
       )}
       {msg && <p className="text-sm text-brand">{msg}</p>}
     </div>

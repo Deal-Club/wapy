@@ -61,12 +61,72 @@ def check_once(session_factory, wa_module) -> int:
     return incidents
 
 
+def _send_resub_reminder(s, wa_module, tenant):
+    """Relance de réabonnement : WhatsApp au responsable + e-mail au propriétaire."""
+    import os
+    from saas import models, notify, phone
+
+    public = os.environ.get("PUBLIC_URL", "")
+    wa_msg = (
+        "⏰ Votre accès Wapy est suspendu (période terminée).\n"
+        f"Réabonnez-vous pour réactiver votre assistant : {public}/dashboard"
+    )
+    try:
+        channel = wa_module.channel_for(tenant)
+        for n in [x.strip() for x in (tenant.staff_numbers or "").split(",") if x.strip()]:
+            jid = phone.to_jid(n)
+            if jid:
+                try:
+                    channel.send_text(jid, wa_msg)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+    owner = s.query(models.User).filter_by(tenant_id=tenant.id, role="owner").first()
+    if owner:
+        notify.send_email(
+            owner.email, "Votre abonnement Wapy a expiré",
+            f"Bonjour,\n\nVotre accès Wapy pour « {tenant.name} » est suspendu.\n"
+            f"Réabonnez-vous ici : {public}/dashboard\n\nL'équipe Wapy.",
+        )
+
+
+def enforce_subscriptions(session_factory, wa_module) -> int:
+    """Expire les essais/abonnements arrivés à terme : coupe le bot + relance (une fois)."""
+    from saas import models
+
+    now = datetime.utcnow()
+    expired = 0
+    s = session_factory()
+    try:
+        subs = (
+            s.query(models.Subscription)
+            .filter(models.Subscription.status.in_(["trial", "active"]))
+            .all()
+        )
+        for sub in subs:
+            if sub.current_period_end and sub.current_period_end < now:
+                tenant = s.get(models.Tenant, sub.tenant_id)
+                sub.status = "expired"
+                if tenant:
+                    tenant.status = "suspended"
+                s.commit()
+                expired += 1
+                logger.warning("Abonnement expiré : tenant %s -> suspendu", sub.tenant_id)
+                if tenant:
+                    _send_resub_reminder(s, wa_module, tenant)
+    finally:
+        s.close()
+    return expired
+
+
 async def run_health_loop(session_factory, wa_module, interval: int = 120):
-    """Boucle de supervision (lancée au démarrage de l'API)."""
-    logger.info("Supervision des sessions WhatsApp démarrée (toutes les %ss).", interval)
+    """Boucle de supervision + facturation (lancée au démarrage de l'API)."""
+    logger.info("Supervision + facturation démarrées (toutes les %ss).", interval)
     while True:
         try:
             await asyncio.to_thread(check_once, session_factory, wa_module)
+            await asyncio.to_thread(enforce_subscriptions, session_factory, wa_module)
         except Exception as e:
-            logger.error("Supervision : cycle en erreur : %s", e)
+            logger.error("Boucle santé/facturation en erreur : %s", e)
         await asyncio.sleep(interval)

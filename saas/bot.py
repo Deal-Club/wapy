@@ -167,12 +167,16 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
     # au lieu de deviner le type depuis le webhook.
     #  - image  -> vision (lecture des justificatifs de paiement)
     #  - audio  -> transcription (le bot répond au contenu) ; sinon note vocale
+    # Droits d'abonnement (fonctionnalités incluses).
+    from saas import billing
+    _feats = billing.tenant_entitlements(session.get(models.Subscription, tenant.id))["features"]
+
     if hasattr(channel, "fetch_media"):
         raw = channel.parse_incoming(payload)
         if raw and getattr(raw, "media_url", ""):
             mtype = (getattr(raw, "media_type", "") or "").lower()
             p = payload.setdefault("payload", {})
-            if mtype.startswith("image/") and vision_analyze:
+            if mtype.startswith("image/") and vision_analyze and "vision" in _feats:
                 media = channel.fetch_media(raw.media_url)
                 if media:
                     try:
@@ -182,8 +186,8 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
                     if desc:
                         p["body"] = ((p.get("body") or "") + f"\n[Image reçue, analyse : {desc}]").strip()
             elif mtype.startswith("audio/"):
-                media = channel.fetch_media(raw.media_url)
-                if not media:
+                media = channel.fetch_media(raw.media_url) if "voice" in _feats else None
+                if "voice" in _feats and not media:
                     logger.warning("Vocal : téléchargement média échoué (%s)", raw.media_url)
                 txt = ""
                 if media and transcribe:

@@ -12,7 +12,7 @@ import os
 
 import requests
 
-BASE_URL = os.environ.get("GENIUSPAY_BASE_URL", "http://pay.genius.ci/api/v1/merchant")
+BASE_URL = os.environ.get("GENIUSPAY_BASE_URL", "https://geniuspay.ci/api/v1/merchant")
 
 
 def create_payment(cfg, amount: int, description: str, customer: dict,

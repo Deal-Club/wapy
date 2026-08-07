@@ -94,6 +94,7 @@ class AdminTenantIn(BaseModel):
 
 class SubscribeIn(BaseModel):
     plan: str
+    addons: list[str] = []
 
 
 # --- Helpers config ---
@@ -209,10 +210,17 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     # --- Auth ---
     @app.post("/auth/signup")
     def signup(body: SignupIn, s=Depends(db)):
+        from saas import billing
         try:
             user, tenant = auth.signup(s, body.email, body.password, body.resto_nom)
         except auth.SignupError as e:
             raise HTTPException(status_code=400, detail=str(e))
+        # Essai gratuit de 7 jours (tout inclus) à l'inscription.
+        s.add(models.Subscription(
+            tenant_id=tenant.id, plan="", addons=[], status="trial",
+            current_period_end=datetime.utcnow() + timedelta(days=billing.TRIAL_DAYS),
+        ))
+        s.commit()
         return {"token": auth.create_token(user.id, tenant.id), "tenant": {"id": tenant.id, "name": tenant.name}}
 
     @app.post("/auth/login")
@@ -249,6 +257,12 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     @app.post("/api/team/invite")
     def invite_member(body: InviteIn, user=Depends(require_owner), s=Depends(db)):
         tenant = s.get(models.Tenant, user.tenant_id)
+        ent = _entitlements(tenant, s)
+        lim = ent["limits"].get("agents", 0)
+        if lim:  # 0 = illimité
+            agents = s.query(models.User).filter_by(tenant_id=user.tenant_id, role="agent").count()
+            if agents >= lim:
+                raise HTTPException(status_code=403, detail=f"Limite de {lim} agent(s) atteinte (votre abonnement)")
         pw = auth.gen_password()
         try:
             agent = auth.create_agent(s, user.tenant_id, body.email, pw, must_change=True)
@@ -487,6 +501,8 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     # --- Suggestions IA (l'assistant apprend des conversations, tu valides) ---
     @app.post("/api/ai/learn")
     def ai_learn_run(tenant=Depends(owner_tenant), s=Depends(db)):
+        if "suggestions" not in _entitlements(tenant, s)["features"]:
+            raise HTTPException(status_code=403, detail="Suggestions IA non incluses dans votre abonnement")
         # Rassemble les dernières conversations (clients uniquement).
         rows = (
             s.query(models.Conversation)
@@ -606,6 +622,12 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
 
     @app.post("/api/knowledge")
     async def add_knowledge(file: UploadFile = File(...), tenant=Depends(owner_tenant), s=Depends(db)):
+        ent = _entitlements(tenant, s)
+        if "knowledge" not in ent["features"]:
+            raise HTTPException(status_code=403, detail="Base de connaissances non incluse dans votre abonnement")
+        lim = ent["limits"].get("documents", 0)
+        if lim and len(config_repo.get_config(s, tenant.id).get("documents", [])) >= lim:
+            raise HTTPException(status_code=403, detail=f"Limite de {lim} documents atteinte (votre abonnement)")
         data = await file.read()
         try:
             text = _extract_text(file.filename or "", data).strip()
@@ -709,16 +731,24 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         return usage.totals(s, tenant.id)
 
     # --- Abonnement de l'établissement à Wapy (facturation opérateur via GeniusPay) ---
+    def _entitlements(tenant, s):
+        from saas import billing
+        return billing.tenant_entitlements(s.get(models.Subscription, tenant.id))
+
     @app.get("/api/billing")
     def get_billing(tenant=Depends(current_tenant), s=Depends(db)):
         from saas import billing
         sub = s.get(models.Subscription, tenant.id)
+        ent = billing.tenant_entitlements(sub)
         return {
-            "plan": (sub.plan if sub else "") or tenant.plan or "",
+            "plan": (sub.plan if sub else "") or "",
+            "addons": (sub.addons if sub else []) or [],
             "status": sub.status if sub else "trial",
             "current_period_end": sub.current_period_end.isoformat() if sub and sub.current_period_end else "",
             "enabled": billing.billing_enabled(),
-            "plans": billing.plans_public(),
+            "features": sorted(ent["features"]),
+            "limits": ent["limits"],
+            "catalogue": billing.catalogue(),
         }
 
     @app.post("/api/billing/subscribe")
@@ -726,23 +756,25 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         from saas import billing, geniuspay
         if not billing.billing_enabled():
             raise HTTPException(status_code=400, detail="Paiement non configuré par l'opérateur")
-        plan = billing.PLANS.get(body.plan)
-        if not plan:
+        if body.plan not in billing.PLANS:
             raise HTTPException(status_code=400, detail="Plan inconnu")
+        addons = [a for a in (body.addons or []) if a in billing.ADDONS]
+        amount = billing.price_for(body.plan, addons)  # prix calculé côté serveur (jamais le client)
+        label = billing.PLANS[body.plan]["label"]
         try:
             res = geniuspay.create_payment(
-                billing.operator_cfg(), plan["price"], f"Abonnement Wapy {plan['label']}",
-                {}, {"tenant_id": tenant.id, "plan": body.plan, "kind": "subscription"},
-                success_url=f"{PUBLIC_URL}/dashboard", error_url=f"{PUBLIC_URL}/dashboard",
+                billing.operator_cfg(), amount, f"Abonnement Wapy {label}",
+                {}, {"tenant_id": tenant.id, "plan": body.plan, "addons": addons, "kind": "subscription"},
+                success_url=f"{PUBLIC_URL}/dashboard?paid=1", error_url=f"{PUBLIC_URL}/dashboard",
             )
         except Exception:
             raise HTTPException(status_code=502, detail="Impossible de créer le paiement (GeniusPay)")
         s.add(models.Payment(
-            tenant_id=tenant.id, reference=res.get("reference", ""), amount=plan["price"],
-            status="pending", description=f"Abonnement {plan['label']}", checkout_url=res.get("url", ""),
+            tenant_id=tenant.id, reference=res.get("reference", ""), amount=amount,
+            status="pending", description=f"Abonnement {label}", checkout_url=res.get("url", ""),
         ))
         s.commit()
-        return {"checkout_url": res.get("url", "")}
+        return {"checkout_url": res.get("url", ""), "amount": amount}
 
     # Webhook opérateur : GeniusPay notifie le paiement d'un abonnement -> activation.
     @app.post("/webhook/geniuspay")
@@ -751,8 +783,16 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         raw = (await request.body()).decode("utf-8")
         sig = request.headers.get("X-Webhook-Signature") or request.headers.get("X-GeniusPay-Signature") or ""
         ts = request.headers.get("X-Webhook-Timestamp") or request.headers.get("X-GeniusPay-Timestamp") or ""
+        # 1) Signature obligatoire
         if not geniuspay.verify_webhook(billing.operator_webhook_secret(), ts, raw, sig):
             raise HTTPException(status_code=401, detail="Invalid signature")
+        # 2) Protection anti-rejeu (timestamp < 5 min)
+        import time as _time
+        try:
+            if ts and abs(_time.time() - int(ts)) > 300:
+                raise HTTPException(status_code=400, detail="Timestamp too old")
+        except (ValueError, TypeError):
+            pass
         import json as _json
         payload = _json.loads(raw or "{}")
         event = payload.get("event") or request.headers.get("X-Webhook-Event", "")
@@ -761,17 +801,22 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         ref = data.get("reference", "")
         pay = s.query(models.Payment).filter_by(reference=ref).first() if ref else None
         if event == "payment.success" and meta.get("kind") == "subscription":
+            # 3) Idempotence : ne pas ré-activer sur un webhook rejoué
+            if pay and pay.status == "completed":
+                return {"status": "already-processed"}
             tid = int(meta.get("tenant_id") or (pay.tenant_id if pay else 0) or 0)
             plan = meta.get("plan", "")
+            addons = [a for a in (meta.get("addons") or []) if a in billing.ADDONS]
             tenant = s.get(models.Tenant, tid) if tid else None
-            if tenant:
-                end = datetime.utcnow() + timedelta(days=billing.PERIOD_DAYS)
-                sub = s.get(models.Subscription, tid)
-                if not sub:
-                    sub = models.Subscription(tenant_id=tid)
+            if tenant and plan in billing.PLANS:
+                ent = billing.entitlements_for(plan, addons)
+                sub = s.get(models.Subscription, tid) or models.Subscription(tenant_id=tid)
+                if sub not in s:
                     s.add(sub)
-                sub.plan, sub.status, sub.current_period_end = plan, "active", end
-                tenant.plan, tenant.status = plan or tenant.plan, "active"
+                sub.plan, sub.addons, sub.status = plan, addons, "active"
+                sub.current_period_end = datetime.utcnow() + timedelta(days=billing.PERIOD_DAYS)
+                tenant.plan, tenant.status = plan, "active"
+                tenant.wapy_model = ent["model"] or tenant.wapy_model  # modèle selon le plan
                 if pay:
                     pay.status = "completed"
                 s.commit()

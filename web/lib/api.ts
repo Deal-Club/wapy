@@ -123,11 +123,11 @@ export const api = {
   getUsage: () => req("/api/usage"),
   getRecords: () => req("/api/records"),
   getBilling: () => req("/api/billing"),
-  subscribe: (plan: string) =>
+  subscribe: (plan: string, addons: string[]) =>
     req("/api/billing/subscribe", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ plan }),
+      body: JSON.stringify({ plan, addons }),
     }),
   staffVerifyStart: (number: string, dialcode: string) =>
     req("/api/staff/verify/start", {

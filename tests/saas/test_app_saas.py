@@ -446,22 +446,45 @@ def test_billing_subscribe_and_webhook_activates(monkeypatch):
     c = TestClient(create_app(session_factory=sf))
     tok = _token(c)
     b = c.get("/api/billing", headers=_auth(tok)).json()
-    assert b["enabled"] and any(p["key"] == "pro" for p in b["plans"])
-    r = c.post("/api/billing/subscribe", json={"plan": "pro"}, headers=_auth(tok))
+    assert b["enabled"] and any(p["key"] == "pro" for p in b["catalogue"]["plans"])
+    r = c.post("/api/billing/subscribe", json={"plan": "pro", "addons": ["voice"]}, headers=_auth(tok))
     assert r.status_code == 200 and r.json()["checkout_url"] == "https://pay/sub"
 
+    import time
     tid = sf().query(models.Tenant).first().id
     body = json.dumps({"event": "payment.success", "data": {"reference": "SUB1", "amount": 15000,
-                       "metadata": {"tenant_id": tid, "plan": "pro", "kind": "subscription"}}})
-    ts = "123"
+                       "metadata": {"tenant_id": tid, "plan": "pro", "addons": ["voice"], "kind": "subscription"}}})
+    ts = str(int(time.time()))  # récent (anti-rejeu < 5 min)
     sig = hmac.new(b"whsec_op", f"{ts}.{body}".encode(), hashlib.sha256).hexdigest()
     wr = c.post("/webhook/geniuspay", content=body,
                 headers={"X-Webhook-Signature": sig, "X-Webhook-Timestamp": ts, "X-Webhook-Event": "payment.success", "Content-Type": "application/json"})
     assert wr.status_code == 200
     bb = c.get("/api/billing", headers=_auth(tok)).json()
-    assert bb["status"] == "active" and bb["plan"] == "pro"
+    assert bb["status"] == "active" and bb["plan"] == "pro" and "voice" in bb["addons"]
+    # idempotence : un rejeu ne casse rien
+    assert c.post("/webhook/geniuspay", content=body,
+                  headers={"X-Webhook-Signature": sig, "X-Webhook-Timestamp": ts, "X-Webhook-Event": "payment.success"}).json()["status"] == "already-processed"
     # signature invalide rejetée
     assert c.post("/webhook/geniuspay", content=body, headers={"X-Webhook-Signature": "bad", "X-Webhook-Timestamp": ts}).status_code == 401
+
+
+def test_feature_gating_ai_learn_by_plan():
+    fake = lambda t, f, convs: []
+    sf = _factory()
+    c = TestClient(create_app(session_factory=sf, ai_learn=fake))
+    tok = _token(c)
+    s = sf()
+    tid = s.query(models.Tenant).first().id
+    sub = s.get(models.Subscription, tid)
+    sub.status, sub.plan, sub.addons = "active", "essentiel", []
+    s.commit()
+    # Essentiel : suggestions IA non incluses -> 403
+    assert c.post("/api/ai/learn", headers=_auth(tok)).status_code == 403
+    # add-on "suggestions" -> débloque
+    s2 = sf()
+    s2.get(models.Subscription, tid).addons = ["suggestions"]
+    s2.commit()
+    assert c.post("/api/ai/learn", headers=_auth(tok)).status_code == 200
 
 
 def test_knowledge_upload_list_fiche_and_remove():

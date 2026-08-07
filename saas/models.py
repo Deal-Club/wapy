@@ -223,6 +223,7 @@ class Subscription(Base):
     __tablename__ = "subscriptions"
     tenant_id = Column(Integer, ForeignKey("tenants.id"), primary_key=True)
     plan = Column(String(40), default="")
+    addons = Column(JSON, default=list)  # add-ons souscrits (clés)
     status = Column(String(30), default="trial")  # trial | active | expired
     current_period_end = Column(DateTime)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
