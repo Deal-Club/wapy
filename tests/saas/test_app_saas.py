@@ -468,6 +468,53 @@ def test_billing_subscribe_and_webhook_activates(monkeypatch):
     assert c.post("/webhook/geniuspay", content=body, headers={"X-Webhook-Signature": "bad", "X-Webhook-Timestamp": ts}).status_code == 401
 
 
+def test_billing_upgrade_pays_difference_and_addon_pays_supplement(monkeypatch):
+    import hashlib
+    import hmac
+    import json
+    import time
+    from datetime import datetime, timedelta
+
+    from saas import geniuspay
+    monkeypatch.setenv("GENIUSPAY_API_KEY", "pk")
+    monkeypatch.setenv("GENIUSPAY_API_SECRET", "sk")
+    monkeypatch.setenv("GENIUSPAY_WEBHOOK_SECRET", "whsec_op")
+    cap = {}
+
+    def fake_create(cfg, amount, desc, cust, meta, **k):
+        cap["amount"], cap["meta"] = amount, meta
+        return {"reference": "R-" + meta["kind"], "url": "https://pay/x", "status": "pending"}
+
+    monkeypatch.setattr(geniuspay, "create_payment", fake_create)
+    sf = _factory()
+    c = TestClient(create_app(session_factory=sf))
+    tok = _token(c)
+    s = sf()
+    tid = s.query(models.Tenant).first().id
+    sub = s.get(models.Subscription, tid)
+    sub.status, sub.plan, sub.addons = "active", "pro", []
+    sub.current_period_end = datetime.utcnow() + timedelta(days=20)
+    s.commit()
+
+    def webhook(ref, meta):
+        body = json.dumps({"event": "payment.success", "data": {"reference": ref, "metadata": {**meta, "tenant_id": tid}}})
+        ts = str(int(time.time()))
+        sig = hmac.new(b"whsec_op", f"{ts}.{body}".encode(), hashlib.sha256).hexdigest()
+        return c.post("/webhook/geniuspay", content=body, headers={"X-Webhook-Signature": sig, "X-Webhook-Timestamp": ts})
+
+    # Upgrade Pro (25000) -> Business (60000) : ne paie QUE la différence (35000)
+    r = c.post("/api/billing/upgrade", json={"plan": "business"}, headers=_auth(tok))
+    assert r.status_code == 200 and cap["amount"] == 35000 and cap["meta"]["kind"] == "upgrade"
+    assert webhook("R-upgrade", {"plan": "business", "kind": "upgrade"}).status_code == 200
+    assert c.get("/api/billing", headers=_auth(tok)).json()["plan"] == "business"
+
+    # Ajout d'une option : ne paie QUE le supplément (5000), même période
+    r2 = c.post("/api/billing/addon", json={"addon": "conversations_1000"}, headers=_auth(tok))
+    assert r2.status_code == 200 and cap["amount"] == 5000 and cap["meta"]["kind"] == "addon"
+    assert webhook("R-addon", {"addon": "conversations_1000", "kind": "addon"}).status_code == 200
+    assert "conversations_1000" in c.get("/api/billing", headers=_auth(tok)).json()["addons"]
+
+
 def test_feature_gating_ai_learn_by_plan():
     fake = lambda t, f, convs: []
     sf = _factory()

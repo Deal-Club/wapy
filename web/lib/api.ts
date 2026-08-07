@@ -129,6 +129,18 @@ export const api = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ plan, addons }),
     }),
+  upgradePlan: (plan: string) =>
+    req("/api/billing/upgrade", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan }),
+    }),
+  addAddon: (addon: string) =>
+    req("/api/billing/addon", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ addon }),
+    }),
   staffVerifyStart: (number: string, dialcode: string) =>
     req("/api/staff/verify/start", {
       method: "POST",

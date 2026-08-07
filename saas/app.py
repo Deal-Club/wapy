@@ -97,6 +97,10 @@ class SubscribeIn(BaseModel):
     addons: list[str] = []
 
 
+class AddonIn(BaseModel):
+    addon: str
+
+
 # --- Helpers config ---
 def parse_workbook(data: bytes) -> dict:
     """Parse un .xlsx en config JSON flexible.
@@ -776,6 +780,57 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         s.commit()
         return {"checkout_url": res.get("url", ""), "amount": amount}
 
+    def _start_payment(tenant, s, amount, description, meta):
+        from saas import billing, geniuspay
+        if not billing.billing_enabled():
+            raise HTTPException(status_code=400, detail="Paiement non configuré par l'opérateur")
+        try:
+            res = geniuspay.create_payment(
+                billing.operator_cfg(), amount, description, {},
+                {**meta, "tenant_id": tenant.id},
+                success_url=f"{PUBLIC_URL}/dashboard?paid=1", error_url=f"{PUBLIC_URL}/dashboard",
+            )
+        except Exception:
+            raise HTTPException(status_code=502, detail="Impossible de créer le paiement (GeniusPay)")
+        s.add(models.Payment(
+            tenant_id=tenant.id, reference=res.get("reference", ""), amount=amount,
+            status="pending", description=description, checkout_url=res.get("url", ""),
+        ))
+        s.commit()
+        return {"checkout_url": res.get("url", ""), "amount": amount}
+
+    @app.post("/api/billing/upgrade")
+    def billing_upgrade(body: SubscribeIn, tenant=Depends(owner_tenant), s=Depends(db)):
+        from saas import billing
+        sub = s.get(models.Subscription, tenant.id)
+        if not sub or sub.status != "active":
+            raise HTTPException(status_code=400, detail="Aucun abonnement actif")
+        if body.plan not in billing.PLANS:
+            raise HTTPException(status_code=400, detail="Plan inconnu")
+        cur = billing.PLANS.get(sub.plan, {}).get("price", 0)
+        new = billing.PLANS[body.plan]["price"]
+        if new <= cur:
+            raise HTTPException(status_code=400, detail="Choisissez une formule supérieure")
+        diff = new - cur  # on ne paie que la différence
+        return _start_payment(tenant, s, diff, f"Passage à Wapy {billing.PLANS[body.plan]['label']}",
+                              {"plan": body.plan, "kind": "upgrade"})
+
+    @app.post("/api/billing/addon")
+    def billing_addon(body: AddonIn, tenant=Depends(owner_tenant), s=Depends(db)):
+        from saas import billing
+        sub = s.get(models.Subscription, tenant.id)
+        if not sub or sub.status != "active":
+            raise HTTPException(status_code=400, detail="Aucun abonnement actif")
+        ad = billing.ADDONS.get(body.addon)
+        if not ad:
+            raise HTTPException(status_code=400, detail="Option inconnue")
+        plan_feats = set(billing.PLANS.get(sub.plan, {}).get("features", []))
+        if (ad.get("feature") and ad["feature"] in plan_feats) or body.addon in (sub.addons or []):
+            raise HTTPException(status_code=400, detail="Option déjà incluse")
+        # On ne paie QUE le supplément (l'abonnement du plan est déjà réglé).
+        return _start_payment(tenant, s, ad["price"], f"Option Wapy : {ad['label']}",
+                              {"addon": body.addon, "kind": "addon"})
+
     # Webhook opérateur : GeniusPay notifie le paiement d'un abonnement -> activation.
     @app.post("/webhook/geniuspay")
     async def geniuspay_webhook(request: Request, s=Depends(db)):
@@ -800,23 +855,34 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         meta = data.get("metadata") or {}
         ref = data.get("reference", "")
         pay = s.query(models.Payment).filter_by(reference=ref).first() if ref else None
-        if event == "payment.success" and meta.get("kind") == "subscription":
-            # 3) Idempotence : ne pas ré-activer sur un webhook rejoué
+        kind = meta.get("kind")
+        if event == "payment.success" and kind in ("subscription", "upgrade", "addon"):
+            # 3) Idempotence : ne pas rejouer un webhook déjà traité
             if pay and pay.status == "completed":
                 return {"status": "already-processed"}
             tid = int(meta.get("tenant_id") or (pay.tenant_id if pay else 0) or 0)
-            plan = meta.get("plan", "")
-            addons = [a for a in (meta.get("addons") or []) if a in billing.ADDONS]
             tenant = s.get(models.Tenant, tid) if tid else None
-            if tenant and plan in billing.PLANS:
-                ent = billing.entitlements_for(plan, addons)
-                sub = s.get(models.Subscription, tid) or models.Subscription(tenant_id=tid)
-                if sub not in s:
-                    s.add(sub)
-                sub.plan, sub.addons, sub.status = plan, addons, "active"
-                sub.current_period_end = datetime.utcnow() + timedelta(days=billing.PERIOD_DAYS)
-                tenant.plan, tenant.status = plan, "active"
-                tenant.wapy_model = ent["model"] or tenant.wapy_model  # modèle selon le plan
+            sub = s.get(models.Subscription, tid) if tid else None
+            if tenant:
+                if kind == "subscription" and meta.get("plan") in billing.PLANS:
+                    plan = meta["plan"]
+                    addons = [a for a in (meta.get("addons") or []) if a in billing.ADDONS]
+                    if not sub:
+                        sub = models.Subscription(tenant_id=tid)
+                        s.add(sub)
+                    sub.plan, sub.addons, sub.status = plan, addons, "active"
+                    sub.current_period_end = datetime.utcnow() + timedelta(days=billing.PERIOD_DAYS)
+                    tenant.plan, tenant.status = plan, "active"
+                    tenant.wapy_model = billing.entitlements_for(plan, addons)["model"] or tenant.wapy_model
+                elif kind == "upgrade" and sub and meta.get("plan") in billing.PLANS:
+                    # Passage au plan supérieur : on garde la période et les options.
+                    sub.plan = meta["plan"]
+                    tenant.plan = meta["plan"]
+                    tenant.wapy_model = billing.entitlements_for(sub.plan, sub.addons or [])["model"] or tenant.wapy_model
+                elif kind == "addon" and sub and meta.get("addon") in billing.ADDONS:
+                    # Ajout d'une option : débloquée immédiatement, même période.
+                    if meta["addon"] not in (sub.addons or []):
+                        sub.addons = (sub.addons or []) + [meta["addon"]]
                 if pay:
                     pay.status = "completed"
                 s.commit()

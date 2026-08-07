@@ -124,40 +124,49 @@ function ConfigTab() {
 
 function BillingTab() {
   const [b, setB] = useState<any | null>(null);
+  const [busy, setBusy] = useState("");
+  const [msg, setMsg] = useState("");
+  // Sélection (souscription initiale uniquement)
   const [plan, setPlan] = useState("");
   const [addons, setAddons] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState("");
 
   useEffect(() => {
     api.getBilling().then((d) => {
       setB(d);
       setPlan(d.plan || d.catalogue?.plans?.[0]?.key || "");
-      setAddons(d.addons || []);
     }).catch(() => {});
   }, []);
 
   if (!b) return <p className="text-sm text-muted">Chargement…</p>;
   const cat = b.catalogue;
+  const fmt = (n: number) => n.toLocaleString("fr-FR");
   const featLabel = (f: string) => cat.features[f] || f;
   const statusLabel: Record<string, string> = { active: "Actif ✅", trial: "Essai gratuit", expired: "Expiré ⚠️" };
-  const selectedPlan = cat.plans.find((p: any) => p.key === plan);
-  const total = (selectedPlan?.price || 0) + addons.reduce((sum, k) => sum + (cat.addons.find((a: any) => a.key === k)?.price || 0), 0);
-  // Fonctionnalités déjà incluses par le plan choisi (add-on inutile).
-  const planFeatures: string[] = selectedPlan?.features || [];
+  const isActive = b.status === "active";
 
-  function toggleAddon(k: string) {
-    setAddons((xs) => (xs.includes(k) ? xs.filter((x) => x !== k) : [...xs, k]));
-  }
-  async function subscribe() {
-    setBusy(true); setMsg("");
+  async function go(fn: () => Promise<any>, key: string) {
+    setBusy(key); setMsg("");
     try {
-      const r = await api.subscribe(plan, addons);
+      const r = await fn();
       if (r.checkout_url) window.location.href = r.checkout_url;
       else setMsg("Lien de paiement indisponible.");
     } catch (e: any) { setMsg(e.message || "Échec"); }
-    finally { setBusy(false); }
+    finally { setBusy(""); }
   }
+
+  // --- Vue ABONNÉ ACTIF : upgrade (diff) + options à ajouter (supplément) ---
+  const currentPlan = cat.plans.find((p: any) => p.key === b.plan);
+  const currentPrice = currentPlan?.price || 0;
+  const upgrades = cat.plans.filter((p: any) => p.price > currentPrice);
+  const owned = new Set<string>(b.addons || []);
+  const planFeats = new Set<string>(currentPlan?.features || []);
+  const availableAddons = cat.addons.filter((a: any) => !owned.has(a.key) && !(a.feature && planFeats.has(a.feature)));
+
+  // --- Vue SOUSCRIPTION (essai/expiré) ---
+  const selectedPlan = cat.plans.find((p: any) => p.key === plan);
+  const selPlanFeats: string[] = selectedPlan?.features || [];
+  const total = (selectedPlan?.price || 0) + addons.reduce((sum, k) => sum + (cat.addons.find((a: any) => a.key === k)?.price || 0), 0);
+  const toggleAddon = (k: string) => setAddons((xs) => (xs.includes(k) ? xs.filter((x) => x !== k) : [...xs, k]));
 
   return (
     <div className="space-y-4">
@@ -165,7 +174,7 @@ function BillingTab() {
         <h3 className="font-display text-xl">Votre abonnement</h3>
         <p className="mt-1 text-sm">
           Statut : <b>{statusLabel[b.status] || b.status}</b>
-          {b.plan && <> · Formule : <b>{b.plan}</b></>}
+          {b.plan && <> · Formule : <b>{currentPlan?.label || b.plan}</b></>}
           {b.current_period_end && <> · Jusqu'au {b.current_period_end.slice(0, 10)}</>}
         </p>
         {b.status === "trial" && <p className="mt-1 text-sm text-muted">Essai gratuit de {cat.trial_days} jours, tout inclus. Choisissez une formule avant la fin pour ne pas être coupé.</p>}
@@ -177,14 +186,59 @@ function BillingTab() {
         {!b.enabled && <p className="mt-2 text-sm text-brand">Le paiement n'est pas encore activé par Wapy.</p>}
       </div>
 
-      {b.enabled && (
+      {b.enabled && isActive && (
+        <>
+          {upgrades.length > 0 && (
+            <div className="card space-y-3">
+              <h3 className="font-display text-xl">Passer à une formule supérieure</h3>
+              <p className="text-sm text-muted">Vous ne payez que la différence ; votre période en cours est conservée.</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {upgrades.map((p: any) => (
+                  <div key={p.key} className="flex items-center justify-between rounded-xl border border-line px-4 py-3">
+                    <div>
+                      <div className="font-medium">{p.label} <span className="text-sm text-muted">· {fmt(p.price)} {cat.currency}/mois</span></div>
+                      <div className="text-xs text-muted">Différence à payer : <b>{fmt(p.price - currentPrice)} {cat.currency}</b></div>
+                    </div>
+                    <button className="btn text-sm" onClick={() => go(() => api.upgradePlan(p.key), "up-" + p.key)} disabled={!!busy}>
+                      {busy === "up-" + p.key ? "…" : "Passer à " + p.label}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {availableAddons.length > 0 && (
+            <div className="card space-y-3">
+              <h3 className="font-display text-xl">Ajouter un service</h3>
+              <p className="text-sm text-muted">Vous ne payez que le supplément ; le service est activé immédiatement.</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {availableAddons.map((a: any) => (
+                  <div key={a.key} className="flex items-center justify-between rounded-xl border border-line px-3 py-2 text-sm">
+                    <span>{a.label} <span className="text-muted">· +{fmt(a.price)} {cat.currency}</span></span>
+                    <button className="chip" onClick={() => go(() => api.addAddon(a.key), "add-" + a.key)} disabled={!!busy}>
+                      {busy === "add-" + a.key ? "…" : "Ajouter"}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {upgrades.length === 0 && availableAddons.length === 0 && (
+            <div className="card text-sm text-muted">Vous bénéficiez déjà de la formule maximale et de toutes les options. 🎉</div>
+          )}
+        </>
+      )}
+
+      {b.enabled && !isActive && (
         <>
           <div className="grid gap-3 sm:grid-cols-3">
             {cat.plans.map((p: any) => (
               <button key={p.key} type="button" onClick={() => setPlan(p.key)}
                 className={`card flex flex-col text-left transition ${plan === p.key ? "ring-2 ring-brand" : "hover:border-brand/40"}`}>
                 <div className="font-display text-lg">{p.label}</div>
-                <div className="mt-1 font-display text-3xl text-brand">{p.price.toLocaleString("fr-FR")} <span className="text-base text-muted">{cat.currency}/mois</span></div>
+                <div className="mt-1 font-display text-3xl text-brand">{fmt(p.price)} <span className="text-base text-muted">{cat.currency}/mois</span></div>
                 <ul className="mt-2 space-y-0.5 text-xs text-muted">
                   {p.features.map((f: string) => <li key={f}>✓ {featLabel(f)}</li>)}
                   <li>✓ {p.limits.conversations ? `${p.limits.conversations} conversations/mois` : "Conversations illimitées"}</li>
@@ -198,14 +252,14 @@ function BillingTab() {
             <div className="label">Options à la carte</div>
             <div className="grid gap-2 sm:grid-cols-2">
               {cat.addons.map((a: any) => {
-                const included = a.feature && planFeatures.includes(a.feature);
+                const included = a.feature && selPlanFeats.includes(a.feature);
                 return (
                   <label key={a.key} className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm ${included ? "border-line bg-surface/40 opacity-60" : "border-line"}`}>
                     <span className="flex items-center gap-2">
                       <input type="checkbox" disabled={included} checked={included || addons.includes(a.key)} onChange={() => toggleAddon(a.key)} />
                       {a.label} {included && <span className="text-xs text-emerald-dark">· déjà inclus</span>}
                     </span>
-                    <span className="text-muted">+{a.price.toLocaleString("fr-FR")}</span>
+                    <span className="text-muted">+{fmt(a.price)}</span>
                   </label>
                 );
               })}
@@ -215,9 +269,11 @@ function BillingTab() {
           <div className="card flex items-center justify-between">
             <div>
               <div className="text-sm text-muted">Total mensuel</div>
-              <div className="font-display text-3xl text-brand">{total.toLocaleString("fr-FR")} <span className="text-base text-muted">{cat.currency}/mois</span></div>
+              <div className="font-display text-3xl text-brand">{fmt(total)} <span className="text-base text-muted">{cat.currency}/mois</span></div>
             </div>
-            <button className="btn" onClick={subscribe} disabled={busy || !plan}>{busy ? "…" : "S'abonner et payer"}</button>
+            <button className="btn" onClick={() => go(() => api.subscribe(plan, addons), "sub")} disabled={!!busy || !plan}>
+              {busy === "sub" ? "…" : "S'abonner et payer"}
+            </button>
           </div>
         </>
       )}
