@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, setToken } from "@/lib/api";
+import InstallPrompt from "@/components/InstallPrompt";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -29,6 +30,7 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-md">
+        <InstallPrompt />
         <div className="mb-6 text-center">
           <h1 className="text-3xl font-bold text-brand">Wapy</h1>
           <p className="mt-1 text-gray-600">Connexion</p>

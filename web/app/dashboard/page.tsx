@@ -6,6 +6,7 @@ import ConfigEditor, { Config, emptyConfig } from "@/components/ConfigEditor";
 import WhatsAppConnect from "@/components/WhatsAppConnect";
 import StaffAlertVerify from "@/components/StaffAlertVerify";
 import Suggestions from "@/components/Suggestions";
+import InstallPrompt from "@/components/InstallPrompt";
 
 type Tab = "conversations" | "records" | "config" | "suggestions" | "whatsapp" | "team" | "billing" | "usage";
 const ALL_TABS: { id: Tab; label: string; ownerOnly?: boolean }[] = [
@@ -50,6 +51,7 @@ export default function Dashboard() {
         </div>
       </div>
 
+      <InstallPrompt />
       <HealthBanner isOwner={isOwner} onGoWhatsApp={() => setTab("whatsapp")} />
 
       <div className="mb-6 flex gap-1 overflow-x-auto rounded-full border border-line bg-surface p-1">
