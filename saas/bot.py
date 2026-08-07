@@ -229,34 +229,8 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
             staff_recognize = list(set(staff_recognize) | {raw.chat_id})
             logger.info("Staff auto-reconnu (%s) : %s", "citation" if raw.quoted_id else "résolution @lid", raw.chat_id)
 
-    # Paiement en ligne : si l'établissement a configuré GeniusPay, on indique au
-    # cerveau que c'est dispo et on lui fournit de quoi générer un lien.
-    pay_link = None
-    pay_cfg = session.get(models.PaymentConfig, tenant.id)
-    if pay_cfg and pay_cfg.enabled and pay_cfg.api_key and pay_cfg.api_secret:
-        fiche_text += (
-            "\n\n## Paiement en ligne\nDisponible (Wave, Orange Money, MTN Money, carte). "
-            "Utilise action='pay' avec le montant total en XOF pour envoyer un lien de paiement."
-        )
-
-        def pay_link(amount, description, chat_id, _cfg=pay_cfg, _tid=tenant.id):
-            from saas import geniuspay
-            public = os.environ.get("PUBLIC_URL", "")
-            res = geniuspay.create_payment(
-                _cfg, amount, description, {},
-                {"tenant_id": _tid, "chat_id": chat_id},
-                success_url=public, error_url=public,
-            )
-            session.add(models.Payment(
-                tenant_id=_tid, chat_id=chat_id, reference=res.get("reference", ""),
-                amount=amount, description=(description or "")[:500],
-                status="pending", checkout_url=res.get("url", ""),
-            ))
-            session.commit()
-            return res.get("url", "")
-
     result = handle_message(
-        channel, store, brain, fiche_text, staff_send, staff_recognize, payload, pay_link=pay_link
+        channel, store, brain, fiche_text, staff_send, staff_recognize, payload
     )
     status = result.get("status")
     if status not in ("ignored", "duplicate"):

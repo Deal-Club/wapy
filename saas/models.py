@@ -218,8 +218,18 @@ class PaymentConfig(Base):
     enabled = Column(Boolean, default=False)
 
 
+class Subscription(Base):
+    """Abonnement d'un établissement à Wapy (facturation opérateur via GeniusPay)."""
+    __tablename__ = "subscriptions"
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), primary_key=True)
+    plan = Column(String(40), default="")
+    status = Column(String(30), default="trial")  # trial | active | expired
+    current_period_end = Column(DateTime)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 class Payment(Base):
-    """Paiement en ligne initié par le bot (lien GeniusPay) et suivi via webhook."""
+    """Paiement GeniusPay (abonnement) initié depuis le dashboard, suivi via webhook."""
     __tablename__ = "payments"
     id = Column(Integer, primary_key=True)
     tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
