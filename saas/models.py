@@ -42,6 +42,7 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     role = Column(String(50), default="owner")
+    must_change_password = Column(Boolean, default=False)  # mot de passe auto-généré à changer
     created_at = Column(DateTime, server_default=func.now())
 
 

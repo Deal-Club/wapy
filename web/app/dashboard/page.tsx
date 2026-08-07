@@ -22,12 +22,19 @@ export default function Dashboard() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("conversations");
   const [me, setMe] = useState<any | null>(null);
+  const [authed, setAuthed] = useState<boolean | null>(null);
   useEffect(() => {
-    if (!getToken()) { router.replace("/login"); return; }
+    if (!getToken()) { router.replace("/login"); setAuthed(false); return; }
+    setAuthed(true);
     api.me().then(setMe).catch(() => {});
   }, [router]);
 
-  const isOwner = !me || me.role === "owner" || me.is_admin;
+  // Évite le "flash" du dashboard avant la redirection / le chargement du profil.
+  if (authed !== true) return null;
+  if (me === null) return <main className="mx-auto max-w-5xl px-4 py-10 text-sm text-muted">Chargement…</main>;
+  if (me.must_change_password) return <ChangePasswordGate onDone={() => api.me().then(setMe)} />;
+
+  const isOwner = me.role === "owner" || me.is_admin;
   const tabs = ALL_TABS.filter((t) => !t.ownerOnly || isOwner);
 
   return (
@@ -345,21 +352,63 @@ function HealthBanner({ isOwner, onGoWhatsApp }: { isOwner: boolean; onGoWhatsAp
   );
 }
 
+function ChangePasswordGate({ onDone }: { onDone: () => void }) {
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState("");
+
+  async function submit() {
+    if (pw.length < 6) { setMsg("6 caractères minimum."); return; }
+    if (pw !== pw2) { setMsg("Les deux mots de passe ne correspondent pas."); return; }
+    setBusy(true); setMsg("");
+    try { await api.changePassword(pw); onDone(); }
+    catch (e: any) { setMsg(e.message || "Échec"); }
+    finally { setBusy(false); }
+  }
+
+  return (
+    <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-4">
+      <div className="card space-y-4">
+        <div>
+          <div className="font-display text-2xl font-semibold text-brand">Bienvenue 👋</div>
+          <p className="text-sm text-muted">Pour votre sécurité, choisissez un nouveau mot de passe avant de continuer.</p>
+        </div>
+        <div>
+          <div className="label">Nouveau mot de passe</div>
+          <input className="input w-full" type="password" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="••••••••" />
+        </div>
+        <div>
+          <div className="label">Confirmer</div>
+          <input className="input w-full" type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="••••••••" />
+        </div>
+        <button className="btn w-full" onClick={submit} disabled={busy}>{busy ? "…" : "Valider et continuer"}</button>
+        {msg && <p className="text-sm text-brand">{msg}</p>}
+      </div>
+    </main>
+  );
+}
+
+const TEAM_DIALCODES = ["229", "228", "225", "226", "227", "223", "221", "233", "234", "237", "33", "32", "1"];
+
 function TeamTab() {
   const [members, setMembers] = useState<any[]>([]);
   const [email, setEmail] = useState("");
-  const [pwd, setPwd] = useState("");
+  const [phone, setPhone] = useState("");
+  const [dialcode, setDialcode] = useState("229");
   const [msg, setMsg] = useState("");
+  const [result, setResult] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
 
   async function load() { try { setMembers((await api.getTeam()).members); } catch {} }
   useEffect(() => { load(); }, []);
 
   async function invite() {
-    setBusy(true); setMsg("");
+    setBusy(true); setMsg(""); setResult(null);
     try {
-      await api.inviteMember(email.trim(), pwd);
-      setEmail(""); setPwd(""); await load();
+      const r = await api.inviteMember(email.trim(), phone.trim(), dialcode);
+      setResult(r);
+      setEmail(""); setPhone(""); await load();
     } catch (e: any) { setMsg(e.message || "Échec"); }
     finally { setBusy(false); }
   }
@@ -391,13 +440,31 @@ function TeamTab() {
 
       <div className="border-t border-line pt-4">
         <div className="label">Inviter un agent</div>
+        <p className="mb-2 text-xs text-muted">
+          Un mot de passe provisoire est généré et envoyé sur le WhatsApp de l'agent.
+          Il devra le changer à sa première connexion.
+        </p>
         <div className="flex flex-wrap gap-2">
           <input className="input flex-1" type="email" placeholder="email@collegue.com" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input className="input flex-1" type="password" placeholder="mot de passe temporaire" value={pwd} onChange={(e) => setPwd(e.target.value)} />
-          <button className="btn" onClick={invite} disabled={busy || !email.trim() || pwd.length < 6}>
+          <select className="input max-w-[110px]" value={dialcode} onChange={(e) => setDialcode(e.target.value)}>
+            {TEAM_DIALCODES.map((d) => <option key={d} value={d}>+{d}</option>)}
+          </select>
+          <input className="input flex-1" inputMode="tel" placeholder="numéro WhatsApp de l'agent" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <button className="btn" onClick={invite} disabled={busy || !email.trim()}>
             {busy ? "…" : "Inviter"}
           </button>
         </div>
+        {result && (
+          <div className="mt-3 rounded-xl border border-emerald/40 bg-emerald-soft/40 px-3 py-2 text-sm">
+            Agent créé.{" "}
+            {result.sent
+              ? "Ses identifiants ont été envoyés sur son WhatsApp. ✅"
+              : "⚠️ Envoi WhatsApp impossible (numéro absent ou WhatsApp non connecté)."}
+            <div className="mt-1 text-xs text-muted">
+              Email : <b>{result.email}</b> · Mot de passe provisoire : <b>{result.password}</b> (à lui transmettre s'il n'a rien reçu)
+            </div>
+          </div>
+        )}
         {msg && <p className="mt-2 text-sm text-brand">{msg}</p>}
       </div>
     </div>

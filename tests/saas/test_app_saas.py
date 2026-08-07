@@ -265,19 +265,42 @@ def test_conversations_usage_and_handoff_web():
     assert c.post("/api/handoff/close", json={"chat_id": "cl@c.us"}, headers=_auth(tok)).json()["status"] == "closed"
 
 
-def test_me_team_invite_and_agent_gating():
+def test_me_team_invite_password_change_and_gating():
     c = TestClient(create_app(session_factory=_factory()))
     tok = _token(c)  # owner a@b.com
     me = c.get("/api/me", headers=_auth(tok)).json()
     assert me["role"] == "owner" and me["is_admin"] is False
-    r = c.post("/api/team/invite", json={"email": "agent@b.com", "password": "secret123"}, headers=_auth(tok))
+    r = c.post("/api/team/invite", json={"email": "agent@b.com"}, headers=_auth(tok))
     assert r.status_code == 200 and r.json()["role"] == "agent"
-    atok = c.post("/auth/login", json={"email": "agent@b.com", "password": "secret123"}).json()["token"]
-    assert c.get("/api/me", headers=_auth(atok)).json()["role"] == "agent"
-    # agent : peut lire les conversations, PAS configurer ni inviter
+    pw = r.json()["password"]  # généré, à transmettre / envoyé par WhatsApp
+    atok = c.post("/auth/login", json={"email": "agent@b.com", "password": pw}).json()["token"]
+    ame = c.get("/api/me", headers=_auth(atok)).json()
+    assert ame["role"] == "agent" and ame["must_change_password"] is True
+    # 1re connexion : changement de mot de passe obligatoire
+    assert c.post("/api/change-password", json={"new_password": "nouveaupass"}, headers=_auth(atok)).status_code == 200
+    assert c.get("/api/me", headers=_auth(atok)).json()["must_change_password"] is False
+    # agent : lit les conversations, PAS configurer ni inviter
     assert c.get("/api/conversations", headers=_auth(atok)).status_code == 200
     assert c.put("/api/config", json={"sector": "X"}, headers=_auth(atok)).status_code == 403
-    assert c.post("/api/team/invite", json={"email": "x@b.com", "password": "secret123"}, headers=_auth(atok)).status_code == 403
+    assert c.post("/api/team/invite", json={"email": "x@b.com"}, headers=_auth(atok)).status_code == 403
+
+
+def test_invite_sends_credentials_over_whatsapp():
+    sent = []
+
+    class _InvCh:
+        def send_text(self, chat_id, text):
+            sent.append((chat_id, text))
+
+        def resolve_chat_id(self, ph):
+            return ph + "@c.us"
+
+    c = TestClient(create_app(session_factory=_factory(), channel_factory=lambda t: _InvCh()))
+    tok = _token(c)
+    r = c.post("/api/team/invite", json={"email": "ag@b.com", "phone": "61040461", "dialcode": "229"}, headers=_auth(tok))
+    assert r.status_code == 200 and r.json()["sent"] is True
+    assert sent and sent[0][0] == "22961040461@c.us"
+    assert "provisoire" in sent[0][1] and r.json()["password"] in sent[0][1]
 
 
 def test_admin_endpoints_require_admin_email(monkeypatch):

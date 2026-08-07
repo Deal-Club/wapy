@@ -15,6 +15,7 @@ export default function Admin() {
   const [incidents, setIncidents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
+  const [authed, setAuthed] = useState<boolean | null>(null);
 
   async function load() {
     try {
@@ -27,9 +28,12 @@ export default function Admin() {
     }
   }
   useEffect(() => {
-    if (!getToken()) { router.replace("/login"); return; }
+    if (!getToken()) { router.replace("/login"); setAuthed(false); return; }
+    setAuthed(true);
     load();
   }, [router]);
+
+  if (authed !== true) return null;
 
   async function patch(id: number, key: string, value: string) {
     setTenants((xs) => xs.map((t) => (t.id === id ? { ...t, [key === "wapy_model" ? "model" : key]: value } : t)));

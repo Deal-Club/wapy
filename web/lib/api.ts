@@ -42,12 +42,18 @@ export const api = {
       body: JSON.stringify({ email, password }),
     }),
   me: () => req("/api/me"),
+  changePassword: (new_password: string) =>
+    req("/api/change-password", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ new_password }),
+    }),
   getTeam: () => req("/api/team"),
-  inviteMember: (email: string, password: string) =>
+  inviteMember: (email: string, phone: string, dialcode: string) =>
     req("/api/team/invite", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, phone, dialcode }),
     }),
   removeMember: (id: number) => req(`/api/team/${id}`, { method: "DELETE" }),
   adminTenants: () => req("/api/admin/tenants"),

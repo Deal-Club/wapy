@@ -17,6 +17,7 @@ from pydantic import BaseModel, EmailStr
 
 MEDIA_DIR = os.environ.get("MEDIA_DIR", "media")
 OTP_TTL = timedelta(minutes=15)
+PUBLIC_URL = os.environ.get("PUBLIC_URL", "https://wapy.51.210.108.173.sslip.io")
 
 from saas.db import SessionLocal, init_db
 from saas import auth, config_repo, models, phone, sectors, usage, wa
@@ -77,7 +78,12 @@ class StaffExcludeIn(BaseModel):
 
 class InviteIn(BaseModel):
     email: EmailStr
-    password: str
+    phone: str = ""
+    dialcode: str = ""
+
+
+class ChangePasswordIn(BaseModel):
+    new_password: str
 
 
 class AdminTenantIn(BaseModel):
@@ -219,8 +225,16 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             "email": user.email,
             "role": user.role,
             "is_admin": auth.is_admin(user.email),
+            "must_change_password": bool(user.must_change_password),
             "tenant": {"id": tenant.id, "name": tenant.name} if tenant else None,
         }
+
+    @app.post("/api/change-password")
+    def change_password(body: ChangePasswordIn, user=Depends(current_user), s=Depends(db)):
+        if len(body.new_password or "") < 6:
+            raise HTTPException(status_code=400, detail="Mot de passe trop court (6 caractères minimum)")
+        auth.set_password(s, user, body.new_password)
+        return {"status": "changed"}
 
     # --- Équipe (owner invite des agents) ---
     @app.get("/api/team")
@@ -230,11 +244,39 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
 
     @app.post("/api/team/invite")
     def invite_member(body: InviteIn, user=Depends(require_owner), s=Depends(db)):
+        tenant = s.get(models.Tenant, user.tenant_id)
+        pw = auth.gen_password()
         try:
-            agent = auth.create_agent(s, user.tenant_id, body.email, body.password)
+            agent = auth.create_agent(s, user.tenant_id, body.email, pw, must_change=True)
         except auth.SignupError as e:
             raise HTTPException(status_code=400, detail=str(e))
-        return {"id": agent.id, "email": agent.email, "role": agent.role}
+
+        # Envoi des identifiants sur le WhatsApp de l'invité (via la session du tenant).
+        sent = False
+        if body.phone.strip():
+            channel = (channel_factory or wam.channel_for)(tenant)
+            jid = None
+            for num in phone.candidate_numbers(body.phone, body.dialcode):
+                if hasattr(channel, "resolve_chat_id"):
+                    jid = channel.resolve_chat_id(num)
+                jid = jid or (num + "@c.us")
+                if jid:
+                    break
+            msg = (
+                f"Bonjour 👋 Vous avez été ajouté(e) comme agent sur Wapy pour "
+                f"« {tenant.name} ».\n\n"
+                f"Connexion : {PUBLIC_URL}/login\n"
+                f"Email : {agent.email}\n"
+                f"Mot de passe provisoire : {pw}\n\n"
+                "Vous devrez le changer à votre première connexion. 🔒"
+            )
+            try:
+                channel.send_text(jid, msg)
+                sent = True
+            except Exception:
+                sent = False
+        # Le mot de passe est renvoyé au propriétaire en secours (si l'envoi WhatsApp échoue).
+        return {"id": agent.id, "email": agent.email, "role": agent.role, "password": pw, "sent": sent}
 
     @app.delete("/api/team/{uid}")
     def remove_member(uid: int, user=Depends(require_owner), s=Depends(db)):
