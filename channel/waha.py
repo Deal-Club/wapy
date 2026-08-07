@@ -3,6 +3,8 @@
 Note : la forme exacte du webhook et des endpoints peut varier selon la version
 de WAHA (NOWEB/WEBJS). Vérifier contre la version déployée.
 """
+import re
+
 import requests
 
 from channel.base import WhatsAppChannel, IncomingMessage
@@ -23,19 +25,23 @@ class WahaProvider(WhatsAppChannel):
         body = p.get("body", "")
         data = p.get("_data") or {}
         ctx = data.get("contextInfo") or {}
-        media = p.get("media") or {}
-        media_url = media.get("url", "") if isinstance(media, dict) else ""
-        has_media = bool(media_url or p.get("hasMedia") or (p.get("type") and p.get("type") not in ("chat", "text")))
+        media = p.get("media") if isinstance(p.get("media"), dict) else {}
+        media_url = media.get("url", "") or ""
+        # WAHA renvoie l'URL avec SON host (localhost:3000) ; on la réécrit vers le host
+        # interne (waha:3000) pour que l'API puisse la télécharger.
+        if media_url:
+            media_url = re.sub(r"^https?://[^/]+", self.base_url, media_url)
+        media_type = (media.get("mimetype", "") or "").split(";")[0].strip().lower()
+        has_media = bool(media_url or p.get("hasMedia") or media_type)
         if not chat_id:
             return None
         if not body and not has_media:
             return None
         if not body and has_media:
-            # Message média sans légende : on ne l'ignore plus, on qualifie le type.
-            mtype = p.get("type", "")
-            if mtype in ("audio", "ptt", "voice"):
+            # Média sans légende : on qualifie via le mimetype (fiable ; `type` est souvent None).
+            if media_type.startswith("audio/"):
                 body = "[Le client a envoyé une note vocale.]"
-            elif mtype == "image":
+            elif media_type.startswith("image/"):
                 body = "[Le client a envoyé une image, probablement un justificatif de paiement.]"
             else:
                 body = "[Le client a envoyé une pièce jointe.]"
@@ -54,6 +60,7 @@ class WahaProvider(WhatsAppChannel):
             id=str(p.get("id", "")),
             sender_name=str(name),
             media_url=str(media_url or ""),
+            media_type=media_type,
             quoted_id=str(quoted or ""),
         )
 

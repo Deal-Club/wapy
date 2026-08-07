@@ -13,6 +13,7 @@ class IncomingMessage:
     id: str = ""  # identifiant WAHA du message (pour l'idempotence)
     sender_name: str = ""  # pushName WhatsApp (affichage lisible d'un @lid)
     media_url: str = ""  # URL de la pièce jointe (image/doc), ex. justificatif de paiement
+    media_type: str = ""  # mimetype de la pièce jointe (ex. audio/ogg, image/jpeg)
     quoted_id: str = ""  # id du message cité (réponse WhatsApp) -> cible du relais staff
 
 

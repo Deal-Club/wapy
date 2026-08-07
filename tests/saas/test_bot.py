@@ -17,7 +17,8 @@ class _Ch:
         cid = p["from"]
         return IncomingMessage(
             cid, p.get("body", ""), p.get("fromMe", False), cid.endswith("@g.us"),
-            p.get("id", ""), media_url=p.get("media_url", ""), quoted_id=p.get("replyTo", ""),
+            p.get("id", ""), media_url=p.get("media_url", ""),
+            media_type=p.get("media_type", ""), quoted_id=p.get("replyTo", ""),
         )
 
     def send_text(self, chat_id, text):
@@ -246,6 +247,7 @@ def test_vision_injects_analysis_then_records_and_forwards():
     vision = lambda b, mt: "Capture MTN MoMo : 5000 FCFA, réf ABC123, de 22990000000"
     m = _msg(body="", mid="pay1")
     m["payload"]["media_url"] = "http://waha/f.jpg"
+    m["payload"]["media_type"] = "image/jpeg"
     r = process_incoming(s, ch, brain, tenant, m, vision_analyze=vision)
     assert r["status"] == "recorded"
     # le cerveau a reçu l'analyse de l'image dans le texte
@@ -291,6 +293,7 @@ def test_voice_note_transcribed_reaches_brain():
     brain = _Brain(Decision("reply", "Nous ouvrons à 9h.", "ok"))
     m = _msg(body="", mid="v1")
     m["payload"]["media_url"] = "http://waha/a.ogg"
+    m["payload"]["media_type"] = "audio/ogg"
     process_incoming(s, ch, brain, tenant, m, transcribe=lambda d, mt: "Vous ouvrez à quelle heure ?")
     assert "quelle heure" in brain.last  # le bot répond au CONTENU du vocal
 
@@ -303,6 +306,7 @@ def test_voice_note_without_transcription_is_voice_not_document():
     brain = _Brain(Decision("reply", "Pouvez-vous écrire ?", "ok"))
     m = _msg(body="", mid="v2")
     m["payload"]["media_url"] = "http://waha/a.ogg"
+    m["payload"]["media_type"] = "audio/ogg"
     process_incoming(s, ch, brain, tenant, m, transcribe=None)
     assert "note vocale" in brain.last and "pièce jointe" not in brain.last
 

@@ -149,26 +149,31 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
     if hasattr(channel, "fetch_media"):
         raw = channel.parse_incoming(payload)
         if raw and getattr(raw, "media_url", ""):
-            media = channel.fetch_media(raw.media_url)
-            if media:
-                data, mime = media[0], (media[1] or "")
-                p = payload.setdefault("payload", {})
-                if mime.startswith("image/") and vision_analyze:
+            mtype = (getattr(raw, "media_type", "") or "").lower()
+            p = payload.setdefault("payload", {})
+            if mtype.startswith("image/") and vision_analyze:
+                media = channel.fetch_media(raw.media_url)
+                if media:
                     try:
-                        desc = vision_analyze(data, mime)
+                        desc = vision_analyze(media[0], media[1] or mtype)
                     except Exception:
                         desc = ""
                     if desc:
                         p["body"] = ((p.get("body") or "") + f"\n[Image reçue, analyse : {desc}]").strip()
-                elif mime.startswith("audio/"):
-                    txt = ""
-                    if transcribe:
-                        try:
-                            txt = transcribe(data, mime)
-                        except Exception:
-                            txt = ""
-                    # Transcrit -> le bot répond au contenu ; sinon -> note vocale (il demande d'écrire).
-                    p["body"] = txt.strip() if txt and txt.strip() else "[Le client a envoyé une note vocale.]"
+            elif mtype.startswith("audio/"):
+                media = channel.fetch_media(raw.media_url)
+                if not media:
+                    logger.warning("Vocal : téléchargement média échoué (%s)", raw.media_url)
+                txt = ""
+                if media and transcribe:
+                    try:
+                        txt = transcribe(media[0], media[1] or mtype)
+                    except Exception as e:
+                        logger.error("Transcription échouée : %s", e)
+                if txt.strip():
+                    logger.info("Vocal transcrit (%d car) : %s", len(txt), txt[:80])
+                # Transcrit -> le bot répond au contenu ; sinon -> note vocale (il demande d'écrire).
+                p["body"] = txt.strip() if txt and txt.strip() else "[Le client a envoyé une note vocale.]"
 
     store = DbStore(session, tenant.id)
     fiche_text = build_fiche_text(session, tenant.id)

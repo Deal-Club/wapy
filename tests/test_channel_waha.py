@@ -37,16 +37,19 @@ def test_parse_incoming_ignores_empty_body():
     assert _provider().parse_incoming(payload) is None
 
 
-def test_parse_incoming_media_without_caption_not_ignored():
+def test_parse_incoming_media_classifies_by_mimetype_and_rewrites_host():
     payload = {
         "event": "message",
-        "payload": {"from": "c@c.us", "fromMe": False, "body": "", "type": "image",
-                    "media": {"url": "http://waha/f.jpg"}, "id": "m1"},
+        "payload": {"from": "c@c.us", "fromMe": False, "body": "", "hasMedia": True,
+                    "media": {"url": "http://localhost:3000/api/files/x.oga", "mimetype": "audio/ogg; codecs=opus"},
+                    "id": "m1"},
     }
-    msg = _provider().parse_incoming(payload)
+    msg = _provider().parse_incoming(payload)  # base_url = http://waha:3000
     assert msg is not None
-    assert msg.media_url == "http://waha/f.jpg"
-    assert msg.text  # placeholder non vide -> le bot peut réagir
+    # host réécrit vers le host interne (WAHA renvoie localhost)
+    assert msg.media_url == "http://waha:3000/api/files/x.oga"
+    assert msg.media_type == "audio/ogg"
+    assert "note vocale" in msg.text  # classé par mimetype, pas "pièce jointe"
 
 
 def test_parse_incoming_reads_quoted_id():
