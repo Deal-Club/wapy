@@ -134,7 +134,7 @@ def parse_workbook(data: bytes) -> dict:
     return {"infos": infos, "tables": tables, "faq": faq, "consignes": []}
 
 
-def create_app(session_factory=None, channel_factory=None, brain=None, wa_module=None, ai_generate=None, ai_learn=None, vision_analyze=None, init=False):
+def create_app(session_factory=None, channel_factory=None, brain=None, wa_module=None, ai_generate=None, ai_learn=None, vision_analyze=None, transcribe=None, init=False):
     app = FastAPI(title="Wapy Platform")
     sf = session_factory or SessionLocal
     wam = wa_module or wa
@@ -799,6 +799,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         channel = (channel_factory or wam.channel_for)(tenant)
         br = brain
         vision_fn = vision_analyze
+        transcribe_fn = transcribe
         if br is None:
             import anthropic
             from brain.brain import Brain
@@ -810,7 +811,10 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
 
                 def vision_fn(image_bytes, media_type, _c=client, _m=tenant.wapy_model):
                     return analyze_image(_c, _m, image_bytes, media_type)
-        return process_incoming(s, channel, br, tenant, payload, vision_analyze=vision_fn)
+            if transcribe_fn is None:
+                from saas.transcribe import transcribe_audio
+                transcribe_fn = transcribe_audio
+        return process_incoming(s, channel, br, tenant, payload, vision_analyze=vision_fn, transcribe=transcribe_fn)
 
     return app
 

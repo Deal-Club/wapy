@@ -278,6 +278,35 @@ def test_staff_auto_recognized_when_quoting_alert():
     assert "resp@lid" in (tenant.staff_inbound_ids or "")
 
 
+class _AudioCh(_Ch):
+    def fetch_media(self, url):
+        return (b"oggbytes", "audio/ogg; codecs=opus")
+
+
+def test_voice_note_transcribed_reaches_brain():
+    s = _session()
+    _, tenant = auth.signup(s, "a@b.com", "x", "T")
+    s.commit()
+    ch = _AudioCh()
+    brain = _Brain(Decision("reply", "Nous ouvrons à 9h.", "ok"))
+    m = _msg(body="", mid="v1")
+    m["payload"]["media_url"] = "http://waha/a.ogg"
+    process_incoming(s, ch, brain, tenant, m, transcribe=lambda d, mt: "Vous ouvrez à quelle heure ?")
+    assert "quelle heure" in brain.last  # le bot répond au CONTENU du vocal
+
+
+def test_voice_note_without_transcription_is_voice_not_document():
+    s = _session()
+    _, tenant = auth.signup(s, "a@b.com", "x", "T")
+    s.commit()
+    ch = _AudioCh()
+    brain = _Brain(Decision("reply", "Pouvez-vous écrire ?", "ok"))
+    m = _msg(body="", mid="v2")
+    m["payload"]["media_url"] = "http://waha/a.ogg"
+    process_incoming(s, ch, brain, tenant, m, transcribe=None)
+    assert "note vocale" in brain.last and "pièce jointe" not in brain.last
+
+
 def test_process_incoming_end_to_end_db():
     s = _session()
     _, tenant = auth.signup(s, "a@b.com", "x", "Chez Test")
