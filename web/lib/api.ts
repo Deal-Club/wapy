@@ -124,6 +124,9 @@ export const api = {
   getRecords: () => req("/api/records"),
   getBookings: () => req("/api/bookings"),
   cancelBooking: (id: number) => req(`/api/bookings/${id}/cancel`, { method: "POST" }),
+  googleStatus: () => req("/api/google/status"),
+  googleConnect: () => req("/api/google/connect", { method: "POST" }),
+  googleDisconnect: () => req("/api/google/disconnect", { method: "POST" }),
   getBilling: () => req("/api/billing"),
   subscribe: (plan: string, addons: string[]) =>
     req("/api/billing/subscribe", {

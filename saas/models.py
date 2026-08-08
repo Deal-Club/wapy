@@ -236,6 +236,20 @@ class Booking(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class GoogleAuth(Base):
+    """Connexion Google Calendar d'un établissement (OAuth, un refresh_token / tenant).
+
+    Modèle « option B » : chaque établissement autorise SON propre agenda. Aucun
+    secret opérateur ici — uniquement le refresh_token de l'établissement.
+    """
+    __tablename__ = "google_auth"
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), primary_key=True)
+    refresh_token = Column(Text, default="")
+    calendar_id = Column(String(255), default="primary")
+    email = Column(String(255), default="")   # id du calendrier principal (= e-mail), pour affichage
+    connected_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Subscription(Base):
     """Abonnement d'un établissement à Wapy (facturation opérateur via GeniusPay)."""
     __tablename__ = "subscriptions"

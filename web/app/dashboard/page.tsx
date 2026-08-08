@@ -53,6 +53,8 @@ export default function Dashboard() {
     setAuthed(true);
     api.me().then(setMe).catch(() => {});
     seenRecordsRef.current = Number(localStorage.getItem("wapy_seen_records") || "0");
+    // Retour du flux OAuth Google : ouvrir directement la configuration.
+    if (new URLSearchParams(window.location.search).get("tab") === "config") setTab("config");
   }, [router]);
 
   // Notifications : escalades (attention client) + nouvelles entrées Carnet.
@@ -307,9 +309,66 @@ function BookingConfig() {
         <button className="chip mt-2 text-sm" onClick={() => setSvc([...b.services, { name: "", duration: b.slot_min, price: "" }])}>+ Ajouter une prestation</button>
       </div>
 
+      <GoogleCalendarCard />
+
       <div className="flex items-center justify-end gap-3 border-t border-line pt-3">
         {saved && <span className="text-sm text-emerald-dark">✓ Enregistré</span>}
         <button className="btn" onClick={save}>Enregistrer les RDV</button>
+      </div>
+    </div>
+  );
+}
+
+function GoogleCalendarCard() {
+  const [st, setSt] = useState<any | null>(null);
+  const [busy, setBusy] = useState(false);
+  function load() { api.googleStatus().then(setSt).catch(() => setSt({ available: false })); }
+  useEffect(() => {
+    load();
+    // Retour du flux OAuth : ?gcal=ok|error|noconsent
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("gcal")) {
+      const map: any = { ok: "Google Agenda connecté ✅", error: "Échec de la connexion Google, réessayez.", noconsent: "Connexion déjà autorisée — réessayez en révoquant l'accès dans votre compte Google." };
+      alert(map[p.get("gcal")!] || "");
+      p.delete("gcal"); p.delete("tab");
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, []);
+
+  if (!st) return null;
+  if (!st.available) {
+    return (
+      <div className="rounded-lg border border-line bg-paper/50 p-3 text-sm text-muted">
+        🗓️ Synchro Google Agenda bientôt disponible.
+      </div>
+    );
+  }
+
+  async function connect() {
+    setBusy(true);
+    try { const r = await api.googleConnect(); window.location.href = r.url; }
+    catch { alert("Impossible de démarrer la connexion Google."); setBusy(false); }
+  }
+  async function disconnect() {
+    if (!confirm("Déconnecter votre Google Agenda ? Les prochains RDV ne s'y ajouteront plus.")) return;
+    setBusy(true);
+    try { await api.googleDisconnect(); load(); } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="rounded-lg border border-line bg-paper/50 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <div className="text-sm font-medium">Google Agenda</div>
+          <div className="text-xs text-muted">
+            {st.connected
+              ? <>Connecté{st.email ? ` — ${st.email}` : ""}. Chaque RDV s'ajoute à votre agenda.</>
+              : "Connectez votre agenda : chaque RDV pris par le bot s'y ajoute automatiquement."}
+          </div>
+        </div>
+        {st.connected
+          ? <button className="btn-ghost text-sm" onClick={disconnect} disabled={busy}>Déconnecter</button>
+          : <button className="btn text-sm" onClick={connect} disabled={busy}>{busy ? "…" : "Connecter mon Google Agenda"}</button>}
       </div>
     </div>
   );

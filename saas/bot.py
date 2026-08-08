@@ -290,11 +290,27 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
                     alt = booking.free_slots(_b, [booking.to_local(_b, b.start) for b in ups2], max_slots=4)
                     altmsg = " ; ".join(booking.human(a) for a in alt) or "aucune pour le moment"
                     return (False, f"Ce créneau vient d'être pris. Autres disponibilités : {altmsg}.")
-                session.add(models.Booking(
+                bk_row = models.Booking(
                     tenant_id=tenant.id, chat_id=chat_id, customer_name=name or "",
                     service=service or "Rendez-vous", start=start_utc,
-                    duration_min=booking.service_duration(_b, service), status="booked"))
+                    duration_min=booking.service_duration(_b, service), status="booked")
+                session.add(bk_row)
                 session.commit()
+                # Miroir Google Calendar (best-effort : ne bloque jamais la réservation).
+                try:
+                    from saas import gcal
+                    ga = session.get(models.GoogleAuth, tenant.id)
+                    if ga and ga.refresh_token and gcal.enabled():
+                        eid = gcal.create_event(
+                            ga.refresh_token, ga.calendar_id,
+                            f"{service or 'Rendez-vous'} — {name or chat_id}",
+                            start_utc, booking.service_duration(_b, service),
+                            description=f"Client : {name or '—'}\nWhatsApp : {chat_id}")
+                        if eid:
+                            bk_row.gcal_event_id = eid
+                            session.commit()
+                except Exception:
+                    logger.exception("Synchro Google Calendar échouée (RDV tenant %s)", tenant.id)
                 return (True, f"C'est confirmé : {service or 'votre rendez-vous'} le {booking.human(local_dt)}. À très bientôt ! 🗓️")
 
     result = handle_message(

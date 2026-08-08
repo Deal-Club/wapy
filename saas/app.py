@@ -4,6 +4,7 @@ P1 : auth + webhook multi-tenant.
 P2 : endpoints d'onboarding (config, modèle Excel, import xlsx, WhatsApp connect/qr/status).
 """
 import io
+import logging
 import os
 import random
 import sys
@@ -11,13 +12,14 @@ import uuid
 from datetime import datetime, timedelta
 
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, UploadFile, File
-from fastapi.responses import Response, StreamingResponse
+from fastapi.responses import RedirectResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 
 MEDIA_DIR = os.environ.get("MEDIA_DIR", "media")
 OTP_TTL = timedelta(minutes=15)
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "https://wapy.51.210.108.173.sslip.io")
+logger = logging.getLogger("wapy.saas")
 
 from saas.db import SessionLocal, init_db
 from saas import auth, config_repo, models, phone, sectors, usage, wa
@@ -921,8 +923,75 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         if not b or b.tenant_id != tenant.id:
             raise HTTPException(status_code=404, detail="Rendez-vous introuvable")
         b.status = "cancelled"
+        # Miroir Google Calendar : retirer l'événement (best-effort).
+        if b.gcal_event_id:
+            try:
+                from saas import gcal
+                ga = s.get(models.GoogleAuth, tenant.id)
+                if ga and ga.refresh_token and gcal.enabled():
+                    gcal.delete_event(ga.refresh_token, ga.calendar_id, b.gcal_event_id)
+            except Exception:
+                logger.exception("Suppression événement Google Calendar échouée (RDV %s)", bid)
         s.commit()
         return {"status": "cancelled"}
+
+    # --- Synchro Google Calendar (OAuth par établissement, option B) ---
+    @app.get("/api/google/status")
+    def google_status(tenant=Depends(current_tenant), s=Depends(db)):
+        from saas import gcal
+        ga = s.get(models.GoogleAuth, tenant.id)
+        return {
+            "available": gcal.enabled(),
+            "connected": bool(ga and ga.refresh_token),
+            "email": ga.email if ga else "",
+        }
+
+    @app.post("/api/google/connect")
+    def google_connect(tenant=Depends(owner_tenant), user=Depends(current_user)):
+        from saas import gcal
+        if not gcal.enabled():
+            raise HTTPException(status_code=503, detail="Synchro Google non configurée (opérateur)")
+        state = auth.sign_state(tenant.id, user.id, "gcal")
+        return {"url": gcal.auth_url(state)}
+
+    @app.get("/api/google/callback")
+    def google_callback(code: str = "", state: str = "", s=Depends(db)):
+        from saas import gcal
+        dest = f"{PUBLIC_URL}/dashboard?tab=config"
+        try:
+            data = auth.verify_state(state, "gcal")
+            tokens = gcal.exchange_code(code)
+            refresh = tokens.get("refresh_token", "")
+            if not refresh:
+                # Google n'a pas renvoyé de refresh_token (déjà consenti sans prompt).
+                return RedirectResponse(f"{dest}&gcal=noconsent", status_code=302)
+            email = ""
+            try:
+                email = gcal.primary_calendar(tokens.get("access_token", "")).get("id", "")
+            except Exception:
+                pass
+            ga = s.get(models.GoogleAuth, data["tid"])
+            if not ga:
+                ga = models.GoogleAuth(tenant_id=data["tid"])
+                s.add(ga)
+            ga.refresh_token = refresh
+            ga.calendar_id = "primary"
+            ga.email = email
+            s.commit()
+            return RedirectResponse(f"{dest}&gcal=ok", status_code=302)
+        except Exception:
+            logger.exception("Échec du callback OAuth Google Calendar")
+            return RedirectResponse(f"{dest}&gcal=error", status_code=302)
+
+    @app.post("/api/google/disconnect")
+    def google_disconnect(tenant=Depends(owner_tenant), s=Depends(db)):
+        from saas import gcal
+        ga = s.get(models.GoogleAuth, tenant.id)
+        if ga:
+            gcal.revoke(ga.refresh_token)
+            s.delete(ga)
+            s.commit()
+        return {"status": "disconnected"}
 
     # --- Carnet : réservations/commandes/paiements conclus par le bot ---
     @app.get("/api/records")

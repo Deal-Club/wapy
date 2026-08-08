@@ -38,6 +38,25 @@ def decode_token(token: str) -> dict:
     return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
 
 
+STATE_TTL = 600  # 10 min : durée d'un aller-retour OAuth
+
+
+def sign_state(tenant_id: int, user_id: int, purpose: str, now: int | None = None) -> str:
+    """Jeton court signé transporté dans un flux OAuth (paramètre `state`)."""
+    now = now or int(time.time())
+    payload = {"tid": tenant_id, "uid": user_id, "purpose": purpose,
+               "iat": now, "exp": now + STATE_TTL}
+    return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
+
+
+def verify_state(token: str, purpose: str) -> dict:
+    """Valide un `state` OAuth (signature, expiration, finalité). Lève en cas d'échec."""
+    d = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGO])
+    if d.get("purpose") != purpose:
+        raise ValueError("state: finalité invalide")
+    return d
+
+
 def admin_emails() -> set[str]:
     """Emails super-admin plateforme (opérateur Wapy), depuis l'env ADMIN_EMAILS."""
     return {e.strip().lower() for e in os.environ.get("ADMIN_EMAILS", "").split(",") if e.strip()}
