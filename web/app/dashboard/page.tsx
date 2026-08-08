@@ -171,7 +171,10 @@ function ConfigTab() {
     setSaving(true);
     setSaved(false);
     try {
-      await api.putConfig({ ...config, staff_numbers: staff });
+      // `booking` et `documents` sont gérés par leurs propres cartes (sauvegardes
+      // dédiées) : on ne les renvoie pas ici, sinon un état périmé les écraserait.
+      const { booking, documents, ...rest } = config as any;
+      await api.putConfig({ ...rest, staff_numbers: staff });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } finally {
@@ -190,6 +193,144 @@ function ConfigTab() {
       </div>
       <KnowledgeDocs />
       <BookingConfig />
+      <WidgetConfig />
+      <ConnectorConfig />
+    </div>
+  );
+}
+
+function WidgetConfig() {
+  const [w, setW] = useState<any | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [copied, setCopied] = useState(false);
+  useEffect(() => { api.getWidget().then(setW).catch(() => setW({ available: false })); }, []);
+  if (!w) return null;
+  const set = (patch: any) => setW({ ...w, ...patch });
+
+  if (!w.available) {
+    return (
+      <div className="card space-y-1">
+        <h3 className="font-display text-xl">Chatbot pour votre site web</h3>
+        <p className="text-sm text-muted">Un assistant à intégrer sur votre site (bulle en bas à droite), qui répond à partir de votre fiche. Inclus dans la formule Pro, ou en option.</p>
+      </div>
+    );
+  }
+
+  async function save() {
+    const r = await api.setupWidget({ enabled: w.enabled, name: w.name, welcome: w.welcome, color: w.color });
+    setW({ ...w, key: r.key, snippet: r.snippet });
+    setSaved(true); setTimeout(() => setSaved(false), 2500);
+  }
+
+  return (
+    <div className="card space-y-3">
+      <div>
+        <h3 className="font-display text-xl">Chatbot pour votre site web</h3>
+        <p className="text-sm text-muted">Une bulle de discussion s'affiche en bas à droite de votre site. Le bot répond avec les mêmes infos que sur WhatsApp, et prévient un responsable si le visiteur veut parler à un humain.</p>
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={!!w.enabled} onChange={(e) => set({ enabled: e.target.checked })} />
+        Activer le chatbot web
+      </label>
+      <div className="grid gap-2 sm:grid-cols-3">
+        <label className="text-sm">Nom affiché
+          <input className="input mt-1 w-full" value={w.name || ""} onChange={(e) => set({ name: e.target.value })} /></label>
+        <label className="text-sm sm:col-span-2">Message d'accueil
+          <input className="input mt-1 w-full" value={w.welcome || ""} onChange={(e) => set({ welcome: e.target.value })} /></label>
+        <label className="text-sm">Couleur
+          <input className="input mt-1 h-10 w-full" type="color" value={w.color || "#12b76a"} onChange={(e) => set({ color: e.target.value })} /></label>
+      </div>
+      <div className="flex items-center justify-end gap-3">
+        {saved && <span className="text-sm text-emerald-dark">✓ Enregistré</span>}
+        <button className="btn" onClick={save}>Enregistrer le chatbot</button>
+      </div>
+      {w.snippet && (
+        <div className="rounded-lg border border-line bg-paper/50 p-3">
+          <div className="label">Code à coller sur votre site (avant &lt;/body&gt;)</div>
+          <code className="block break-all rounded bg-ink/5 p-2 text-xs">{w.snippet}</code>
+          <button className="chip mt-2 text-sm" onClick={() => { navigator.clipboard?.writeText(w.snippet); setCopied(true); setTimeout(() => setCopied(false), 2000); }}>
+            {copied ? "Copié ✓" : "Copier le code"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ConnectorConfig() {
+  const [c, setC] = useState<any | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [token, setToken] = useState("");
+  const [query, setQuery] = useState("");
+  const [result, setResult] = useState("");
+  const [testing, setTesting] = useState(false);
+  useEffect(() => { api.getConnector().then(setC).catch(() => setC({ available: false })); }, []);
+  if (!c) return null;
+  const set = (patch: any) => setC({ ...c, ...patch });
+
+  if (!c.available) {
+    return (
+      <div className="card space-y-1">
+        <h3 className="font-display text-xl">Connexion à la base de votre entreprise</h3>
+        <p className="text-sm text-muted">Laissez le bot consulter votre stock/produits en direct pour donner des infos fiables. Inclus dans la formule Business, ou en option.</p>
+      </div>
+    );
+  }
+
+  async function save() {
+    const payload: any = { enabled: c.enabled, url: c.url, header_name: c.header_name, note: c.note };
+    if (token) payload.token = token;
+    try {
+      await api.saveConnector(payload);
+      setToken("");
+      setSaved(true); setTimeout(() => setSaved(false), 2500);
+      api.getConnector().then(setC);
+    } catch (e: any) { alert(e.message || "Erreur"); }
+  }
+  async function test() {
+    setTesting(true); setResult("");
+    try { const r = await api.testConnector(query || "test"); setResult(r.result || ""); }
+    catch (e: any) { setResult("Erreur : " + (e.message || "")); }
+    finally { setTesting(false); }
+  }
+
+  return (
+    <div className="card space-y-3">
+      <div>
+        <h3 className="font-display text-xl">Connexion à la base de votre entreprise</h3>
+        <p className="text-sm text-muted">
+          Le bot peut interroger en direct votre système (stock, produits, prix) via une adresse web
+          que vous exposez. On ne se connecte jamais directement à votre base : vous gardez la main.
+          Votre jeton d'accès est chiffré chez nous.
+        </p>
+      </div>
+      {!c.encryption_ready && <p className="text-sm text-amber-600">⚠️ Chiffrement non encore activé côté serveur — le jeton ne pourra pas être enregistré.</p>}
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={!!c.enabled} onChange={(e) => set({ enabled: e.target.checked })} />
+        Activer la connexion
+      </label>
+      <label className="block text-sm">Adresse de l'endpoint (HTTPS)
+        <input className="input mt-1 w-full" placeholder="https://votre-systeme.com/api/produits" value={c.url || ""} onChange={(e) => set({ url: e.target.value })} /></label>
+      <div className="grid gap-2 sm:grid-cols-2">
+        <label className="text-sm">Nom de l'en-tête d'authentification
+          <input className="input mt-1 w-full" placeholder="Authorization" value={c.header_name || ""} onChange={(e) => set({ header_name: e.target.value })} /></label>
+        <label className="text-sm">Jeton d'accès {c.token_set && <span className="text-xs text-muted">(déjà enregistré — laissez vide pour garder)</span>}
+          <input className="input mt-1 w-full" type="password" placeholder={c.token_set ? "••••••••" : "collez votre jeton"} value={token} onChange={(e) => setToken(e.target.value)} /></label>
+      </div>
+      <label className="block text-sm">Que renvoie cet endpoint ? (pour guider le bot)
+        <textarea className="input mt-1 w-full" rows={2} placeholder="Ex. Recherche un produit par nom et renvoie prix + stock disponible." value={c.note || ""} onChange={(e) => set({ note: e.target.value })} /></label>
+      <div className="flex items-center justify-end gap-3">
+        {saved && <span className="text-sm text-emerald-dark">✓ Enregistré</span>}
+        <button className="btn" onClick={save}>Enregistrer le connecteur</button>
+      </div>
+      <div className="rounded-lg border border-line bg-paper/50 p-3">
+        <div className="label">Tester la connexion</div>
+        <div className="flex gap-2">
+          <input className="input flex-1" placeholder="mot-clé (ex. nom d'un produit)" value={query} onChange={(e) => setQuery(e.target.value)} />
+          <button className="btn-ghost text-sm" onClick={test} disabled={testing}>{testing ? "…" : "Tester"}</button>
+        </div>
+        {result && <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-all rounded bg-ink/5 p-2 text-xs">{result}</pre>}
+      </div>
     </div>
   );
 }

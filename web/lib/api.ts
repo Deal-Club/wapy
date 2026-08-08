@@ -127,6 +127,14 @@ export const api = {
   googleStatus: () => req("/api/google/status"),
   googleConnect: () => req("/api/google/connect", { method: "POST" }),
   googleDisconnect: () => req("/api/google/disconnect", { method: "POST" }),
+  getWidget: () => req("/api/widget"),
+  setupWidget: (s: any) =>
+    req("/api/widget/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(s) }),
+  getConnector: () => req("/api/connector"),
+  saveConnector: (s: any) =>
+    req("/api/connector", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(s) }),
+  testConnector: (query: string) =>
+    req("/api/connector/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ query }) }),
   getBilling: () => req("/api/billing"),
   subscribe: (plan: string, addons: string[]) =>
     req("/api/billing/subscribe", {

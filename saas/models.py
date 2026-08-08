@@ -32,6 +32,7 @@ class Tenant(Base):
     staff_numbers = Column(Text, default="")
     staff_inbound_ids = Column(Text, default="")
     wapy_model = Column(String(80), default="claude-haiku-4-5-20251001")  # le moins cher (multi-tenant)
+    widget_key = Column(String(80), unique=True)  # clé publique du widget web (chatbot iframe)
     created_at = Column(DateTime, server_default=func.now())
 
 
@@ -234,6 +235,51 @@ class Booking(Base):
     reminded_j1 = Column(Boolean, default=False)
     reminded_h2 = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class WebChatSession(Base):
+    """Conversation d'un visiteur via le widget web (chatbot sur le site du client).
+
+    Pas de compte WhatsApp : le visiteur est anonyme, identifié par une clé de
+    session générée côté navigateur (localStorage). `contact` = tel/e-mail laissé
+    volontairement pour un rappel humain.
+    """
+    __tablename__ = "webchat_sessions"
+    id = Column(Integer, primary_key=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    session_key = Column(String(80), index=True)  # uuid navigateur
+    contact = Column(String(255), default="")
+    escalated = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_at = Column(DateTime, default=datetime.utcnow)
+    __table_args__ = (UniqueConstraint("tenant_id", "session_key", name="uq_webchat_tenant_session"),)
+
+
+class WebChatMessage(Base):
+    """Un message d'une conversation widget (rôle user/assistant)."""
+    __tablename__ = "webchat_messages"
+    id = Column(Integer, primary_key=True)
+    session_id = Column(Integer, ForeignKey("webchat_sessions.id"), nullable=False, index=True)
+    role = Column(String(16), default="user")
+    content = Column(Text, default="")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class DataConnector(Base):
+    """Connecteur vers la base de l'établissement (endpoint HTTP read-only).
+
+    On ne se connecte JAMAIS directement à la base SQL du client (surface d'attaque
+    énorme) : l'établissement expose un endpoint HTTP qui renvoie du JSON. Le token
+    d'accès est chiffré au repos (Fernet) — un dump SQL ne le révèle pas.
+    """
+    __tablename__ = "data_connectors"
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), primary_key=True)
+    enabled = Column(Boolean, default=False)
+    url = Column(String(500), default="")
+    header_name = Column(String(120), default="Authorization")
+    token_enc = Column(Text, default="")   # token chiffré (Fernet)
+    note = Column(Text, default="")         # description de ce que renvoie l'endpoint (pour le cerveau)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
 class GoogleAuth(Base):

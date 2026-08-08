@@ -10,7 +10,7 @@ from dataclasses import dataclass
 DECISION_SCHEMA = {
     "type": "object",
     "properties": {
-        "action": {"type": "string", "enum": ["reply", "record", "escalate", "pay", "book"]},
+        "action": {"type": "string", "enum": ["reply", "record", "escalate", "pay", "book", "lookup"]},
         "message": {"type": "string"},
         "reason": {"type": "string"},
         "image": {"type": "string"},
@@ -19,8 +19,9 @@ DECISION_SCHEMA = {
         "pay_amount": {"type": "integer"},
         "book_datetime": {"type": "string"},
         "book_service": {"type": "string"},
+        "lookup_query": {"type": "string"},
     },
-    "required": ["action", "message", "reason", "image", "record_type", "record", "pay_amount", "book_datetime", "book_service"],
+    "required": ["action", "message", "reason", "image", "record_type", "record", "pay_amount", "book_datetime", "book_service", "lookup_query"],
     "additionalProperties": False,
 }
 
@@ -36,11 +37,13 @@ class Decision:
     pay_amount: int = 0
     book_datetime: str = ""
     book_service: str = ""
+    lookup_query: str = ""
 
 
-def build_system_prompt(fiche_text: str) -> str:
+def build_system_prompt(fiche_text: str, channel: str = "whatsapp") -> str:
+    canal = "WhatsApp" if channel == "whatsapp" else "le site web de l'établissement (chat)"
     return (
-        "Tu es l'assistant WhatsApp d'un établissement. Tu réponds aux clients en "
+        f"Tu es l'assistant de {canal} d'un établissement. Tu réponds aux clients en "
         "français, dans le ton indiqué par la fiche.\n\n"
         "PRINCIPE : tout ce que tu dis vient de la fiche ci-dessous (Infos, Menu/"
         "catalogue, FAQ et surtout les CONSIGNES de l'établissement). N'invente JAMAIS "
@@ -86,6 +89,13 @@ def build_system_prompt(fiche_text: str) -> str:
         "apparaît entre crochets dans la liste (ex. 2026-08-10T09:00), book_service = le "
         "service. La confirmation sera gérée automatiquement. Ne propose JAMAIS un créneau "
         "hors de la liste. Si aucune section Rendez-vous n'est présente, ne prends pas de RDV.\n"
+        "DONNÉES EN DIRECT (action='lookup') : si la fiche contient une section « ## Données "
+        "en direct » et que le client demande une information qui s'y trouve (disponibilité, "
+        "stock, prix ou détail d'un produit précis) que tu n'as PAS déjà dans la fiche, mets "
+        "action='lookup' et lookup_query = les mots-clés de la recherche (ex. le nom du "
+        "produit). Le résultat te sera fourni et tu répondras ensuite normalement. N'invente "
+        "jamais un stock/prix : passe par 'lookup'. Si aucune section « Données en direct » "
+        "n'est présente, n'utilise pas 'lookup'.\n"
         "JUSTIFICATIF DE PAIEMENT : si le message indique que le client a envoyé une "
         "pièce jointe (ex. « [Le client a envoyé une pièce jointe...] ») ou une capture de "
         "paiement, REMERCIE-le et confirme la bonne réception, précise que tu transmets le "
@@ -134,16 +144,21 @@ def build_system_prompt(fiche_text: str) -> str:
         "le client demande à VOIR l'article ou une photo, réponds action='reply' avec "
         "un court message ET copie le chemin EXACT de l'image dans le champ 'image'. "
         "Sinon, laisse 'image' vide (\"\").\n\n"
-        "TON & FORMAT (messages WhatsApp) :\n"
+        "TON & FORMAT :\n"
         "- Chaleureux, humain et professionnel, comme un employé de l'établissement.\n"
         "- Concis et précis, va droit au but. Jamais de tiret long (—) ni de titres Markdown (#).\n"
         "- Question simple : 1 à 3 phrases courtes.\n"
-        "- Gras WhatsApp = un seul astérisque de chaque côté : *comme ceci* (jamais ** ni _).\n"
-        "- Pour une LISTE (menu, prestations) : une ligne vide entre les catégories, la "
-        "catégorie en gras, puis un article par ligne (*Poulet braisé* : 3 500 FCFA). "
-        "Pas de puces à rallonge, reste synthétique et aéré.\n"
-        "- Écris les nombres/prix normalement (3 500 FCFA), sans caractères d'échappement.\n\n"
-        "=== FICHE RESTAURANT ===\n"
+        + (
+            "- Gras WhatsApp = un seul astérisque de chaque côté : *comme ceci* (jamais ** ni _).\n"
+            "- Pour une LISTE (menu, prestations) : une ligne vide entre les catégories, la "
+            "catégorie en gras, puis un article par ligne (*Poulet braisé* : 3 500 FCFA). "
+            "Pas de puces à rallonge, reste synthétique et aéré.\n"
+            if channel == "whatsapp" else
+            "- Texte simple, phrases claires. Tu peux aller à la ligne pour aérer. "
+            "Pas de mise en forme spéciale.\n"
+        )
+        + "- Écris les nombres/prix normalement (3 500 FCFA), sans caractères d'échappement.\n\n"
+        "=== FICHE ÉTABLISSEMENT ===\n"
         f"{fiche_text}\n"
         "=== FIN FICHE ==="
     )
@@ -154,12 +169,12 @@ class Brain:
         self._client = client
         self._model = model
 
-    def decide(self, fiche_text: str, history: list[dict], incoming_text: str) -> Decision:
+    def decide(self, fiche_text: str, history: list[dict], incoming_text: str, channel: str = "whatsapp") -> Decision:
         messages = list(history) + [{"role": "user", "content": incoming_text}]
         resp = self._client.messages.create(
             model=self._model,
             max_tokens=1024,
-            system=build_system_prompt(fiche_text),
+            system=build_system_prompt(fiche_text, channel),
             messages=messages,
             output_config={"format": {"type": "json_schema", "schema": DECISION_SCHEMA}},
         )
@@ -175,4 +190,32 @@ class Brain:
             pay_amount=int(data.get("pay_amount", 0) or 0),
             book_datetime=data.get("book_datetime", ""),
             book_service=data.get("book_service", ""),
+            lookup_query=data.get("lookup_query", ""),
         )
+
+
+def decide_with_lookup(brain, fiche_text, history, incoming_text, lookup_fn=None,
+                       channel: str = "whatsapp", max_loops: int = 2) -> Decision:
+    """Boucle de « function-calling » légère : si le cerveau demande une recherche
+    (action='lookup') dans la base de l'établissement, on l'exécute et on lui repasse
+    le résultat pour qu'il formule sa réponse finale. Sans connecteur, transparent.
+    """
+    decision = brain.decide(fiche_text, history, incoming_text, channel)
+    extra, loops = "", 0
+    while decision.action == "lookup" and lookup_fn and loops < max_loops:
+        loops += 1
+        try:
+            result = lookup_fn(decision.lookup_query)
+        except Exception:
+            result = "(recherche indisponible)"
+        extra += (
+            f"\n\n## Résultat de la recherche pour « {decision.lookup_query} »\n"
+            f"{result}\n(Utilise ce résultat pour répondre ; ne relance pas la même recherche.)"
+        )
+        decision = brain.decide(fiche_text + extra, history, incoming_text, channel)
+    if decision.action == "lookup":
+        # Plus de budget de recherche : répondre avec ce qu'on a plutôt que boucler.
+        decision.action = "reply"
+        if not decision.message:
+            decision.message = "Un instant, je vérifie cette information et je reviens vers vous."
+    return decision

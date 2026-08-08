@@ -21,6 +21,23 @@ OTP_TTL = timedelta(minutes=15)
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "https://wapy.51.210.108.173.sslip.io")
 logger = logging.getLogger("wapy.saas")
 
+# Limiteur de débit en mémoire pour le chat public du widget (anti-abus / coût LLM).
+_WIDGET_HITS: dict = {}
+_WIDGET_WINDOW = 60.0
+_WIDGET_MAX = 12  # messages / minute / clé de session
+
+
+def _widget_rate_ok(key: str) -> bool:
+    import time as _t
+    now = _t.time()
+    hits = [t for t in _WIDGET_HITS.get(key, []) if now - t < _WIDGET_WINDOW]
+    if len(hits) >= _WIDGET_MAX:
+        _WIDGET_HITS[key] = hits
+        return False
+    hits.append(now)
+    _WIDGET_HITS[key] = hits
+    return True
+
 from saas.db import SessionLocal, init_db
 from saas import auth, config_repo, models, phone, sectors, usage, wa
 from saas.bot import process_incoming
@@ -992,6 +1009,160 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             s.delete(ga)
             s.commit()
         return {"status": "disconnected"}
+
+    # --- Widget chatbot web (à intégrer sur le site du client) ---
+    def _widget_snippet(key: str) -> str:
+        return f'<script src="{PUBLIC_URL}/widget.js" data-wapy="{key}" async></script>'
+
+    @app.get("/api/widget")
+    def widget_get(tenant=Depends(owner_tenant), s=Depends(db)):
+        from saas import billing
+        wc = (config_repo.get_config(s, tenant.id).get("webchat") or {})
+        return {
+            "available": billing.has_feature(s.get(models.Subscription, tenant.id), "webchat"),
+            "enabled": bool(wc.get("enabled")),
+            "key": tenant.widget_key or "",
+            "name": wc.get("name") or tenant.name,
+            "welcome": wc.get("welcome") or "Bonjour 👋 Comment puis-je vous aider ?",
+            "color": wc.get("color") or "#12b76a",
+            "snippet": _widget_snippet(tenant.widget_key) if tenant.widget_key else "",
+        }
+
+    @app.post("/api/widget/setup")
+    def widget_setup(body: dict = Body(...), tenant=Depends(owner_tenant), s=Depends(db)):
+        from saas import billing, webchat
+        if not billing.has_feature(s.get(models.Subscription, tenant.id), "webchat"):
+            raise HTTPException(status_code=403, detail="Le chatbot web n'est pas inclus dans votre formule")
+        if not tenant.widget_key:
+            tenant.widget_key = webchat.new_widget_key()
+        cfg = config_repo.get_config(s, tenant.id)
+        cfg["webchat"] = {
+            "enabled": bool(body.get("enabled", True)),
+            "name": (body.get("name") or tenant.name)[:80],
+            "welcome": (body.get("welcome") or "")[:300],
+            "color": (body.get("color") or "#12b76a")[:16],
+        }
+        config_repo.save_config(s, tenant.id, cfg)
+        s.commit()
+        return {"status": "saved", "key": tenant.widget_key, "snippet": _widget_snippet(tenant.widget_key)}
+
+    def _tenant_by_widget(s, key: str):
+        if not key:
+            return None
+        return s.query(models.Tenant).filter_by(widget_key=key).first()
+
+    @app.get("/api/widget/config")
+    def widget_public_config(k: str = "", s=Depends(db)):
+        tenant = _tenant_by_widget(s, k)
+        wc = (config_repo.get_config(s, tenant.id).get("webchat") or {}) if tenant else {}
+        if not tenant or not wc.get("enabled"):
+            return {"ok": False}
+        return {
+            "ok": True,
+            "name": wc.get("name") or tenant.name,
+            "welcome": wc.get("welcome") or "Bonjour 👋 Comment puis-je vous aider ?",
+            "color": wc.get("color") or "#12b76a",
+        }
+
+    class WidgetChatIn(BaseModel):
+        k: str
+        session: str
+        message: str
+
+    @app.post("/api/widget/chat")
+    def widget_chat(body: WidgetChatIn, s=Depends(db)):
+        from saas import billing, webchat
+        tenant = _tenant_by_widget(s, body.k)
+        if not tenant:
+            raise HTTPException(status_code=404, detail="Widget introuvable")
+        wc = config_repo.get_config(s, tenant.id).get("webchat") or {}
+        sub = s.get(models.Subscription, tenant.id)
+        if not wc.get("enabled") or not billing.has_feature(sub, "webchat"):
+            raise HTTPException(status_code=403, detail="Chatbot indisponible")
+        if (getattr(tenant, "status", "active") or "active") != "active":
+            raise HTTPException(status_code=403, detail="Service momentanément indisponible")
+        sess_key = (body.session or "")[:80]
+        if not sess_key or not _widget_rate_ok(f"{body.k}:{sess_key}"):
+            raise HTTPException(status_code=429, detail="Trop de messages, patientez un instant")
+
+        feats = billing.tenant_entitlements(sub)["features"]
+        sess = webchat.get_or_create_session(s, tenant.id, sess_key)
+        br = brain
+        if br is None:
+            import anthropic
+            from brain.brain import Brain
+            br = Brain(anthropic.Anthropic(), tenant.wapy_model)
+
+        def notify(text, _t=tenant):
+            try:
+                channel = (channel_factory or wam.channel_for)(_t)
+                for num in [x.strip() for x in (_t.staff_numbers or "").split(",") if x.strip()]:
+                    try:
+                        channel.send_text(num, text)
+                    except Exception:
+                        pass
+            except Exception:
+                logger.exception("Notification staff (widget) échouée")
+
+        try:
+            return webchat.reply(s, tenant, sess, body.message, br, notify=notify, feats=feats)
+        except Exception:
+            logger.exception("Erreur widget_chat tenant %s", tenant.id)
+            raise HTTPException(status_code=500, detail="Erreur, réessayez")
+
+    # --- Connecteur base de données de l'établissement ---
+    @app.get("/api/connector")
+    def connector_get(tenant=Depends(owner_tenant), s=Depends(db)):
+        from saas import connector, billing
+        dc = s.get(models.DataConnector, tenant.id)
+        return {
+            "available": billing.has_feature(s.get(models.Subscription, tenant.id), "data_connector"),
+            "encryption_ready": connector.encryption_ready(),
+            "enabled": bool(dc and dc.enabled),
+            "url": dc.url if dc else "",
+            "header_name": (dc.header_name if dc else "") or "Authorization",
+            "note": dc.note if dc else "",
+            "token_set": bool(dc and dc.token_enc),
+        }
+
+    @app.post("/api/connector")
+    def connector_save(body: dict = Body(...), tenant=Depends(owner_tenant), s=Depends(db)):
+        from saas import connector, billing
+        if not billing.has_feature(s.get(models.Subscription, tenant.id), "data_connector"):
+            raise HTTPException(status_code=403, detail="Le connecteur n'est pas inclus dans votre formule")
+        url = (body.get("url") or "").strip()
+        if url:
+            ok, reason = connector.validate_url(url)
+            if not ok:
+                raise HTTPException(status_code=400, detail=reason)
+        dc = s.get(models.DataConnector, tenant.id)
+        if not dc:
+            dc = models.DataConnector(tenant_id=tenant.id)
+            s.add(dc)
+        dc.url = url
+        dc.header_name = (body.get("header_name") or "Authorization")[:120]
+        dc.note = (body.get("note") or "")[:2000]
+        dc.enabled = bool(body.get("enabled"))
+        # Token : écrit seulement s'il est fourni (write-only, chiffré au repos).
+        token = body.get("token")
+        if token:
+            if not connector.encryption_ready():
+                raise HTTPException(status_code=503, detail="Chiffrement non configuré côté serveur")
+            dc.token_enc = connector.encrypt(token)
+        s.commit()
+        return {"status": "saved"}
+
+    @app.post("/api/connector/test")
+    def connector_test(body: dict = Body(...), tenant=Depends(owner_tenant), s=Depends(db)):
+        from saas import connector, billing
+        if not billing.has_feature(s.get(models.Subscription, tenant.id), "data_connector"):
+            raise HTTPException(status_code=403, detail="Le connecteur n'est pas inclus dans votre formule")
+        dc = s.get(models.DataConnector, tenant.id)
+        if not dc or not dc.url:
+            raise HTTPException(status_code=400, detail="Configurez d'abord l'URL du connecteur")
+        fn = connector.lookup_fn_for(dc)
+        result = fn((body.get("query") or "test")) if fn else "(connecteur désactivé)"
+        return {"result": (result or "")[:2000]}
 
     # --- Carnet : réservations/commandes/paiements conclus par le bot ---
     @app.get("/api/records")

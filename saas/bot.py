@@ -9,6 +9,7 @@ import os
 
 from safety.guards import is_group, is_broadcast, detect_optout
 from handoff.handoff import escalate_to_staff
+from brain.brain import decide_with_lookup
 from saas.store_db import DbStore
 from saas.config_repo import build_fiche_text
 from saas import models, phone, usage
@@ -34,7 +35,7 @@ def _csv(value: str | None) -> list[str]:
     return [x.strip() for x in (value or "").split(",") if x.strip()]
 
 
-def handle_message(channel, store, brain, fiche_text, staff_send, staff_recognize, payload, pay_link=None, book_slot=None):
+def handle_message(channel, store, brain, fiche_text, staff_send, staff_recognize, payload, pay_link=None, book_slot=None, lookup_fn=None):
     msg = channel.parse_incoming(payload)
     if msg is None:
         return {"status": "ignored"}
@@ -103,7 +104,7 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
     # Bot
     store.append(msg.chat_id, "user", msg.text)
     history = store.get_history(msg.chat_id, HISTORY_LIMIT)
-    decision = brain.decide(fiche_text, history, msg.text)
+    decision = decide_with_lookup(brain, fiche_text, history, msg.text, lookup_fn)
     if decision.action == "reply":
         img = getattr(decision, "image", "") or ""
         if img and hasattr(channel, "send_image"):
@@ -266,12 +267,21 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
             )
             taken_local = [booking.to_local(bcfg, b.start) for b in ups]
             slots = booking.free_slots(bcfg, taken_local)
+            svc = ", ".join((x.get("name") or "") for x in bcfg.get("services", [])) or "prestation"
             if slots:
                 lines = "\n".join(f"- [{s:%Y-%m-%dT%H:%M}] {booking.human(s)}" for s in slots)
-                svc = ", ".join((x.get("name") or "") for x in bcfg.get("services", [])) or "prestation"
                 fiche_text += (
                     "\n\n## Rendez-vous\nRéservation possible. Services : " + svc +
                     ".\nCréneaux disponibles (utilise l'horodatage entre crochets pour book_datetime) :\n" + lines
+                )
+            else:
+                # RDV activés mais aucun créneau libre (agenda plein ou horaires non
+                # renseignés) : ne JAMAIS nier la prise de RDV — proposer de noter.
+                fiche_text += (
+                    "\n\n## Rendez-vous\nLa prise de rendez-vous est possible (services : " + svc +
+                    "), mais aucun créneau n'est libre dans la fenêtre actuelle. Ne dis pas que tu ne "
+                    "prends pas de rendez-vous : invite le client à laisser ses disponibilités "
+                    "souhaitées, puis escalade au responsable (action='escalate')."
                 )
 
             def book_slot(dt_iso, service, chat_id, name, _b=bcfg):
@@ -313,9 +323,18 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
                     logger.exception("Synchro Google Calendar échouée (RDV tenant %s)", tenant.id)
                 return (True, f"C'est confirmé : {service or 'votre rendez-vous'} le {booking.human(local_dt)}. À très bientôt ! 🗓️")
 
+    # Connecteur de données (si inclus) : le cerveau peut interroger la base de
+    # l'établissement (stock/produits) via action='lookup'.
+    lookup_fn = None
+    if "data_connector" in _feats:
+        from saas import connector
+        dc = session.get(models.DataConnector, tenant.id)
+        fiche_text += connector.fiche_note(dc)
+        lookup_fn = connector.lookup_fn_for(dc)
+
     result = handle_message(
         channel, store, brain, fiche_text, staff_send, staff_recognize, payload,
-        pay_link=None, book_slot=book_slot
+        pay_link=None, book_slot=book_slot, lookup_fn=lookup_fn
     )
     status = result.get("status")
     if status not in ("ignored", "duplicate"):

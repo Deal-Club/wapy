@@ -23,6 +23,8 @@ FEATURES = {
     "voice": "Transcription des notes vocales",
     "suggestions": "Suggestions IA d'amélioration",
     "booking": "Prise de rendez-vous / réservations",
+    "webchat": "Chatbot pour site web (widget à intégrer)",
+    "data_connector": "Connexion à la base de l'entreprise (stock, produits)",
     "priority_support": "Support prioritaire",
 }
 
@@ -35,12 +37,12 @@ PLANS = {
     },
     "pro": {
         "label": "Pro", "price": 25000, "model": "claude-sonnet-4-6",
-        "features": ["handoff", "records", "knowledge", "vision", "voice", "suggestions", "booking", "priority_support"],
+        "features": ["handoff", "records", "knowledge", "vision", "voice", "suggestions", "booking", "webchat", "priority_support"],
         "limits": {"conversations": 2500, "agents": 3, "documents": 10},
     },
     "business": {
         "label": "Business", "price": 60000, "model": "claude-opus-4-8",
-        "features": ["handoff", "records", "knowledge", "vision", "voice", "suggestions", "booking", "priority_support"],
+        "features": ["handoff", "records", "knowledge", "vision", "voice", "suggestions", "booking", "webchat", "data_connector", "priority_support"],
         "limits": {"conversations": 0, "agents": 0, "documents": 0},
     },
 }
@@ -51,6 +53,8 @@ ADDONS = {
     "voice": {"label": "Notes vocales (transcription)", "price": 4000, "feature": "voice"},
     "suggestions": {"label": "Suggestions IA", "price": 3000, "feature": "suggestions"},
     "booking": {"label": "Prise de rendez-vous", "price": 5000, "feature": "booking"},
+    "webchat": {"label": "Chatbot pour site web", "price": 6000, "feature": "webchat"},
+    "data_connector": {"label": "Connexion base de l'entreprise", "price": 9000, "feature": "data_connector"},
     "priority_support": {"label": "Support prioritaire", "price": 6000, "feature": "priority_support"},
     "conversations_1000": {"label": "+1 000 conversations/mois", "price": 5000, "grant": {"conversations": 1000}},
     "agents_3": {"label": "+3 agents", "price": 4000, "grant": {"agents": 3}},
