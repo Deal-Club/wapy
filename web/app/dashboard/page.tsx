@@ -8,10 +8,11 @@ import StaffAlertVerify from "@/components/StaffAlertVerify";
 import Suggestions from "@/components/Suggestions";
 import InstallPrompt from "@/components/InstallPrompt";
 
-type Tab = "conversations" | "records" | "config" | "suggestions" | "whatsapp" | "team" | "billing" | "usage";
+type Tab = "conversations" | "records" | "rdv" | "config" | "suggestions" | "whatsapp" | "team" | "billing" | "usage";
 const ALL_TABS: { id: Tab; label: string; ownerOnly?: boolean }[] = [
   { id: "conversations", label: "Conversations" },
   { id: "records", label: "Carnet" },
+  { id: "rdv", label: "Rendez-vous" },
   { id: "config", label: "Configuration", ownerOnly: true },
   { id: "suggestions", label: "Suggestions", ownerOnly: true },
   { id: "whatsapp", label: "WhatsApp", ownerOnly: true },
@@ -134,6 +135,7 @@ export default function Dashboard() {
       <div className="rise">
         {tab === "conversations" && <Conversations />}
         {tab === "records" && <RecordsTab />}
+        {tab === "rdv" && <BookingsTab isOwner={isOwner} />}
         {tab === "config" && isOwner && <ConfigTab />}
         {tab === "suggestions" && isOwner && <Suggestions />}
         {tab === "whatsapp" && isOwner && (
@@ -185,6 +187,167 @@ function ConfigTab() {
         </div>
       </div>
       <KnowledgeDocs />
+      <BookingConfig />
+    </div>
+  );
+}
+
+const DAYS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+
+function BookingConfig() {
+  const [b, setB] = useState<any | null>(null);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    api.getConfig().then((c) => {
+      const bk = c.booking || {};
+      setB({
+        enabled: !!bk.enabled, offset: bk.offset ?? 1, slot_min: bk.slot_min ?? 30,
+        capacity: bk.capacity ?? 1, horizon_days: bk.horizon_days ?? 14,
+        hours: bk.hours || {}, services: bk.services || [],
+      });
+    }).catch(() => {});
+  }, []);
+
+  if (!b) return null;
+  const set = (patch: any) => setB({ ...b, ...patch });
+  const dayRange = (i: number) => (b.hours[String(i)]?.[0]) || ["", ""];
+  const dayRange2 = (i: number) => (b.hours[String(i)]?.[1]) || ["", ""];
+  function setDay(i: number, idx: number, pos: number, val: string) {
+    const key = String(i);
+    const cur = (b.hours[key] || [["", ""], ["", ""]]).map((r: any) => [...r]);
+    while (cur.length < 2) cur.push(["", ""]);
+    cur[idx][pos] = val;
+    set({ hours: { ...b.hours, [key]: cur } });
+  }
+  function toggleClosed(i: number, closed: boolean) {
+    const h = { ...b.hours };
+    if (closed) delete h[String(i)]; else h[String(i)] = [["09:00", "18:00"], ["", ""]];
+    set({ hours: h });
+  }
+  const setSvc = (arr: any[]) => set({ services: arr });
+
+  async function save() {
+    // nettoie les créneaux vides
+    const hours: any = {};
+    for (let i = 0; i < 7; i++) {
+      const rows = (b.hours[String(i)] || []).filter((r: any) => r[0] && r[1]);
+      if (rows.length) hours[String(i)] = rows;
+    }
+    await api.putConfig({ booking: { ...b, hours, services: b.services.filter((s: any) => (s.name || "").trim()) } });
+    setSaved(true); setTimeout(() => setSaved(false), 2500);
+  }
+
+  return (
+    <div className="card space-y-3">
+      <div>
+        <h3 className="font-display text-xl">Rendez-vous / réservations</h3>
+        <p className="text-sm text-muted">
+          Activez pour que le bot propose des créneaux et prenne les RDV automatiquement,
+          avec rappels WhatsApp J-1 et H-2. (Inclus dans les formules Pro et Business, ou en option.)
+        </p>
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <input type="checkbox" checked={b.enabled} onChange={(e) => set({ enabled: e.target.checked })} />
+        Activer la prise de rendez-vous
+      </label>
+
+      <div className="grid gap-2 sm:grid-cols-4">
+        <label className="text-sm">Durée d'un créneau (min)
+          <input className="input mt-1 w-full" type="number" value={b.slot_min} onChange={(e) => set({ slot_min: +e.target.value })} /></label>
+        <label className="text-sm">RDV en parallèle
+          <input className="input mt-1 w-full" type="number" value={b.capacity} onChange={(e) => set({ capacity: +e.target.value })} /></label>
+        <label className="text-sm">Réservable jusqu'à (jours)
+          <input className="input mt-1 w-full" type="number" value={b.horizon_days} onChange={(e) => set({ horizon_days: +e.target.value })} /></label>
+        <label className="text-sm">Décalage horaire (UTC+)
+          <input className="input mt-1 w-full" type="number" value={b.offset} onChange={(e) => set({ offset: +e.target.value })} /></label>
+      </div>
+
+      <div>
+        <div className="label">Horaires d'ouverture</div>
+        <div className="space-y-1.5">
+          {DAYS.map((d, i) => {
+            const closed = !b.hours[String(i)];
+            return (
+              <div key={i} className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="w-24">{d}</span>
+                <label className="flex items-center gap-1 text-xs text-muted">
+                  <input type="checkbox" checked={closed} onChange={(e) => toggleClosed(i, e.target.checked)} /> fermé
+                </label>
+                {!closed && (
+                  <>
+                    <input className="input w-24" type="time" value={dayRange(i)[0]} onChange={(e) => setDay(i, 0, 0, e.target.value)} />
+                    <span>-</span>
+                    <input className="input w-24" type="time" value={dayRange(i)[1]} onChange={(e) => setDay(i, 0, 1, e.target.value)} />
+                    <span className="text-muted">et</span>
+                    <input className="input w-24" type="time" value={dayRange2(i)[0]} onChange={(e) => setDay(i, 1, 0, e.target.value)} />
+                    <span>-</span>
+                    <input className="input w-24" type="time" value={dayRange2(i)[1]} onChange={(e) => setDay(i, 1, 1, e.target.value)} />
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-1 text-xs text-muted">Deux plages possibles par jour (ex. matin et après-midi). Laissez la 2e vide si pas de pause.</p>
+      </div>
+
+      <div>
+        <div className="label">Prestations réservables</div>
+        <div className="space-y-1.5">
+          {b.services.map((sv: any, k: number) => (
+            <div key={k} className="flex flex-wrap items-center gap-2">
+              <input className="input flex-1" placeholder="Nom (ex. Coupe)" value={sv.name || ""} onChange={(e) => setSvc(b.services.map((x: any, j: number) => j === k ? { ...x, name: e.target.value } : x))} />
+              <input className="input w-28" type="number" placeholder="durée (min)" value={sv.duration || ""} onChange={(e) => setSvc(b.services.map((x: any, j: number) => j === k ? { ...x, duration: +e.target.value } : x))} />
+              <input className="input w-28" placeholder="prix" value={sv.price || ""} onChange={(e) => setSvc(b.services.map((x: any, j: number) => j === k ? { ...x, price: e.target.value } : x))} />
+              <button className="btn-ghost text-xs" onClick={() => setSvc(b.services.filter((_: any, j: number) => j !== k))}>Retirer</button>
+            </div>
+          ))}
+        </div>
+        <button className="chip mt-2 text-sm" onClick={() => setSvc([...b.services, { name: "", duration: b.slot_min, price: "" }])}>+ Ajouter une prestation</button>
+      </div>
+
+      <div className="flex items-center justify-end gap-3 border-t border-line pt-3">
+        {saved && <span className="text-sm text-emerald-dark">✓ Enregistré</span>}
+        <button className="btn" onClick={save}>Enregistrer les RDV</button>
+      </div>
+    </div>
+  );
+}
+
+function BookingsTab({ isOwner }: { isOwner: boolean }) {
+  const [items, setItems] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  function load() { api.getBookings().then((r) => setItems(r.bookings)).catch(() => {}).finally(() => setLoading(false)); }
+  useEffect(() => { load(); const i = setInterval(load, 15000); return () => clearInterval(i); }, []);
+
+  const upcoming = items.filter((b) => b.status === "booked");
+  const fmt = (iso: string) => iso ? iso.replace("T", " ").slice(0, 16) : "";
+
+  return (
+    <div className="card space-y-3">
+      <div>
+        <h3 className="font-display text-xl">Rendez-vous</h3>
+        <p className="text-sm text-muted">Les réservations prises par le bot. Rappels WhatsApp envoyés automatiquement (J-1 et H-2).</p>
+      </div>
+      {loading ? <p className="text-sm text-muted">Chargement…</p>
+        : upcoming.length === 0 ? (
+          <p className="rounded-xl border border-dashed border-line p-6 text-center text-sm text-muted">
+            Aucun rendez-vous à venir. Activez la prise de RDV dans Configuration.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {upcoming.map((b) => (
+              <div key={b.id} className="flex items-center justify-between rounded-xl border border-line bg-surface/60 px-4 py-2.5 text-sm">
+                <div>
+                  <div className="font-medium">🗓️ {fmt(b.when)} · {b.service}</div>
+                  <div className="text-xs text-muted">Client : {b.customer}</div>
+                </div>
+                {isOwner && <button className="btn-ghost text-xs" onClick={async () => { await api.cancelBooking(b.id); load(); }}>Annuler</button>}
+              </div>
+            ))}
+          </div>
+        )}
     </div>
   );
 }

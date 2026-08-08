@@ -20,7 +20,7 @@ HANDBACK_CMDS = {"/fin", "fin", "/bot", "terminé", "termine"}
 # Base interne pour que WAHA récupère les images servies par l'API.
 MEDIA_BASE = os.environ.get("MEDIA_INTERNAL_BASE", "http://api:8000")
 # Statuts qui ont émis un message sortant (compteur d'usage).
-_SENT_STATUSES = {"replied", "recorded", "escalated", "relayed", "forwarded", "handback", "pay-link"}
+_SENT_STATUSES = {"replied", "recorded", "escalated", "relayed", "forwarded", "handback", "pay-link", "booked"}
 
 
 def _safe_send(channel, to: str, text: str) -> None:
@@ -34,7 +34,7 @@ def _csv(value: str | None) -> list[str]:
     return [x.strip() for x in (value or "").split(",") if x.strip()]
 
 
-def handle_message(channel, store, brain, fiche_text, staff_send, staff_recognize, payload, pay_link=None):
+def handle_message(channel, store, brain, fiche_text, staff_send, staff_recognize, payload, pay_link=None, book_slot=None):
     msg = channel.parse_incoming(payload)
     if msg is None:
         return {"status": "ignored"}
@@ -158,6 +158,23 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
                     pass
         return {"status": "recorded"}
 
+    if decision.action == "book":
+        # Prise de RDV : on valide le créneau et on crée la réservation.
+        ok, confirm = False, decision.message
+        if book_slot:
+            try:
+                ok, confirm = book_slot(decision.book_datetime, decision.book_service, msg.chat_id, getattr(msg, "sender_name", ""))
+            except Exception:
+                ok, confirm = False, decision.message
+        channel.send_text(msg.chat_id, confirm or decision.message)
+        store.append(msg.chat_id, "assistant", confirm or decision.message)
+        if ok:
+            for num in staff_send:
+                _safe_send(channel, num, f"📅 Nouveau rendez-vous\nClient {msg.chat_id}\n{confirm}")
+            if hasattr(store, "add_record"):
+                store.add_record(msg.chat_id, "Rendez-vous", confirm)
+        return {"status": "booked" if ok else "replied"}
+
     escalate_to_staff(channel, store, msg.chat_id, msg.text, staff_send, decision.reason)
     return {"status": "escalated"}
 
@@ -233,8 +250,56 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
             staff_recognize = list(set(staff_recognize) | {raw.chat_id})
             logger.info("Staff auto-reconnu (%s) : %s", "citation" if raw.quoted_id else "résolution @lid", raw.chat_id)
 
+    # Rendez-vous : si activé et inclus dans l'abonnement, on injecte les créneaux
+    # disponibles dans la fiche et on fournit de quoi réserver.
+    book_slot = None
+    if "booking" in _feats:
+        from datetime import datetime, timedelta
+        from saas import booking, config_repo
+        bcfg = booking.cfg_of(config_repo.get_config(session, tenant.id))
+        if bcfg.get("enabled"):
+            ups = (
+                session.query(models.Booking)
+                .filter(models.Booking.tenant_id == tenant.id, models.Booking.status == "booked",
+                        models.Booking.start >= datetime.utcnow())
+                .all()
+            )
+            taken_local = [booking.to_local(bcfg, b.start) for b in ups]
+            slots = booking.free_slots(bcfg, taken_local)
+            if slots:
+                lines = "\n".join(f"- [{s:%Y-%m-%dT%H:%M}] {booking.human(s)}" for s in slots)
+                svc = ", ".join((x.get("name") or "") for x in bcfg.get("services", [])) or "prestation"
+                fiche_text += (
+                    "\n\n## Rendez-vous\nRéservation possible. Services : " + svc +
+                    ".\nCréneaux disponibles (utilise l'horodatage entre crochets pour book_datetime) :\n" + lines
+                )
+
+            def book_slot(dt_iso, service, chat_id, name, _b=bcfg):
+                try:
+                    local_dt = datetime.fromisoformat((dt_iso or "").strip()).replace(second=0, microsecond=0)
+                except Exception:
+                    return (False, "Je n'ai pas bien compris le créneau souhaité, pouvez-vous préciser ?")
+                start_utc = booking.to_utc(_b, local_dt)
+                cap = int(_b.get("capacity") or 1)
+                cnt = session.query(models.Booking).filter_by(
+                    tenant_id=tenant.id, status="booked", start=start_utc).count()
+                if cnt >= cap:
+                    ups2 = (session.query(models.Booking)
+                            .filter(models.Booking.tenant_id == tenant.id, models.Booking.status == "booked",
+                                    models.Booking.start >= datetime.utcnow()).all())
+                    alt = booking.free_slots(_b, [booking.to_local(_b, b.start) for b in ups2], max_slots=4)
+                    altmsg = " ; ".join(booking.human(a) for a in alt) or "aucune pour le moment"
+                    return (False, f"Ce créneau vient d'être pris. Autres disponibilités : {altmsg}.")
+                session.add(models.Booking(
+                    tenant_id=tenant.id, chat_id=chat_id, customer_name=name or "",
+                    service=service or "Rendez-vous", start=start_utc,
+                    duration_min=booking.service_duration(_b, service), status="booked"))
+                session.commit()
+                return (True, f"C'est confirmé : {service or 'votre rendez-vous'} le {booking.human(local_dt)}. À très bientôt ! 🗓️")
+
     result = handle_message(
-        channel, store, brain, fiche_text, staff_send, staff_recognize, payload
+        channel, store, brain, fiche_text, staff_send, staff_recognize, payload,
+        pay_link=None, book_slot=book_slot
     )
     status = result.get("status")
     if status not in ("ignored", "duplicate"):

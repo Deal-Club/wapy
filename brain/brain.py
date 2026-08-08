@@ -10,15 +10,17 @@ from dataclasses import dataclass
 DECISION_SCHEMA = {
     "type": "object",
     "properties": {
-        "action": {"type": "string", "enum": ["reply", "record", "escalate", "pay"]},
+        "action": {"type": "string", "enum": ["reply", "record", "escalate", "pay", "book"]},
         "message": {"type": "string"},
         "reason": {"type": "string"},
         "image": {"type": "string"},
         "record_type": {"type": "string"},
         "record": {"type": "string"},
         "pay_amount": {"type": "integer"},
+        "book_datetime": {"type": "string"},
+        "book_service": {"type": "string"},
     },
-    "required": ["action", "message", "reason", "image", "record_type", "record", "pay_amount"],
+    "required": ["action", "message", "reason", "image", "record_type", "record", "pay_amount", "book_datetime", "book_service"],
     "additionalProperties": False,
 }
 
@@ -32,6 +34,8 @@ class Decision:
     record_type: str = ""
     record: str = ""
     pay_amount: int = 0
+    book_datetime: str = ""
+    book_service: str = ""
 
 
 def build_system_prompt(fiche_text: str) -> str:
@@ -74,6 +78,14 @@ def build_system_prompt(fiche_text: str) -> str:
         "NOTE VOCALE : si le message indique une note vocale (« [Le client a envoyé une "
         "note vocale.] »), tu ne peux pas l'écouter : remercie et demande gentiment au "
         "client d'écrire sa demande en quelques mots. Reste en action='reply'.\n"
+        "RENDEZ-VOUS (action='book') : si la fiche contient une section « ## Rendez-vous » "
+        "avec des créneaux disponibles, et que le client veut prendre un RDV/une "
+        "réservation : demande le service souhaité si besoin, PROPOSE quelques créneaux de "
+        "la liste (au format lisible), et quand le client en CHOISIT un précis, mets "
+        "action='book', book_datetime = l'horodatage EXACT du créneau choisi tel qu'il "
+        "apparaît entre crochets dans la liste (ex. 2026-08-10T09:00), book_service = le "
+        "service. La confirmation sera gérée automatiquement. Ne propose JAMAIS un créneau "
+        "hors de la liste. Si aucune section Rendez-vous n'est présente, ne prends pas de RDV.\n"
         "JUSTIFICATIF DE PAIEMENT : si le message indique que le client a envoyé une "
         "pièce jointe (ex. « [Le client a envoyé une pièce jointe...] ») ou une capture de "
         "paiement, REMERCIE-le et confirme la bonne réception, précise que tu transmets le "
@@ -161,4 +173,6 @@ class Brain:
             record_type=data.get("record_type", ""),
             record=data.get("record", ""),
             pay_amount=int(data.get("pay_amount", 0) or 0),
+            book_datetime=data.get("book_datetime", ""),
+            book_service=data.get("book_service", ""),
         )

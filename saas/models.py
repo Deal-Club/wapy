@@ -218,6 +218,24 @@ class PaymentConfig(Base):
     enabled = Column(Boolean, default=False)
 
 
+class Booking(Base):
+    """Réservation / RDV pris par le bot (créneau autonome)."""
+    __tablename__ = "bookings"
+    id = Column(Integer, primary_key=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False, index=True)
+    chat_id = Column(String(120), default="")
+    customer_name = Column(String(120), default="")
+    service = Column(String(120), default="")
+    start = Column(DateTime, index=True)   # UTC
+    duration_min = Column(Integer, default=30)
+    status = Column(String(20), default="booked")  # booked | cancelled | done
+    notes = Column(Text, default="")
+    gcal_event_id = Column(String(255), default="")  # synchro Google Calendar (à venir)
+    reminded_j1 = Column(Boolean, default=False)
+    reminded_h2 = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 class Subscription(Base):
     """Abonnement d'un établissement à Wapy (facturation opérateur via GeniusPay)."""
     __tablename__ = "subscriptions"

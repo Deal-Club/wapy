@@ -19,6 +19,7 @@ EMPTY = {
     "consignes": [],
     "faq": [],
     "documents": [],  # [{name, text}] : base de connaissances (PDF/texte uploadés)
+    "booking": {},    # réservation/RDV (cf. saas/booking.py DEFAULT)
 }
 
 # Longueur max de texte de document injectée dans le prompt (garde-fou coût/latence).

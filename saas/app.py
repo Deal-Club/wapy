@@ -389,7 +389,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
 
     @app.put("/api/config")
     def put_config(body: dict = Body(...), tenant=Depends(owner_tenant), s=Depends(db)):
-        cfg = {k: body.get(k) for k in ("sector", "description", "infos", "tables", "consignes", "faq") if k in body}
+        cfg = {k: body.get(k) for k in ("sector", "description", "infos", "tables", "consignes", "faq", "booking") if k in body}
         config_repo.save_config(s, tenant.id, {**config_repo.get_config(s, tenant.id), **cfg})
         if body.get("staff_numbers") is not None:
             tenant.staff_numbers = phone.to_jids_csv(body["staff_numbers"])
@@ -894,6 +894,35 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             pay.status = event.split(".")[1]
             s.commit()
         return {"status": "ok"}
+
+    # --- Rendez-vous / réservations ---
+    @app.get("/api/bookings")
+    def list_bookings(tenant=Depends(current_tenant), s=Depends(db)):
+        from saas import booking as bk
+        bcfg = bk.cfg_of(config_repo.get_config(s, tenant.id))
+        names = {c.chat_id: c.name for c in s.query(models.Contact).filter_by(tenant_id=tenant.id).all()}
+        rows = (
+            s.query(models.Booking).filter_by(tenant_id=tenant.id)
+            .order_by(models.Booking.start.asc()).limit(300).all()
+        )
+        out = []
+        for b in rows:
+            local = bk.to_local(bcfg, b.start) if b.start else None
+            out.append({
+                "id": b.id, "service": b.service, "status": b.status,
+                "customer": b.customer_name or names.get(b.chat_id, "") or (b.chat_id or "").replace("@lid", "").replace("@c.us", ""),
+                "when": local.isoformat() if local else "", "duration_min": b.duration_min,
+            })
+        return {"bookings": out}
+
+    @app.post("/api/bookings/{bid}/cancel")
+    def cancel_booking(bid: int, tenant=Depends(owner_tenant), s=Depends(db)):
+        b = s.get(models.Booking, bid)
+        if not b or b.tenant_id != tenant.id:
+            raise HTTPException(status_code=404, detail="Rendez-vous introuvable")
+        b.status = "cancelled"
+        s.commit()
+        return {"status": "cancelled"}
 
     # --- Carnet : réservations/commandes/paiements conclus par le bot ---
     @app.get("/api/records")

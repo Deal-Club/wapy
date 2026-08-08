@@ -122,6 +122,8 @@ export const api = {
     }),
   getUsage: () => req("/api/usage"),
   getRecords: () => req("/api/records"),
+  getBookings: () => req("/api/bookings"),
+  cancelBooking: (id: number) => req(`/api/bookings/${id}/cancel`, { method: "POST" }),
   getBilling: () => req("/api/billing"),
   subscribe: (plan: string, addons: string[]) =>
     req("/api/billing/subscribe", {

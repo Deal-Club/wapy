@@ -131,13 +131,52 @@ def enforce_subscriptions(session_factory, wa_module) -> int:
     return expired
 
 
+def send_booking_reminders(session_factory, wa_module) -> int:
+    """Rappels WhatsApp aux clients : ~24 h avant (J-1) et ~1-2 h avant (H-2)."""
+    from saas import models, booking, config_repo
+
+    now = datetime.utcnow()
+    sent = 0
+    s = session_factory()
+    try:
+        def due(field, lo, hi):
+            return (
+                s.query(models.Booking)
+                .filter(models.Booking.status == "booked", field == False,  # noqa: E712
+                        models.Booking.start >= now + timedelta(hours=lo),
+                        models.Booking.start <= now + timedelta(hours=hi))
+                .all()
+            )
+        rounds = [(models.Booking.reminded_j1, 23, 24, "j1", "demain"),
+                  (models.Booking.reminded_h2, 1, 2, "h2", "dans moins de 2 h")]
+        for field, lo, hi, flag, when in rounds:
+            for b in due(field, lo, hi):
+                tenant = s.get(models.Tenant, b.tenant_id)
+                if not tenant:
+                    continue
+                bcfg = booking.cfg_of(config_repo.get_config(s, b.tenant_id))
+                local = booking.to_local(bcfg, b.start)
+                msg = f"🗓️ Petit rappel : votre {b.service or 'rendez-vous'} c'est {when} ({booking.human(local)}). À très vite !"
+                try:
+                    wa_module.channel_for(tenant).send_text(b.chat_id, msg)
+                    sent += 1
+                except Exception:
+                    pass
+                setattr(b, "reminded_j1" if flag == "j1" else "reminded_h2", True)
+                s.commit()
+    finally:
+        s.close()
+    return sent
+
+
 async def run_health_loop(session_factory, wa_module, interval: int = 120):
-    """Boucle de supervision + facturation (lancée au démarrage de l'API)."""
-    logger.info("Supervision + facturation démarrées (toutes les %ss).", interval)
+    """Boucle de supervision + facturation + rappels RDV (au démarrage de l'API)."""
+    logger.info("Supervision + facturation + rappels démarrés (toutes les %ss).", interval)
     while True:
         try:
             await asyncio.to_thread(check_once, session_factory, wa_module)
             await asyncio.to_thread(enforce_subscriptions, session_factory, wa_module)
+            await asyncio.to_thread(send_booking_reminders, session_factory, wa_module)
         except Exception as e:
             logger.error("Boucle santé/facturation en erreur : %s", e)
         await asyncio.sleep(interval)
