@@ -20,16 +20,70 @@ const ALL_TABS: { id: Tab; label: string; ownerOnly?: boolean }[] = [
   { id: "usage", label: "Usage" },
 ];
 
+function beep() {
+  try {
+    const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.type = "sine"; o.frequency.value = 880;
+    g.gain.setValueAtTime(0.001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.25);
+    o.start(); o.stop(ctx.currentTime + 0.26);
+  } catch { /* noop */ }
+}
+
 export default function Dashboard() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("conversations");
   const [me, setMe] = useState<any | null>(null);
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [notif, setNotif] = useState<{ esc: number; newRecords: number }>({ esc: 0, newRecords: 0 });
+  const seenRecordsRef = useRef<number>(0);
+  const prevAttentionRef = useRef<number>(-1);
+  const tabRef = useRef<Tab>("conversations");
+  tabRef.current = tab;
+
   useEffect(() => {
     if (!getToken()) { router.replace("/login"); setAuthed(false); return; }
     setAuthed(true);
     api.me().then(setMe).catch(() => {});
+    seenRecordsRef.current = Number(localStorage.getItem("wapy_seen_records") || "0");
   }, [router]);
+
+  // Notifications : escalades (attention client) + nouvelles entrées Carnet.
+  useEffect(() => {
+    if (authed !== true) return;
+    let stop = false;
+    async function poll() {
+      try {
+        const [cv, rc] = await Promise.all([api.getConversations(), api.getRecords()]);
+        const esc = (cv.conversations || []).filter((c: any) => c.escalated).length;
+        const records = (rc.records || []).length;
+        // Si on est sur le Carnet, tout est "vu".
+        if (tabRef.current === "records") {
+          seenRecordsRef.current = records;
+          localStorage.setItem("wapy_seen_records", String(records));
+        }
+        const newRecords = Math.max(0, records - seenRecordsRef.current);
+        if (!stop) setNotif({ esc, newRecords });
+        const attention = esc + newRecords;
+        if (prevAttentionRef.current >= 0 && attention > prevAttentionRef.current) beep();
+        prevAttentionRef.current = attention;
+        try {
+          const nav: any = navigator;
+          if (attention > 0 && nav.setAppBadge) nav.setAppBadge(attention);
+          else if (nav.clearAppBadge) nav.clearAppBadge();
+        } catch { /* noop */ }
+      } catch { /* noop */ }
+    }
+    poll();
+    const i = setInterval(poll, 15000);
+    return () => { stop = true; clearInterval(i); };
+  }, [authed]);
 
   // Évite le "flash" du dashboard avant la redirection / le chargement du profil.
   if (authed !== true) return null;
@@ -55,15 +109,26 @@ export default function Dashboard() {
       <HealthBanner isOwner={isOwner} onGoWhatsApp={() => setTab("whatsapp")} />
 
       <div className="mb-6 flex gap-1 overflow-x-auto rounded-full border border-line bg-surface p-1">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex-1 rounded-full px-4 py-2 text-sm font-medium transition ${tab === t.id ? "bg-brand text-white shadow-soft" : "text-muted hover:text-ink"}`}
-          >
-            {t.label}
-          </button>
-        ))}
+        {tabs.map((t) => {
+          const badge = t.id === "conversations" ? notif.esc : t.id === "records" ? notif.newRecords : 0;
+          return (
+            <button
+              key={t.id}
+              onClick={() => {
+                setTab(t.id);
+                if (t.id === "records") { seenRecordsRef.current += notif.newRecords; localStorage.setItem("wapy_seen_records", String(seenRecordsRef.current)); setNotif((n) => ({ ...n, newRecords: 0 })); }
+              }}
+              className={`relative flex-1 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${tab === t.id ? "bg-brand text-white shadow-soft" : "text-muted hover:text-ink"}`}
+            >
+              {t.label}
+              {badge > 0 && (
+                <span className="ml-1.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white align-middle">
+                  {badge > 99 ? "99+" : badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </div>
 
       <div className="rise">

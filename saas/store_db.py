@@ -38,10 +38,26 @@ class DbStore:
         return [{"role": r.role, "content": r.content} for r in reversed(rows)]
 
     def add_record(self, chat_id: str, kind: str, content: str) -> None:
-        """Enregistre une action conclue par le bot (réservation, commande, paiement...)."""
-        self.s.add(
-            models.Record(tenant_id=self.tid, chat_id=chat_id, kind=(kind or "")[:60], content=content or "")
+        """Enregistre une action conclue par le bot (réservation, commande, paiement...).
+
+        Anti-doublon : si une même demande (même client + même type) a été enregistrée
+        récemment, on la MET À JOUR au lieu de créer une nouvelle ligne (le bot ré-émet
+        souvent l'enregistrement au fil de la conversation)."""
+        from datetime import datetime, timedelta
+
+        kind = (kind or "")[:60]
+        recent = (
+            self.s.query(models.Record)
+            .filter_by(tenant_id=self.tid, chat_id=chat_id, kind=kind)
+            .filter(models.Record.created_at >= datetime.utcnow() - timedelta(hours=6))
+            .order_by(models.Record.id.desc())
+            .first()
         )
+        if recent:
+            recent.content = content or ""
+            recent.created_at = datetime.utcnow()
+        else:
+            self.s.add(models.Record(tenant_id=self.tid, chat_id=chat_id, kind=kind, content=content or ""))
         self.s.commit()
 
     # --- État de conversation ---

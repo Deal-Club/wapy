@@ -1,5 +1,5 @@
 // Service worker minimal : coquille en cache (installable + démarrage rapide).
-const CACHE = "wapy-v1";
+const CACHE = "wapy-v2";
 const SHELL = ["/dashboard", "/login", "/manifest.webmanifest", "/icons/icon-192.png"];
 
 self.addEventListener("install", (e) => {

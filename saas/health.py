@@ -84,10 +84,21 @@ def _send_resub_reminder(s, wa_module, tenant):
         pass
     owner = s.query(models.User).filter_by(tenant_id=tenant.id, role="owner").first()
     if owner:
+        html = notify.render_email(
+            title="Votre abonnement a expiré",
+            intro=f"Bonjour, l'accès Wapy pour « {tenant.name} » est actuellement suspendu.",
+            lines=[
+                "Votre assistant ne répond plus à vos clients tant que l'abonnement n'est pas renouvelé.",
+                "Réactivez-le en quelques secondes depuis votre tableau de bord.",
+            ],
+            cta_label="Réactiver mon assistant",
+            cta_url=f"{public}/dashboard",
+        )
         notify.send_email(
             owner.email, "Votre abonnement Wapy a expiré",
             f"Bonjour,\n\nVotre accès Wapy pour « {tenant.name} » est suspendu.\n"
             f"Réabonnez-vous ici : {public}/dashboard\n\nL'équipe Wapy.",
+            html=html,
         )
 
 
