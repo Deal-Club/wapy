@@ -17,17 +17,31 @@ export function emptyConfig(): Config {
   return { sector: "", description: "", infos: [], tables: [], consignes: [], faq: [] };
 }
 
+function sameNumber(a: string, b: string): boolean {
+  const nsn = (d: string) => (d.startsWith("0") && d.length > 1 ? d.slice(1) : d);
+  const da = (a || "").replace(/\D/g, ""), db = (b || "").replace(/\D/g, "");
+  if (!da || !db) return false;
+  if (da === db) return true;
+  const x = nsn(da), y = nsn(db);
+  if (x === y) return true;
+  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
+  return short.length >= 8 && long.endsWith(short);
+}
+
 export default function ConfigEditor({
   value,
   onChange,
   staff,
   onStaffChange,
+  linked = "",
 }: {
   value: Config;
   onChange: (c: Config) => void;
   staff: string;
   onStaffChange: (v: string) => void;
+  linked?: string;
 }) {
+  const staffClash = !!linked && staff.split(",").some((x) => sameNumber(x, linked));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const set = (patch: Partial<Config>) => onChange({ ...value, ...patch });
@@ -68,8 +82,13 @@ export default function ConfigEditor({
           <SectorPicker value={value.sector} onChange={(v) => set({ sector: v })} />
         </div>
         <div>
-          <label className="label">Numéro WhatsApp du responsable (escalades)</label>
-          <input className="input" value={staff} onChange={(e) => onStaffChange(e.target.value)} placeholder="22961040461@c.us" />
+          <label className="label">Numéro WhatsApp du responsable (escalades) <span className="text-brand">*</span></label>
+          <input className={`input ${staffClash ? "border-brand" : ""}`} value={staff} onChange={(e) => onStaffChange(e.target.value)} placeholder="22961040461" />
+          {staffClash ? (
+            <p className="mt-1 text-xs text-brand">Ce numéro est celui connecté au bot. Le responsable doit être un numéro <b>différent</b> (sinon le bot s&apos;alerte lui-même).</p>
+          ) : (
+            <p className="mt-1 text-xs text-muted">Obligatoire. C&apos;est là que le bot envoie les alertes/escalades — un numéro différent de celui scanné pour le bot.</p>
+          )}
         </div>
         <div className="sm:col-span-2">
           <label className="label">Décrivez votre activité (aide l&apos;IA à tout remplir)</label>

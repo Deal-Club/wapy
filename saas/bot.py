@@ -12,7 +12,7 @@ from handoff.handoff import escalate_to_staff
 from brain.brain import decide_with_lookup
 from saas.store_db import DbStore
 from saas.config_repo import build_fiche_text
-from saas import models, phone, usage
+from saas import config_repo, models, phone, usage
 
 logger = logging.getLogger("wapy.saas")
 
@@ -189,6 +189,13 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
     from saas import billing
     _feats = billing.tenant_entitlements(session.get(models.Subscription, tenant.id))["features"]
 
+    # Numéros exclus : le bot ne répond JAMAIS à ces numéros (liste du propriétaire).
+    _blocked = config_repo.get_config(session, tenant.id).get("blocked_numbers") or []
+    if _blocked:
+        _raw = channel.parse_incoming(payload)
+        if _raw and config_repo.is_blocked(_raw.chat_id, _blocked):
+            return {"status": "blocked"}
+
     if hasattr(channel, "fetch_media"):
         raw = channel.parse_incoming(payload)
         if raw and getattr(raw, "media_url", ""):
@@ -256,7 +263,7 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
     book_slot = None
     if "booking" in _feats:
         from datetime import datetime, timedelta
-        from saas import booking, config_repo
+        from saas import booking
         bcfg = booking.cfg_of(config_repo.get_config(session, tenant.id))
         if bcfg.get("enabled"):
             ups = (

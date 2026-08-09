@@ -56,6 +56,9 @@ def start_session(tenant, webhook_url: str) -> None:
             "start": True,
             "config": {
                 "webhooks": [{"url": webhook_url, "events": ["message", "session.status"]}],
+                # Nom affiché dans « Appareils connectés » de WhatsApp (branding).
+                # Supporté par WAHA >= 2025.12 ; ignoré par les versions plus anciennes.
+                "client": {"deviceName": "Wapy", "browserName": "Wapy"},
                 # Store NOWEB : nécessaire pour résoudre @lid -> numéro (reconnaissance
                 # auto du personnel). WAHA attend `full_sync` (snake_case) selon la version ;
                 # on met les deux orthographes par sécurité. Cf. resolve_lid.

@@ -20,7 +20,14 @@ EMPTY = {
     "faq": [],
     "documents": [],  # [{name, text}] : base de connaissances (PDF/texte uploadés)
     "booking": {},    # réservation/RDV (cf. saas/booking.py DEFAULT)
+    "blocked_numbers": [],  # numéros à qui le bot ne répond JAMAIS (raw, cf. phone.same_number)
 }
+
+
+def is_blocked(chat_id: str, blocked: list) -> bool:
+    """True si le chat_id (client) correspond à un numéro de la liste d'exclusion."""
+    from saas import phone
+    return any(phone.same_number(chat_id, b) for b in (blocked or []))
 
 # Longueur max de texte de document injectée dans le prompt (garde-fou coût/latence).
 DOC_CHARS = 6000

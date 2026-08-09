@@ -98,6 +98,27 @@ def to_jids_csv(value: str, dialcode: str = "") -> str:
     return ",".join(out)
 
 
+def _nsn(d: str) -> str:
+    """Retire un '0' de tête (trunk) pour rapprocher local et E.164."""
+    return d[1:] if d.startswith("0") and len(d) > 1 else d
+
+
+def same_number(a: str, b: str) -> bool:
+    """Deux identifiants désignent-ils le même numéro ? Tolère indicatif pays et
+    trunk '0' (ex. 22961040461 == 061040461 == 61040461). Insensible au format
+    @c.us/@lid. Renvoie False si l'un est vide."""
+    da, db = digits(a), digits(b)
+    if not da or not db:
+        return False
+    if da == db:
+        return True
+    x, y = _nsn(da), _nsn(db)
+    if x == y:
+        return True
+    short, long = (x, y) if len(x) <= len(y) else (y, x)
+    return len(short) >= 8 and long.endswith(short)
+
+
 def mask(jid: str) -> str:
     """Masque partiellement un numéro pour l'affichage (ex. 229…0461)."""
     d = digits(jid)

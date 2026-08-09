@@ -8,17 +8,27 @@ import StaffAlertVerify from "@/components/StaffAlertVerify";
 import Suggestions from "@/components/Suggestions";
 import InstallPrompt from "@/components/InstallPrompt";
 
-type Tab = "conversations" | "records" | "rdv" | "config" | "suggestions" | "whatsapp" | "team" | "billing" | "usage";
-const ALL_TABS: { id: Tab; label: string; ownerOnly?: boolean }[] = [
+type Tab = "conversations" | "records" | "rdv" | "usage";
+const ALL_TABS: { id: Tab; label: string }[] = [
   { id: "conversations", label: "Conversations" },
   { id: "records", label: "Carnet" },
   { id: "rdv", label: "Rendez-vous" },
-  { id: "config", label: "Configuration", ownerOnly: true },
-  { id: "suggestions", label: "Suggestions", ownerOnly: true },
-  { id: "whatsapp", label: "WhatsApp", ownerOnly: true },
-  { id: "team", label: "Équipe", ownerOnly: true },
-  { id: "billing", label: "Abonnement", ownerOnly: true },
   { id: "usage", label: "Usage" },
+];
+
+// Sections de la page Paramètres (accessible via l'icône ⚙️, propriétaire).
+type SettingsSection = { id: string; label: string; icon: string };
+const SETTINGS_SECTIONS: SettingsSection[] = [
+  { id: "etablissement", label: "Établissement", icon: "🏪" },
+  { id: "connaissances", label: "Base de connaissances", icon: "📚" },
+  { id: "rdv", label: "Rendez-vous", icon: "🗓️" },
+  { id: "chatbot", label: "Chatbot web", icon: "💬" },
+  { id: "connecteur", label: "Connexion base de données", icon: "🔌" },
+  { id: "exclus", label: "Numéros exclus", icon: "🚫" },
+  { id: "whatsapp", label: "Connexion WhatsApp", icon: "📱" },
+  { id: "suggestions", label: "Suggestions IA", icon: "✨" },
+  { id: "equipe", label: "Équipe", icon: "👥" },
+  { id: "abonnement", label: "Abonnement", icon: "💳" },
 ];
 
 function beep() {
@@ -40,6 +50,7 @@ function beep() {
 export default function Dashboard() {
   const router = useRouter();
   const [tab, setTab] = useState<Tab>("conversations");
+  const [settings, setSettings] = useState<string | null>(null); // section id ou null (= dashboard)
   const [me, setMe] = useState<any | null>(null);
   const [authed, setAuthed] = useState<boolean | null>(null);
   const [notif, setNotif] = useState<{ esc: number; newRecords: number }>({ esc: 0, newRecords: 0 });
@@ -53,8 +64,10 @@ export default function Dashboard() {
     setAuthed(true);
     api.me().then(setMe).catch(() => {});
     seenRecordsRef.current = Number(localStorage.getItem("wapy_seen_records") || "0");
-    // Retour du flux OAuth Google : ouvrir directement la configuration.
-    if (new URLSearchParams(window.location.search).get("tab") === "config") setTab("config");
+    // Retour du flux OAuth Google : ouvrir directement les Paramètres (section RDV).
+    const q = new URLSearchParams(window.location.search);
+    if (q.get("gcal")) setSettings("rdv");
+    else if (q.get("tab") === "config") setSettings("etablissement");
   }, [router]);
 
   // Notifications : escalades (attention client) + nouvelles entrées Carnet.
@@ -94,80 +107,138 @@ export default function Dashboard() {
   if (me.must_change_password) return <ChangePasswordGate onDone={() => api.me().then(setMe)} />;
 
   const isOwner = me.role === "owner" || me.is_admin;
-  const tabs = ALL_TABS.filter((t) => !t.ownerOnly || isOwner);
+  const tabs = ALL_TABS;
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <div className="font-display text-2xl font-semibold text-brand">Wapy</div>
+        <button className="font-display text-2xl font-semibold text-brand" onClick={() => setSettings(null)}>Wapy</button>
         <div className="flex items-center gap-2">
           {me?.is_admin && (
             <a className="btn-ghost text-sm" href="/admin">Admin</a>
+          )}
+          {isOwner && (
+            <button
+              className={`btn-ghost flex items-center gap-1.5 text-sm ${settings ? "text-brand" : ""}`}
+              onClick={() => setSettings(settings ? null : "etablissement")}
+              aria-label="Paramètres"
+            >
+              <span className="text-base">⚙️</span> Paramètres
+            </button>
           )}
           <button className="btn-ghost text-sm" onClick={() => { clearToken(); router.replace("/login"); }}>Déconnexion</button>
         </div>
       </div>
 
-      <InstallPrompt />
-      <HealthBanner isOwner={isOwner} onGoWhatsApp={() => setTab("whatsapp")} />
+      {settings && isOwner ? (
+        <SettingsView section={settings} setSection={setSettings} onExit={() => setSettings(null)} />
+      ) : (
+        <>
+          <InstallPrompt />
+          <HealthBanner isOwner={isOwner} onGoWhatsApp={() => setSettings("whatsapp")} />
 
-      <div className="mb-6 flex gap-1 overflow-x-auto rounded-full border border-line bg-surface p-1">
-        {tabs.map((t) => {
-          const badge = t.id === "conversations" ? notif.esc : t.id === "records" ? notif.newRecords : 0;
-          return (
-            <button
-              key={t.id}
-              onClick={() => {
-                setTab(t.id);
-                if (t.id === "records") { seenRecordsRef.current += notif.newRecords; localStorage.setItem("wapy_seen_records", String(seenRecordsRef.current)); setNotif((n) => ({ ...n, newRecords: 0 })); }
-              }}
-              className={`relative flex-1 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${tab === t.id ? "bg-brand text-white shadow-soft" : "text-muted hover:text-ink"}`}
-            >
-              {t.label}
-              {badge > 0 && (
-                <span className="ml-1.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white align-middle">
-                  {badge > 99 ? "99+" : badge}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="rise">
-        {tab === "conversations" && <Conversations />}
-        {tab === "records" && <RecordsTab />}
-        {tab === "rdv" && <BookingsTab isOwner={isOwner} />}
-        {tab === "config" && isOwner && <ConfigTab />}
-        {tab === "suggestions" && isOwner && <Suggestions />}
-        {tab === "whatsapp" && isOwner && (
-          <div className="mx-auto max-w-md space-y-4">
-            <div className="card"><WhatsAppConnect /></div>
-            <div className="card"><StaffAlertVerify /></div>
+          <div className="mb-6 flex gap-1 overflow-x-auto rounded-full border border-line bg-surface p-1">
+            {tabs.map((t) => {
+              const badge = t.id === "conversations" ? notif.esc : t.id === "records" ? notif.newRecords : 0;
+              return (
+                <button
+                  key={t.id}
+                  onClick={() => {
+                    setTab(t.id);
+                    if (t.id === "records") { seenRecordsRef.current += notif.newRecords; localStorage.setItem("wapy_seen_records", String(seenRecordsRef.current)); setNotif((n) => ({ ...n, newRecords: 0 })); }
+                  }}
+                  className={`relative flex-1 whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition ${tab === t.id ? "bg-brand text-white shadow-soft" : "text-muted hover:text-ink"}`}
+                >
+                  {t.label}
+                  {badge > 0 && (
+                    <span className="ml-1.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[11px] font-bold text-white align-middle">
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
-        )}
-        {tab === "team" && isOwner && <TeamTab />}
-        {tab === "billing" && isOwner && <BillingTab />}
-        {tab === "usage" && <UsageTab />}
-      </div>
+
+          <div className="rise">
+            {tab === "conversations" && <Conversations />}
+            {tab === "records" && <RecordsTab />}
+            {tab === "rdv" && <BookingsTab isOwner={isOwner} />}
+            {tab === "usage" && <UsageTab />}
+          </div>
+        </>
+      )}
     </main>
   );
 }
 
-function ConfigTab() {
+function SettingsView({ section, setSection, onExit }: { section: string; setSection: (s: string) => void; onExit: () => void }) {
+  const current = SETTINGS_SECTIONS.find((s) => s.id === section) || SETTINGS_SECTIONS[0];
+  return (
+    <div className="rise">
+      <div className="mb-4 flex items-center gap-3">
+        <button className="btn-ghost text-sm" onClick={onExit}>← Retour</button>
+        <h1 className="font-display text-2xl">Paramètres</h1>
+      </div>
+      <div className="grid gap-5 md:grid-cols-[220px_1fr]">
+        {/* Navigation latérale des sections */}
+        <nav className="flex gap-1 overflow-x-auto rounded-xl2 border border-line bg-surface p-2 md:flex-col md:overflow-visible">
+          {SETTINGS_SECTIONS.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => setSection(s.id)}
+              className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition ${section === s.id ? "bg-brand text-white shadow-soft" : "text-muted hover:bg-brand-soft/40 hover:text-ink"}`}
+            >
+              <span className="text-base">{s.icon}</span> <span className="hidden sm:inline">{s.label}</span>
+            </button>
+          ))}
+        </nav>
+        {/* Contenu de la section */}
+        <div className="min-w-0 space-y-5">
+          <div className="hidden items-center gap-2 md:flex">
+            <span className="text-xl">{current.icon}</span>
+            <h2 className="font-display text-xl">{current.label}</h2>
+          </div>
+          {section === "etablissement" && <EstablishmentSection />}
+          {section === "connaissances" && <KnowledgeDocs />}
+          {section === "rdv" && <BookingConfig />}
+          {section === "chatbot" && <WidgetConfig />}
+          {section === "connecteur" && <ConnectorConfig />}
+          {section === "exclus" && <BlocklistConfig />}
+          {section === "whatsapp" && (
+            <div className="space-y-4">
+              <div className="card"><WhatsAppConnect /></div>
+              <div className="card"><StaffAlertVerify /></div>
+            </div>
+          )}
+          {section === "suggestions" && <Suggestions />}
+          {section === "equipe" && <TeamTab />}
+          {section === "abonnement" && <BillingTab />}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EstablishmentSection() {
   const [config, setConfig] = useState<Config>(emptyConfig());
   const [staff, setStaff] = useState("");
+  const [linked, setLinked] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
 
   useEffect(() => {
     api.getConfig().then((c) => {
       setConfig({ ...emptyConfig(), ...c });
       setStaff(c.staff_numbers || "");
+      setLinked(c.linked_number || "");
     }).catch(() => {});
   }, []);
 
   async function save() {
+    setErr("");
+    if (!staff.trim()) { setErr("Le numéro WhatsApp du responsable est obligatoire."); return; }
     setSaving(true);
     setSaved(false);
     try {
@@ -177,24 +248,64 @@ function ConfigTab() {
       await api.putConfig({ ...rest, staff_numbers: staff });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
+    } catch (e: any) {
+      setErr(e.message || "Enregistrement impossible");
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="space-y-5">
-      <div className="card space-y-5">
-        <ConfigEditor value={config} onChange={setConfig} staff={staff} onStaffChange={setStaff} />
-        <div className="flex items-center justify-end gap-3 border-t border-line pt-4">
-          {saved && <span className="text-sm text-emerald-dark">✓ Enregistré</span>}
-          <button className="btn" onClick={save} disabled={saving}>{saving ? "…" : "Enregistrer"}</button>
-        </div>
+    <div className="card space-y-5">
+      <ConfigEditor value={config} onChange={setConfig} staff={staff} onStaffChange={setStaff} linked={linked} />
+      <div className="flex items-center justify-end gap-3 border-t border-line pt-4">
+        {err && <span className="text-sm text-brand">{err}</span>}
+        {saved && <span className="text-sm text-emerald-dark">✓ Enregistré</span>}
+        <button className="btn" onClick={save} disabled={saving}>{saving ? "…" : "Enregistrer"}</button>
       </div>
-      <KnowledgeDocs />
-      <BookingConfig />
-      <WidgetConfig />
-      <ConnectorConfig />
+    </div>
+  );
+}
+
+function BlocklistConfig() {
+  const [nums, setNums] = useState<string[]>([]);
+  const [val, setVal] = useState("");
+  const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => { api.getBlocklist().then((r) => setNums(r.numbers || [])).catch(() => {}).finally(() => setLoading(false)); }, []);
+
+  async function persist(next: string[]) {
+    setNums(next);
+    try { await api.saveBlocklist(next); setSaved(true); setTimeout(() => setSaved(false), 2000); } catch { /* noop */ }
+  }
+  function add() {
+    const v = val.trim();
+    if (!v || nums.includes(v)) { setVal(""); return; }
+    persist([...nums, v]); setVal("");
+  }
+
+  if (loading) return null;
+  return (
+    <div className="card space-y-3">
+      <div>
+        <h3 className="font-display text-xl">Numéros exclus</h3>
+        <p className="text-sm text-muted">Le bot ne répondra <b>jamais</b> aux numéros de cette liste (démarcheurs, spams, contacts internes…). Saisissez le numéro au format international.</p>
+      </div>
+      <div className="flex gap-2">
+        <input className="input flex-1" placeholder="Ex. 22961040461" value={val}
+          onChange={(e) => setVal(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") add(); }} />
+        <button className="btn" onClick={add}>Ajouter</button>
+        {saved && <span className="self-center text-sm text-emerald-dark">✓</span>}
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {nums.map((n) => (
+          <span key={n} className="inline-flex items-center gap-2 rounded-full border border-line bg-paper/50 px-3 py-1 text-sm">
+            {n}
+            <button className="text-muted hover:text-brand" onClick={() => persist(nums.filter((x) => x !== n))} aria-label="Retirer">×</button>
+          </span>
+        ))}
+        {nums.length === 0 && <p className="text-sm text-muted">Aucun numéro exclu.</p>}
+      </div>
     </div>
   );
 }

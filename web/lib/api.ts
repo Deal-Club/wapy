@@ -130,6 +130,9 @@ export const api = {
   getWidget: () => req("/api/widget"),
   setupWidget: (s: any) =>
     req("/api/widget/setup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(s) }),
+  getBlocklist: () => req("/api/blocklist"),
+  saveBlocklist: (numbers: string[]) =>
+    req("/api/blocklist", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ numbers }) }),
   getConnector: () => req("/api/connector"),
   saveConnector: (s: any) =>
     req("/api/connector", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(s) }),

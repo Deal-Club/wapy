@@ -398,26 +398,53 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         return {"sectors": sectors.SECTORS}
 
     # --- Config (JSON flexible) ---
+    def _linked_number(s, tenant_id: int) -> str:
+        row = s.query(models.WaSession).filter_by(tenant_id=tenant_id).first()
+        return (row.linked_number if row else "") or ""
+
     @app.get("/api/config")
     def get_config(tenant=Depends(current_tenant), s=Depends(db)):
         cfg = config_repo.get_config(s, tenant.id)
         cfg["staff_numbers"] = tenant.staff_numbers or ""
         cfg["staff_inbound_ids"] = tenant.staff_inbound_ids or ""
         cfg["wapy_model"] = tenant.wapy_model
+        cfg["linked_number"] = _linked_number(s, tenant.id)
         return cfg
 
     @app.put("/api/config")
     def put_config(body: dict = Body(...), tenant=Depends(owner_tenant), s=Depends(db)):
+        # Numéro du responsable : OBLIGATOIRE et DIFFÉRENT du numéro WhatsApp connecté
+        # (sinon le bot s'enverrait ses propres alertes).
+        if "staff_numbers" in body:
+            jids = phone.to_jids_csv(body.get("staff_numbers") or "")
+            if not jids:
+                raise HTTPException(status_code=400, detail="Le numéro WhatsApp du responsable est obligatoire.")
+            linked = _linked_number(s, tenant.id)
+            if linked and any(phone.same_number(j, linked) for j in jids.split(",")):
+                raise HTTPException(status_code=400, detail="Le numéro du responsable doit être différent du numéro WhatsApp connecté au bot.")
+            tenant.staff_numbers = jids
         cfg = {k: body.get(k) for k in ("sector", "description", "infos", "tables", "consignes", "faq", "booking") if k in body}
         config_repo.save_config(s, tenant.id, {**config_repo.get_config(s, tenant.id), **cfg})
-        if body.get("staff_numbers") is not None:
-            tenant.staff_numbers = phone.to_jids_csv(body["staff_numbers"])
         if body.get("staff_inbound_ids") is not None:
             tenant.staff_inbound_ids = body["staff_inbound_ids"]
         if body.get("wapy_model"):
             tenant.wapy_model = body["wapy_model"]
         s.commit()
         return {"status": "saved"}
+
+    # --- Numéros exclus (le bot ne répond jamais à ces numéros) ---
+    @app.get("/api/blocklist")
+    def blocklist_get(tenant=Depends(owner_tenant), s=Depends(db)):
+        return {"numbers": config_repo.get_config(s, tenant.id).get("blocked_numbers") or []}
+
+    @app.put("/api/blocklist")
+    def blocklist_put(body: dict = Body(...), tenant=Depends(owner_tenant), s=Depends(db)):
+        nums = [str(x).strip() for x in (body.get("numbers") or []) if str(x).strip()]
+        nums = list(dict.fromkeys(nums))[:200]
+        cfg = config_repo.get_config(s, tenant.id)
+        cfg["blocked_numbers"] = nums
+        config_repo.save_config(s, tenant.id, cfg)
+        return {"status": "saved", "numbers": nums}
 
     # --- Génération assistée par l'IA ---
     @app.post("/api/ai/generate")
@@ -1053,6 +1080,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
 
     @app.get("/api/widget/config")
     def widget_public_config(k: str = "", s=Depends(db)):
+        from saas import recaptcha
         tenant = _tenant_by_widget(s, k)
         wc = (config_repo.get_config(s, tenant.id).get("webchat") or {}) if tenant else {}
         if not tenant or not wc.get("enabled"):
@@ -1062,16 +1090,18 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             "name": wc.get("name") or tenant.name,
             "welcome": wc.get("welcome") or "Bonjour 👋 Comment puis-je vous aider ?",
             "color": wc.get("color") or "#12b76a",
+            "recaptcha_site_key": recaptcha.site_key(),
         }
 
     class WidgetChatIn(BaseModel):
         k: str
         session: str
         message: str
+        token: str = ""
 
     @app.post("/api/widget/chat")
-    def widget_chat(body: WidgetChatIn, s=Depends(db)):
-        from saas import billing, webchat
+    def widget_chat(body: WidgetChatIn, request: Request, s=Depends(db)):
+        from saas import billing, webchat, recaptcha
         tenant = _tenant_by_widget(s, body.k)
         if not tenant:
             raise HTTPException(status_code=404, detail="Widget introuvable")
@@ -1084,6 +1114,10 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         sess_key = (body.session or "")[:80]
         if not sess_key or not _widget_rate_ok(f"{body.k}:{sess_key}"):
             raise HTTPException(status_code=429, detail="Trop de messages, patientez un instant")
+        # Anti-bot reCAPTCHA v3 (invisible), si configuré côté opérateur.
+        client_ip = request.client.host if request.client else ""
+        if not recaptcha.verify(body.token, client_ip):
+            raise HTTPException(status_code=403, detail="Vérification anti-robot échouée")
 
         feats = billing.tenant_entitlements(sub)["features"]
         sess = webchat.get_or_create_session(s, tenant.id, sess_key)

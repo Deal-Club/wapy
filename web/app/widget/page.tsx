@@ -37,9 +37,29 @@ export default function Widget() {
       .then((c) => {
         setCfg(c);
         if (c.ok) setMsgs([{ role: "assistant", content: c.welcome }]);
+        // reCAPTCHA v3 invisible : charge le script si l'opérateur a configuré une clé.
+        if (c.ok && c.recaptcha_site_key && !(window as any).grecaptcha) {
+          const sc = document.createElement("script");
+          sc.src = `https://www.google.com/recaptcha/api.js?render=${c.recaptcha_site_key}`;
+          sc.async = true;
+          document.head.appendChild(sc);
+        }
       })
       .catch(() => setCfg({ ok: false }));
   }, []);
+
+  async function captchaToken(): Promise<string> {
+    const sk = cfg?.recaptcha_site_key;
+    const g = (window as any).grecaptcha;
+    if (!sk || !g?.execute) return "";
+    try {
+      return await new Promise<string>((resolve) => {
+        g.ready(() => g.execute(sk, { action: "chat" }).then(resolve).catch(() => resolve("")));
+      });
+    } catch {
+      return "";
+    }
+  }
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -52,10 +72,11 @@ export default function Widget() {
     setMsgs((m) => [...m, { role: "user", content: t }]);
     setSending(true);
     try {
+      const token = await captchaToken();
       const res = await fetch("/api/widget/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ k: key, session: sess, message: t }),
+        body: JSON.stringify({ k: key, session: sess, message: t, token }),
       });
       if (!res.ok) throw new Error(String(res.status));
       const d = await res.json();
