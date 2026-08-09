@@ -487,6 +487,11 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
                 resolved.append(jid)
         if not resolved:
             raise HTTPException(status_code=400, detail="Numéro invalide")
+        # Le responsable doit être un numéro DIFFÉRENT de celui connecté au bot
+        # (sinon le bot s'enverrait ses propres alertes).
+        linked = _linked_number(s, tenant.id)
+        if linked and any(phone.same_number(j, linked) for j in resolved):
+            raise HTTPException(status_code=400, detail="Ce numéro est celui connecté au bot. Utilisez un numéro différent pour le responsable.")
         code = f"{random.randint(0, 9999):04d}"
         row = s.get(models.StaffVerification, tenant.id)
         if row:

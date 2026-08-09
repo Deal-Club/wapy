@@ -12,7 +12,6 @@ export default function Onboarding() {
   const router = useRouter();
   const [step, setStep] = useState(0);
   const [config, setConfig] = useState<Config>(emptyConfig());
-  const [staff, setStaff] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -20,16 +19,15 @@ export default function Onboarding() {
       router.replace("/signup");
       return;
     }
-    api.getConfig().then((c) => {
-      setConfig({ ...emptyConfig(), ...c });
-      setStaff(c.staff_numbers || "");
-    }).catch(() => {});
+    api.getConfig().then((c) => setConfig({ ...emptyConfig(), ...c })).catch(() => {});
   }, [router]);
 
   async function saveConfig() {
     setSaving(true);
     try {
-      await api.putConfig({ ...config, staff_numbers: staff });
+      // Le numéro du responsable se règle à l'étape WhatsApp (vérif OTP).
+      const { booking, documents, ...rest } = config as any;
+      await api.putConfig(rest);
       setStep(2);
     } finally {
       setSaving(false);
@@ -75,7 +73,7 @@ export default function Onboarding() {
               <h2 className="text-2xl">Votre configuration</h2>
               <button className="text-sm text-muted hover:text-brand" onClick={() => setStep(0)}>← retour</button>
             </div>
-            <ConfigEditor value={config} onChange={setConfig} staff={staff} onStaffChange={setStaff} />
+            <ConfigEditor value={config} onChange={setConfig} />
             <div className="flex justify-end gap-2 border-t border-line pt-4">
               <button className="btn" onClick={saveConfig} disabled={saving}>{saving ? "Enregistrement…" : "Enregistrer et continuer →"}</button>
             </div>

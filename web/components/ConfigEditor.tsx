@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { Sparkles, Download, Upload } from "lucide-react";
 import { api } from "@/lib/api";
 import SectorPicker from "./SectorPicker";
 import EditableTable from "./EditableTable";
@@ -17,31 +18,13 @@ export function emptyConfig(): Config {
   return { sector: "", description: "", infos: [], tables: [], consignes: [], faq: [] };
 }
 
-function sameNumber(a: string, b: string): boolean {
-  const nsn = (d: string) => (d.startsWith("0") && d.length > 1 ? d.slice(1) : d);
-  const da = (a || "").replace(/\D/g, ""), db = (b || "").replace(/\D/g, "");
-  if (!da || !db) return false;
-  if (da === db) return true;
-  const x = nsn(da), y = nsn(db);
-  if (x === y) return true;
-  const [short, long] = x.length <= y.length ? [x, y] : [y, x];
-  return short.length >= 8 && long.endsWith(short);
-}
-
 export default function ConfigEditor({
   value,
   onChange,
-  staff,
-  onStaffChange,
-  linked = "",
 }: {
   value: Config;
   onChange: (c: Config) => void;
-  staff: string;
-  onStaffChange: (v: string) => void;
-  linked?: string;
 }) {
-  const staffClash = !!linked && staff.split(",").some((x) => sameNumber(x, linked));
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
   const set = (patch: Partial<Config>) => onChange({ ...value, ...patch });
@@ -81,15 +64,6 @@ export default function ConfigEditor({
           <label className="label">Secteur d&apos;activité</label>
           <SectorPicker value={value.sector} onChange={(v) => set({ sector: v })} />
         </div>
-        <div>
-          <label className="label">Numéro WhatsApp du responsable (escalades) <span className="text-brand">*</span></label>
-          <input className={`input ${staffClash ? "border-brand" : ""}`} value={staff} onChange={(e) => onStaffChange(e.target.value)} placeholder="22961040461" />
-          {staffClash ? (
-            <p className="mt-1 text-xs text-brand">Ce numéro est celui connecté au bot. Le responsable doit être un numéro <b>différent</b> (sinon le bot s&apos;alerte lui-même).</p>
-          ) : (
-            <p className="mt-1 text-xs text-muted">Obligatoire. C&apos;est là que le bot envoie les alertes/escalades — un numéro différent de celui scanné pour le bot.</p>
-          )}
-        </div>
         <div className="sm:col-span-2">
           <label className="label">Décrivez votre activité (aide l&apos;IA à tout remplir)</label>
           <textarea
@@ -102,31 +76,36 @@ export default function ConfigEditor({
       </div>
 
       {/* Actions rapides */}
-      <div className="flex flex-wrap items-center gap-3 rounded-xl2 border border-line bg-brand-soft/40 p-4">
+      <div className="space-y-3 rounded-xl2 border border-line bg-brand-soft/40 p-4">
         <div>
           <p className="font-display text-lg">Gagnez du temps</p>
           <p className="text-sm text-muted">Laissez l&apos;IA pré-remplir, ou importez un Excel. Vous pourrez tout éditer.</p>
         </div>
-        <div className="flex-1" />
-        <button type="button" className="btn" onClick={runAI} disabled={busy}>
-          {busy ? "…" : "✨ Remplir avec l'IA"}
-        </button>
-        <a className="btn-ghost text-sm" href={api.templateUrl()}>⬇️ Modèle Excel</a>
-        <label className="btn-ghost cursor-pointer text-sm">
-          ⬆️ Importer
-          <input type="file" accept=".xlsx" className="hidden" onChange={onImport} />
-        </label>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <button type="button" className="btn flex items-center justify-center gap-2" onClick={runAI} disabled={busy}>
+            <Sparkles className="h-4 w-4" /> {busy ? "…" : "Remplir avec l'IA"}
+          </button>
+          <a className="btn-ghost flex items-center justify-center gap-2 text-sm" href={api.templateUrl()}>
+            <Download className="h-4 w-4" /> Modèle Excel
+          </a>
+          <label className="btn-ghost flex cursor-pointer items-center justify-center gap-2 text-sm">
+            <Upload className="h-4 w-4" /> Importer
+            <input type="file" accept=".xlsx" className="hidden" onChange={onImport} />
+          </label>
+        </div>
       </div>
       {err && <p className="text-sm text-brand">{err}</p>}
 
       {/* Infos */}
       <Section title="Informations" onAdd={() => set({ infos: [...value.infos, { label: "", value: "" }] })}>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {value.infos.map((it, i) => (
-            <div key={i} className="flex gap-2">
-              <input className="input w-52" value={it.label} placeholder="Rubrique (Horaires…)" onChange={(e) => set({ infos: value.infos.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })} />
-              <input className="input flex-1" value={it.value} placeholder="Contenu" onChange={(e) => set({ infos: value.infos.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)) })} />
-              <button type="button" className="text-muted hover:text-brand" onClick={() => set({ infos: value.infos.filter((_, j) => j !== i) })}>×</button>
+            <div key={i} className="flex items-start gap-2">
+              <div className="flex flex-1 flex-col gap-2 sm:flex-row">
+                <input className="input sm:w-52" value={it.label} placeholder="Rubrique (Horaires…)" onChange={(e) => set({ infos: value.infos.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })} />
+                <input className="input sm:flex-1" value={it.value} placeholder="Contenu" onChange={(e) => set({ infos: value.infos.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)) })} />
+              </div>
+              <button type="button" className="mt-2.5 shrink-0 text-lg text-muted hover:text-brand" onClick={() => set({ infos: value.infos.filter((_, j) => j !== i) })} aria-label="Retirer">×</button>
             </div>
           ))}
           {value.infos.length === 0 && <p className="text-sm text-muted">Aucune info. Ajoutez horaires, adresse, paiement…</p>}
@@ -135,9 +114,9 @@ export default function ConfigEditor({
 
       {/* Tables flexibles */}
       <div>
-        <div className="mb-2 flex items-center justify-between">
+        <div className="mb-2 flex items-center justify-between gap-2">
           <h3 className="text-lg">Tableaux (menu, prestations, catalogue…)</h3>
-          <button type="button" className="chip" onClick={() => set({ tables: [...value.tables, { name: `Tableau ${value.tables.length + 1}`, columns: ["Nom", "Description", "Prix"], rows: [] }] })}>+ tableau</button>
+          <button type="button" className="chip shrink-0" onClick={() => set({ tables: [...value.tables, { name: `Tableau ${value.tables.length + 1}`, columns: ["Nom", "Description", "Prix"], rows: [] }] })}>+ tableau</button>
         </div>
         <div className="space-y-4">
           {value.tables.map((t, i) => (
@@ -154,27 +133,33 @@ export default function ConfigEditor({
 
       {/* Consignes */}
       <Section title="Consignes (comportement du bot)" onAdd={() => set({ consignes: [...value.consignes, { situation: "", action: "" }] })}>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {value.consignes.map((c, i) => (
-            <div key={i} className="flex gap-2">
-              <input className="input w-52" value={c.situation} placeholder="Situation (Réservations…)" onChange={(e) => set({ consignes: value.consignes.map((x, j) => (j === i ? { ...x, situation: e.target.value } : x)) })} />
-              <input className="input flex-1" value={c.action} placeholder="Que faire (envoyer un lien, transmettre au responsable…)" onChange={(e) => set({ consignes: value.consignes.map((x, j) => (j === i ? { ...x, action: e.target.value } : x)) })} />
-              <button type="button" className="text-muted hover:text-brand" onClick={() => set({ consignes: value.consignes.filter((_, j) => j !== i) })}>×</button>
+            <div key={i} className="flex items-start gap-2">
+              <div className="flex flex-1 flex-col gap-2 sm:flex-row">
+                <input className="input sm:w-52" value={c.situation} placeholder="Situation (Réservations…)" onChange={(e) => set({ consignes: value.consignes.map((x, j) => (j === i ? { ...x, situation: e.target.value } : x)) })} />
+                <input className="input sm:flex-1" value={c.action} placeholder="Que faire (envoyer un lien, transmettre au responsable…)" onChange={(e) => set({ consignes: value.consignes.map((x, j) => (j === i ? { ...x, action: e.target.value } : x)) })} />
+              </div>
+              <button type="button" className="mt-2.5 shrink-0 text-lg text-muted hover:text-brand" onClick={() => set({ consignes: value.consignes.filter((_, j) => j !== i) })} aria-label="Retirer">×</button>
             </div>
           ))}
+          {value.consignes.length === 0 && <p className="text-sm text-muted">Aucune consigne pour le moment.</p>}
         </div>
       </Section>
 
       {/* FAQ */}
       <Section title="Questions fréquentes" onAdd={() => set({ faq: [...value.faq, { question: "", reponse: "" }] })}>
-        <div className="space-y-2">
+        <div className="space-y-3">
           {value.faq.map((f, i) => (
-            <div key={i} className="flex gap-2">
-              <input className="input flex-1" value={f.question} placeholder="Question" onChange={(e) => set({ faq: value.faq.map((x, j) => (j === i ? { ...x, question: e.target.value } : x)) })} />
-              <input className="input flex-1" value={f.reponse} placeholder="Réponse" onChange={(e) => set({ faq: value.faq.map((x, j) => (j === i ? { ...x, reponse: e.target.value } : x)) })} />
-              <button type="button" className="text-muted hover:text-brand" onClick={() => set({ faq: value.faq.filter((_, j) => j !== i) })}>×</button>
+            <div key={i} className="flex items-start gap-2">
+              <div className="flex flex-1 flex-col gap-2 sm:flex-row">
+                <input className="input sm:flex-1" value={f.question} placeholder="Question" onChange={(e) => set({ faq: value.faq.map((x, j) => (j === i ? { ...x, question: e.target.value } : x)) })} />
+                <input className="input sm:flex-1" value={f.reponse} placeholder="Réponse" onChange={(e) => set({ faq: value.faq.map((x, j) => (j === i ? { ...x, reponse: e.target.value } : x)) })} />
+              </div>
+              <button type="button" className="mt-2.5 shrink-0 text-lg text-muted hover:text-brand" onClick={() => set({ faq: value.faq.filter((_, j) => j !== i) })} aria-label="Retirer">×</button>
             </div>
           ))}
+          {value.faq.length === 0 && <p className="text-sm text-muted">Aucune question fréquente.</p>}
         </div>
       </Section>
     </div>

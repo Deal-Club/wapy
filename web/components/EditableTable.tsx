@@ -76,7 +76,7 @@ export default function EditableTable({
     <div className="rounded-xl border border-line bg-surface/60 p-4">
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <input
-          className="input max-w-[240px] font-display text-lg"
+          className="input w-full font-display text-lg sm:w-auto sm:max-w-[240px]"
           value={table.name}
           onChange={(e) => setName(e.target.value)}
         />
@@ -95,8 +95,8 @@ export default function EditableTable({
         </button>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full border-separate border-spacing-0 text-sm">
+      <div className="-mx-1 overflow-x-auto px-1">
+        <table className="w-full min-w-[560px] border-separate border-spacing-0 text-sm">
           <thead>
             <tr>
               {table.columns.map((col, ci) => (

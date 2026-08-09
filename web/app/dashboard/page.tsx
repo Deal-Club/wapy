@@ -27,7 +27,7 @@ const SETTINGS_SECTIONS: SettingsSection[] = [
   { id: "connaissances", label: "Base de connaissances", Icon: BookOpen },
   { id: "rdv", label: "Rendez-vous", Icon: CalendarDays },
   { id: "chatbot", label: "Chatbot web", Icon: MessageCircle },
-  { id: "connecteur", label: "Connexion base de données", Icon: Database },
+  { id: "connecteur", label: "Base de données", Icon: Database },
   { id: "exclus", label: "Numéros exclus", Icon: Ban },
   { id: "whatsapp", label: "Connexion WhatsApp", Icon: Smartphone },
   { id: "suggestions", label: "Suggestions IA", Icon: Sparkles },
@@ -193,9 +193,9 @@ function SettingsView({ section, setSection, onExit }: { section: string; setSec
               <button
                 key={s.id}
                 onClick={() => setSection(s.id)}
-                className={`flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition ${section === s.id ? "bg-brand text-white shadow-soft" : "text-muted hover:bg-brand-soft/40 hover:text-ink"}`}
+                className={`flex min-w-0 items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition md:whitespace-normal ${section === s.id ? "bg-brand text-white shadow-soft" : "text-muted hover:bg-brand-soft/40 hover:text-ink"}`}
               >
-                <Icon className="h-[18px] w-[18px] shrink-0" /> <span className="hidden sm:inline">{s.label}</span>
+                <Icon className="h-[18px] w-[18px] shrink-0" /> <span className="hidden min-w-0 sm:inline">{s.label}</span>
               </button>
             );
           })}
@@ -229,30 +229,24 @@ function SettingsView({ section, setSection, onExit }: { section: string; setSec
 
 function EstablishmentSection() {
   const [config, setConfig] = useState<Config>(emptyConfig());
-  const [staff, setStaff] = useState("");
-  const [linked, setLinked] = useState("");
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    api.getConfig().then((c) => {
-      setConfig({ ...emptyConfig(), ...c });
-      setStaff(c.staff_numbers || "");
-      setLinked(c.linked_number || "");
-    }).catch(() => {});
+    api.getConfig().then((c) => setConfig({ ...emptyConfig(), ...c })).catch(() => {});
   }, []);
 
   async function save() {
     setErr("");
-    if (!staff.trim()) { setErr("Le numéro WhatsApp du responsable est obligatoire."); return; }
     setSaving(true);
     setSaved(false);
     try {
       // `booking` et `documents` sont gérés par leurs propres cartes (sauvegardes
       // dédiées) : on ne les renvoie pas ici, sinon un état périmé les écraserait.
+      // Le numéro du responsable est géré dans « Connexion WhatsApp » (vérif OTP).
       const { booking, documents, ...rest } = config as any;
-      await api.putConfig({ ...rest, staff_numbers: staff });
+      await api.putConfig(rest);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e: any) {
@@ -264,7 +258,7 @@ function EstablishmentSection() {
 
   return (
     <div className="card space-y-5">
-      <ConfigEditor value={config} onChange={setConfig} staff={staff} onStaffChange={setStaff} linked={linked} />
+      <ConfigEditor value={config} onChange={setConfig} />
       <div className="flex items-center justify-end gap-3 border-t border-line pt-4">
         {err && <span className="text-sm text-brand">{err}</span>}
         {saved && <span className="text-sm text-emerald-dark">✓ Enregistré</span>}
