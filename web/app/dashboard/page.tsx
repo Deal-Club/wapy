@@ -1,6 +1,10 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import {
+  Settings as SettingsIcon, Store, BookOpen, CalendarDays, MessageCircle,
+  Database, Ban, Smartphone, Sparkles, Users, CreditCard, Send, type LucideIcon,
+} from "lucide-react";
 import { api, getToken, clearToken } from "@/lib/api";
 import ConfigEditor, { Config, emptyConfig } from "@/components/ConfigEditor";
 import WhatsAppConnect from "@/components/WhatsAppConnect";
@@ -16,19 +20,19 @@ const ALL_TABS: { id: Tab; label: string }[] = [
   { id: "usage", label: "Usage" },
 ];
 
-// Sections de la page Paramètres (accessible via l'icône ⚙️, propriétaire).
-type SettingsSection = { id: string; label: string; icon: string };
+// Sections de la page Paramètres (accessible via l'icône Paramètres, propriétaire).
+type SettingsSection = { id: string; label: string; Icon: LucideIcon };
 const SETTINGS_SECTIONS: SettingsSection[] = [
-  { id: "etablissement", label: "Établissement", icon: "🏪" },
-  { id: "connaissances", label: "Base de connaissances", icon: "📚" },
-  { id: "rdv", label: "Rendez-vous", icon: "🗓️" },
-  { id: "chatbot", label: "Chatbot web", icon: "💬" },
-  { id: "connecteur", label: "Connexion base de données", icon: "🔌" },
-  { id: "exclus", label: "Numéros exclus", icon: "🚫" },
-  { id: "whatsapp", label: "Connexion WhatsApp", icon: "📱" },
-  { id: "suggestions", label: "Suggestions IA", icon: "✨" },
-  { id: "equipe", label: "Équipe", icon: "👥" },
-  { id: "abonnement", label: "Abonnement", icon: "💳" },
+  { id: "etablissement", label: "Établissement", Icon: Store },
+  { id: "connaissances", label: "Base de connaissances", Icon: BookOpen },
+  { id: "rdv", label: "Rendez-vous", Icon: CalendarDays },
+  { id: "chatbot", label: "Chatbot web", Icon: MessageCircle },
+  { id: "connecteur", label: "Connexion base de données", Icon: Database },
+  { id: "exclus", label: "Numéros exclus", Icon: Ban },
+  { id: "whatsapp", label: "Connexion WhatsApp", Icon: Smartphone },
+  { id: "suggestions", label: "Suggestions IA", Icon: Sparkles },
+  { id: "equipe", label: "Équipe", Icon: Users },
+  { id: "abonnement", label: "Abonnement", Icon: CreditCard },
 ];
 
 function beep() {
@@ -123,7 +127,7 @@ export default function Dashboard() {
               onClick={() => setSettings(settings ? null : "etablissement")}
               aria-label="Paramètres"
             >
-              <span className="text-base">⚙️</span> Paramètres
+              <SettingsIcon className="h-4 w-4" /> Paramètres
             </button>
           )}
           <button className="btn-ghost text-sm" onClick={() => { clearToken(); router.replace("/login"); }}>Déconnexion</button>
@@ -182,21 +186,24 @@ function SettingsView({ section, setSection, onExit }: { section: string; setSec
       </div>
       <div className="grid gap-5 md:grid-cols-[220px_1fr]">
         {/* Navigation latérale des sections */}
-        <nav className="flex gap-1 overflow-x-auto rounded-xl2 border border-line bg-surface p-2 md:flex-col md:overflow-visible">
-          {SETTINGS_SECTIONS.map((s) => (
-            <button
-              key={s.id}
-              onClick={() => setSection(s.id)}
-              className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition ${section === s.id ? "bg-brand text-white shadow-soft" : "text-muted hover:bg-brand-soft/40 hover:text-ink"}`}
-            >
-              <span className="text-base">{s.icon}</span> <span className="hidden sm:inline">{s.label}</span>
-            </button>
-          ))}
+        <nav className="flex gap-1 overflow-x-auto rounded-xl2 border border-line bg-surface p-2 md:sticky md:top-4 md:max-h-[calc(100dvh-2rem)] md:flex-col md:self-start md:overflow-y-auto">
+          {SETTINGS_SECTIONS.map((s) => {
+            const Icon = s.Icon;
+            return (
+              <button
+                key={s.id}
+                onClick={() => setSection(s.id)}
+                className={`flex items-center gap-2.5 whitespace-nowrap rounded-lg px-3 py-2 text-left text-sm font-medium transition ${section === s.id ? "bg-brand text-white shadow-soft" : "text-muted hover:bg-brand-soft/40 hover:text-ink"}`}
+              >
+                <Icon className="h-[18px] w-[18px] shrink-0" /> <span className="hidden sm:inline">{s.label}</span>
+              </button>
+            );
+          })}
         </nav>
         {/* Contenu de la section */}
         <div className="min-w-0 space-y-5">
-          <div className="hidden items-center gap-2 md:flex">
-            <span className="text-xl">{current.icon}</span>
+          <div className="hidden items-center gap-2.5 md:flex">
+            <current.Icon className="h-5 w-5 text-brand" />
             <h2 className="font-display text-xl">{current.label}</h2>
           </div>
           {section === "etablissement" && <EstablishmentSection />}
@@ -590,8 +597,8 @@ function GoogleCalendarCard() {
   if (!st) return null;
   if (!st.available) {
     return (
-      <div className="rounded-lg border border-line bg-paper/50 p-3 text-sm text-muted">
-        🗓️ Synchro Google Agenda bientôt disponible.
+      <div className="flex items-center gap-2 rounded-lg border border-line bg-paper/50 p-3 text-sm text-muted">
+        <CalendarDays className="h-4 w-4 shrink-0" /> Synchro Google Agenda bientôt disponible.
       </div>
     );
   }
@@ -651,7 +658,7 @@ function BookingsTab({ isOwner }: { isOwner: boolean }) {
             {upcoming.map((b) => (
               <div key={b.id} className="flex items-center justify-between rounded-xl border border-line bg-surface/60 px-4 py-2.5 text-sm">
                 <div>
-                  <div className="font-medium">🗓️ {fmt(b.when)} · {b.service}</div>
+                  <div className="flex items-center gap-1.5 font-medium"><CalendarDays className="h-4 w-4 shrink-0 text-brand" /> {fmt(b.when)} · {b.service}</div>
                   <div className="text-xs text-muted">Client : {b.customer}</div>
                 </div>
                 {isOwner && <button className="btn-ghost text-xs" onClick={async () => { await api.cancelBooking(b.id); load(); }}>Annuler</button>}
@@ -1040,7 +1047,7 @@ function Conversations() {
 
             <div className="flex items-center gap-2 border-t border-line bg-surface px-3 py-2">
               <input className="input flex-1 rounded-full" value={reply} onChange={(e) => setReply(e.target.value)} onKeyDown={(e) => e.key === "Enter" && sendReply()} placeholder="Répondre au client…" />
-              <button className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald text-white" onClick={sendReply} aria-label="Envoyer">➤</button>
+              <button className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald text-white" onClick={sendReply} aria-label="Envoyer"><Send className="h-4 w-4" /></button>
             </div>
           </>
         )}
