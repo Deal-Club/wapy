@@ -34,7 +34,7 @@ export const PAYS: Pays[] = [
     faq: [
       {
         q: "Wapy fonctionne-t-il avec un numéro béninois en 10 chiffres ?",
-        r: "Oui. Wapy résout automatiquement le format réel du compte WhatsApp, que le numéro soit saisi en 8 ou en 10 chiffres. Vous n'avez pas à deviner lequel utiliser, la vérification se fait au moment de la connexion.",
+        r: "Le compte de l'établissement se connecte par QR code, aucun numéro n'y est saisi. Là où vous en tapez un, pour le responsable ou pour inviter un collaborateur, Wapy essaie les variantes en 8 et en 10 chiffres et envoie un code sur WhatsApp : seule la vraie ligne le reçoit.",
       },
       {
         q: "Faut-il un compte WhatsApp Business ?",
@@ -83,7 +83,7 @@ export const PAYS: Pays[] = [
       nature: "recensement",
     },
     enBref:
-      "En Côte d'Ivoire, Wapy répond sur WhatsApp à la place du commerçant : horaires, adresse, tarifs, disponibilité, modalités de livraison. L'assistant se configure sans code et prévient le responsable dès qu'une demande réclame une décision humaine.",
+      "En Côte d'Ivoire, Wapy répond sur WhatsApp à la place du commerçant : horaires, adresse, tarifs, disponibilité, modalités de livraison. L'assistant se configure sans code et passe la main au responsable pour les réclamations et les cas où un humain est vraiment nécessaire.",
     angle:
       "À Abidjan, une demande commerciale commence rarement par un appel : elle commence par un message WhatsApp envoyé depuis un embouteillage de Cocody ou une cour de Yopougon. Pendant ce temps, le commerçant est au comptoir, en livraison ou chez son fournisseur. Aux heures de pointe, les messages s'empilent pendant des heures, et le client a souvent déjà écrit à deux concurrents avant d'obtenir une réponse.",
     faq: [
@@ -138,7 +138,7 @@ export const PAYS: Pays[] = [
       nature: "recensement",
     },
     enBref:
-      "Au Sénégal, Wapy tient la conversation WhatsApp de votre établissement : horaires, adresse, tarifs, réservations, moyens de paiement. L'assistant se met en place en quelques minutes, sans développeur, et vous alerte dès qu'une demande sort du cadre prévu.",
+      "Au Sénégal, Wapy tient la conversation WhatsApp de votre établissement : horaires, adresse, tarifs, réservations, moyens de paiement. Il répond à partir de votre fiche, sans jamais inventer, et ne passe la main qu'en cas de réclamation ou de demande explicite de parler à quelqu'un.",
     angle:
       "À Dakar, la journée d'un commerçant est hachée : approvisionnement le matin, livraisons l'après-midi, et un téléphone qui vibre sans interruption entre les deux. Les clients écrivent en français, glissent un mot en wolof, ou dictent une note vocale en marchant. Ils attendent une réponse tout de suite, et celui qui répond seulement le lendemain matin découvre que la commande est partie ailleurs.",
     faq: [
