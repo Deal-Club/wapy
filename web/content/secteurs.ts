@@ -82,7 +82,7 @@ export const SECTEURS: Secteur[] = [
     faq: [
       {
         q: "L'assistant peut-il vraiment prendre les rendez-vous seul ?",
-        r: "Avec l'option rendez-vous, oui. Il calcule vos créneaux libres depuis vos horaires d'ouverture et la durée de la prestation, en propose quelques uns, et quand la cliente en choisit un, il l'enregistre et confirme. Sans cette option, il recueille la demande et vous la transmet.",
+        r: "Avec l'option rendez-vous, oui. Il calcule vos créneaux libres depuis vos horaires d'ouverture et la durée de créneau que vous fixez, en propose quelques uns, et quand la cliente en choisit un, il l'enregistre et confirme. Sans cette option, il recueille la demande et vous la transmet.",
       },
       {
         q: "Et si deux clientes veulent le même créneau ?",
@@ -90,7 +90,7 @@ export const SECTEURS: Secteur[] = [
       },
       {
         q: "Les clientes reçoivent-elles un rappel ?",
-        r: "Oui, deux rappels automatiques sur WhatsApp : environ 24 heures avant, puis un dernier dans les deux heures qui précèdent. Chacun rappelle la prestation et l'horaire. C'est ce qui limite les créneaux perdus par simple oubli.",
+        r: "Oui, deux rappels automatiques sur WhatsApp pour un rendez-vous enregistré avec l'option rendez-vous : environ 24 heures avant, puis un dernier dans les deux heures qui précèdent. Chacun rappelle la prestation et l'horaire, ce qui limite les créneaux perdus par simple oubli.",
       },
       {
         q: "Puis-je bloquer certains horaires ?",
@@ -102,7 +102,7 @@ export const SECTEURS: Secteur[] = [
       },
       {
         q: "Ça marche pour un institut comme pour une onglerie ?",
-        r: "Oui. Vous décrivez vos prestations avec leur durée et leur prix, quelles qu'elles soient. L'assistant s'appuie sur cette liste, et la durée que vous indiquez sert à caler les créneaux proposés.",
+        r: "Oui. Vous décrivez vos prestations avec leur durée et leur prix, quelles qu'elles soient, et l'assistant s'appuie sur cette liste pour répondre. Les créneaux proposés, eux, suivent la durée de créneau unique que vous fixez, et non la durée propre à chaque prestation.",
       },
     ],
     publie: true,
@@ -117,7 +117,7 @@ export const SECTEURS: Secteur[] = [
     enBref:
       "Un chatbot WhatsApp pour boutique répond sur les articles, les tailles, les prix et la livraison à partir de votre catalogue, envoie la photo du produit et enregistre la commande avec l'adresse, y compris magasin fermé.",
     angle:
-      "Pour beaucoup de commerces, WhatsApp remplace la vitrine et le site web. Le client y demande si le modèle existe encore, dans quelle taille, à quel prix, et si vous livrez chez lui. Ces questions arrivent surtout le soir, quand le rideau est baissé. Sans réponse, il ne revient pas le lendemain : il achète dans la boutique qui a répondu la première.",
+      "Sur WhatsApp, le client demande ce qu'il demanderait en vitrine : si le modèle existe encore, dans quelle taille, à quel prix, et si vous livrez chez lui. Ces questions arrivent surtout le soir, quand le rideau est baissé. Sans réponse, il ne revient pas le lendemain : il achète dans la boutique qui a répondu la première.",
     douleurs: [
       "Questions de disponibilité et de taille reçues après la fermeture",
       "Catalogue décrit à l'oral, avec des prix qui varient d'un message à l'autre",
@@ -135,7 +135,7 @@ export const SECTEURS: Secteur[] = [
       },
       {
         q: "Mon stock change tous les jours, comment suivre ?",
-        r: "Deux façons : mettre le catalogue à jour vous-même, ou brancher l'assistant sur la base de votre logiciel de gestion. Avec cette option, il interroge votre système en direct pour une disponibilité précise au lieu de s'en tenir au tableau.",
+        r: "Deux façons : mettre le catalogue à jour vous-même, ou activer l'option de connexion. Votre logiciel de gestion expose alors une adresse web sécurisée que l'assistant interroge en direct. Ce n'est pas un branchement sur votre base : c'est à vous d'ouvrir cet accès.",
       },
       {
         q: "Comment se passe une commande hors des heures d'ouverture ?",
@@ -205,7 +205,7 @@ export const SECTEURS: Secteur[] = [
     ancienSlugBlog: "assistant-whatsapp-clinique-pharmacie",
     motCle: "assistant WhatsApp clinique pharmacie",
     enBref:
-      "Un assistant WhatsApp pour clinique ou pharmacie répond aux demandes pratiques, horaires, adresse, documents à apporter, disponibilité d'un produit renseigné, et alerte un soignant dès qu'il s'agit d'une urgence ou d'un cas sensible.",
+      "Un assistant WhatsApp pour clinique ou pharmacie répond aux demandes pratiques, horaires, adresse, documents à apporter, disponibilité d'un produit renseigné, et alerte votre équipe dès qu'il s'agit d'une urgence ou d'un cas sensible.",
     angle:
       "À l'accueil d'un cabinet ou d'une officine, le téléphone coupe la file d'attente. Les mêmes demandes reviennent sans arrêt : l'heure de fermeture, les pièces du dossier, si tel produit est arrivé. Chaque appel vole du temps au patient qui se tient devant le comptoir, et les demandes réellement médicales se retrouvent noyées au milieu des questions pratiques.",
     douleurs: [
@@ -217,7 +217,7 @@ export const SECTEURS: Secteur[] = [
     faq: [
       {
         q: "L'assistant peut-il donner un avis médical ?",
-        r: "Il ne dispose que de votre fiche et il lui est interdit d'inventer une donnée absente. Pour verrouiller le sujet, écrivez une consigne du type « toute question de symptôme ou de posologie : ne réponds pas, transmets ». Il suit toujours les consignes de la fiche.",
+        r: "Wapy n'a pas de garde-fou médical dédié. L'assistant ne dispose que de votre fiche et il lui est interdit d'inventer une donnée absente. Le cadrage repose sur les consignes que vous écrivez, du type « question de symptôme ou de posologie : ne réponds pas, transmets », que l'assistant suit.",
       },
       {
         q: "Comment est traitée une demande urgente ?",
@@ -225,11 +225,11 @@ export const SECTEURS: Secteur[] = [
       },
       {
         q: "Peut-il prendre les rendez-vous du cabinet ?",
-        r: "Avec l'option rendez-vous, oui. Il propose vos créneaux libres, calculés depuis vos horaires et la durée de la consultation, enregistre celui que le patient choisit et envoie deux rappels avant l'échéance.",
+        r: "Avec l'option rendez-vous, oui. Il propose vos créneaux libres, calculés depuis vos horaires d'ouverture et la durée de créneau que vous fixez, enregistre celui que le patient choisit et envoie deux rappels avant l'échéance.",
       },
       {
         q: "Peut-il dire si un médicament est disponible ?",
-        r: "Uniquement pour ce que vous avez renseigné dans votre tableau de produits. Pour une disponibilité qui change dans la journée, l'option de connexion à votre logiciel lui permet d'interroger votre base au moment de la question.",
+        r: "Uniquement pour ce que vous avez renseigné dans votre tableau de produits. Pour une disponibilité qui bouge dans la journée, l'option de connexion interroge en direct une adresse web sécurisée que votre logiciel d'officine expose. C'est à vous d'ouvrir cet accès, rien n'est branché sur votre base.",
       },
       {
         q: "Puis-je lui confier nos protocoles écrits ?",
@@ -266,7 +266,7 @@ export const SECTEURS: Secteur[] = [
       },
       {
         q: "Comment qualifier un prospect avant de le rappeler ?",
-        r: "Écrivez une consigne qui liste ce qu'il doit demander avant d'enregistrer la demande : budget, quartier, location ou achat, date d'emménagement. L'assistant suit toujours les consignes de la fiche et vous transmet une demande déjà cadrée.",
+        r: "Écrivez une consigne qui liste ce qu'il doit demander avant d'enregistrer la demande : budget, quartier, location ou achat, date d'emménagement. L'assistant suit les consignes de la fiche et vous transmet une demande déjà cadrée.",
       },
       {
         q: "Comment mettre à jour les biens disponibles ?",
@@ -450,7 +450,7 @@ export const SECTEURS: Secteur[] = [
       },
       {
         q: "Sait-il si une date est déjà retenue ?",
-        r: "Pas de lui même, sauf si vous activez l'option rendez-vous : les créneaux déjà réservés en sont alors retirés. Sans cette option, il recueille la date souhaitée et vous la transmet, et c'est vous qui confirmez la disponibilité.",
+        r: "Pas dans le cas d'un événement. L'option rendez-vous raisonne en créneaux horaires, pas en journées entières : réserver un créneau ne bloque pas la date. En pratique, l'assistant recueille la date souhaitée et vous la transmet, et c'est vous qui confirmez la disponibilité.",
       },
       {
         q: "Où retrouver les demandes qu'il a enregistrées ?",
@@ -491,11 +491,11 @@ export const SECTEURS: Secteur[] = [
       },
       {
         q: "Gère-t-il le planning de l'atelier ?",
-        r: "Avec l'option rendez-vous, il propose les créneaux libres calculés depuis vos horaires d'ouverture et la durée de la prestation, et n'en propose jamais un hors de cette liste. Vous fixez la durée des créneaux et le nombre de véhicules en parallèle.",
+        r: "Avec l'option rendez-vous, il propose les créneaux libres calculés depuis vos horaires d'ouverture et la durée de créneau que vous fixez, et n'en propose jamais un hors de cette liste. Vous réglez aussi le nombre de véhicules acceptés en parallèle.",
       },
       {
         q: "Que se passe-t-il si deux clients visent le même créneau ?",
-        r: "La disponibilité est revérifiée au moment d'enregistrer. Si la capacité est atteinte, la réservation est refusée et l'assistant propose immédiatement d'autres horaires libres, sans jamais créer deux passages sur le même créneau.",
+        r: "La disponibilité est revérifiée au moment d'enregistrer. Tant que le nombre de véhicules que vous acceptez en parallèle n'est pas atteint, le créneau reste ouvert. Une fois la capacité atteinte, la réservation est refusée et l'assistant propose immédiatement d'autres horaires libres.",
       },
       {
         q: "Le client est-il prévenu avant son passage ?",
@@ -503,7 +503,7 @@ export const SECTEURS: Secteur[] = [
       },
       {
         q: "Un client envoie la photo de son tableau de bord, que fait-il ?",
-        r: "Avec l'option lecture des images, l'assistant décrit ce qu'il voit et ajoute cette description à la conversation. Il ne pose aucun diagnostic : le voyant reste à interpréter par un mécanicien, et la demande vous est transmise.",
+        r: "Avec l'option lecture des justificatifs, qui couvre toutes les images reçues, l'assistant décrit ce qu'il voit et ajoute cette description à la conversation. Il ne pose aucun diagnostic : le voyant reste à interpréter par un mécanicien, et la demande vous est transmise.",
       },
       {
         q: "Faut-il changer de logiciel ou de numéro ?",
