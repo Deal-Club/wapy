@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 import { api } from "@/lib/api";
 
 type Table = { name: string; columns: string[]; rows: Record<string, string>[] };
@@ -81,15 +82,18 @@ export default function EditableTable({
           onChange={(e) => setName(e.target.value)}
         />
         <div className="flex-1" />
-        <input
-          className="input max-w-[180px]"
-          placeholder="Rechercher…"
-          value={q}
-          onChange={(e) => {
-            setQ(e.target.value);
-            setPage(0);
-          }}
-        />
+        <div className="relative w-full sm:w-auto">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
+          <input
+            className="input w-full pl-9 sm:w-[220px]"
+            placeholder="Rechercher dans le tableau…"
+            value={q}
+            onChange={(e) => {
+              setQ(e.target.value);
+              setPage(0);
+            }}
+          />
+        </div>
         <button type="button" className="btn-ghost text-sm" onClick={onRemove}>
           Supprimer le tableau
         </button>

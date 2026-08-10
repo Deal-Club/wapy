@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, Download, Upload } from "lucide-react";
 import { api } from "@/lib/api";
 import SectorPicker from "./SectorPicker";
@@ -21,12 +21,18 @@ export function emptyConfig(): Config {
 export default function ConfigEditor({
   value,
   onChange,
+  aiRemaining,
+  aiLimit,
 }: {
   value: Config;
   onChange: (c: Config) => void;
+  aiRemaining?: number;
+  aiLimit?: number;
 }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [aiLeft, setAiLeft] = useState<number | undefined>(aiRemaining);
+  useEffect(() => { setAiLeft(aiRemaining); }, [aiRemaining]);
   const set = (patch: Partial<Config>) => onChange({ ...value, ...patch });
 
   async function runAI() {
@@ -35,6 +41,7 @@ export default function ConfigEditor({
     try {
       const r = await api.aiGenerate(value.sector || "", value.description || "");
       onChange({ ...emptyConfig(), ...value, ...r.config });
+      if (typeof r.ai_remaining === "number") setAiLeft(r.ai_remaining);
     } catch (e: any) {
       setErr(e.message || "L'IA n'a pas pu générer");
     } finally {
@@ -82,7 +89,7 @@ export default function ConfigEditor({
           <p className="text-sm text-muted">Laissez l&apos;IA pré-remplir, ou importez un Excel. Vous pourrez tout éditer.</p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-          <button type="button" className="btn flex items-center justify-center gap-2" onClick={runAI} disabled={busy}>
+          <button type="button" className="btn flex items-center justify-center gap-2" onClick={runAI} disabled={busy || aiLeft === 0}>
             <Sparkles className="h-4 w-4" /> {busy ? "…" : "Remplir avec l'IA"}
           </button>
           <a className="btn-ghost flex items-center justify-center gap-2 text-sm" href={api.templateUrl()}>
@@ -93,6 +100,13 @@ export default function ConfigEditor({
             <input type="file" accept=".xlsx" className="hidden" onChange={onImport} />
           </label>
         </div>
+        {typeof aiLeft === "number" && (
+          <p className={`text-xs ${aiLeft === 0 ? "text-brand" : "text-muted"}`}>
+            {aiLeft === 0
+              ? `Limite mensuelle atteinte (${aiLimit ?? 15} générations IA/mois). Réessayez le mois prochain ou remplissez à la main.`
+              : `Générations IA : ${aiLeft}/${aiLimit ?? 15} restantes ce mois-ci.`}
+          </p>
+        )}
       </div>
       {err && <p className="text-sm text-brand">{err}</p>}
 

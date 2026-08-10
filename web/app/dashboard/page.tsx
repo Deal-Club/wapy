@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Settings as SettingsIcon, Store, BookOpen, CalendarDays, MessageCircle,
-  Database, Ban, Smartphone, Sparkles, Users, CreditCard, Send, type LucideIcon,
+  Database, Ban, Smartphone, Sparkles, Users, CreditCard, Send,
+  AlertTriangle, CheckCircle2, PartyPopper, type LucideIcon,
 } from "lucide-react";
 import { api, getToken, clearToken } from "@/lib/api";
 import ConfigEditor, { Config, emptyConfig } from "@/components/ConfigEditor";
@@ -229,12 +230,16 @@ function SettingsView({ section, setSection, onExit }: { section: string; setSec
 
 function EstablishmentSection() {
   const [config, setConfig] = useState<Config>(emptyConfig());
+  const [ai, setAi] = useState<{ remaining?: number; limit?: number }>({});
   const [saved, setSaved] = useState(false);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
   useEffect(() => {
-    api.getConfig().then((c) => setConfig({ ...emptyConfig(), ...c })).catch(() => {});
+    api.getConfig().then((c) => {
+      setConfig({ ...emptyConfig(), ...c });
+      setAi({ remaining: c.ai_remaining, limit: c.ai_limit });
+    }).catch(() => {});
   }, []);
 
   async function save() {
@@ -258,7 +263,7 @@ function EstablishmentSection() {
 
   return (
     <div className="card space-y-5">
-      <ConfigEditor value={config} onChange={setConfig} />
+      <ConfigEditor value={config} onChange={setConfig} aiRemaining={ai.remaining} aiLimit={ai.limit} />
       <div className="flex items-center justify-end gap-3 border-t border-line pt-4">
         {err && <span className="text-sm text-brand">{err}</span>}
         {saved && <span className="text-sm text-emerald-dark">✓ Enregistré</span>}
@@ -416,7 +421,7 @@ function ConnectorConfig() {
           Votre jeton d'accès est chiffré chez nous.
         </p>
       </div>
-      {!c.encryption_ready && <p className="text-sm text-amber-600">⚠️ Chiffrement non encore activé côté serveur — le jeton ne pourra pas être enregistré.</p>}
+      {!c.encryption_ready && <p className="flex items-center gap-1.5 text-sm text-amber-600"><AlertTriangle className="h-4 w-4 shrink-0" /> Chiffrement non encore activé côté serveur — le jeton ne pourra pas être enregistré.</p>}
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={!!c.enabled} onChange={(e) => set({ enabled: e.target.checked })} />
         Activer la connexion
@@ -683,7 +688,7 @@ function BillingTab() {
   const cat = b.catalogue;
   const fmt = (n: number) => n.toLocaleString("fr-FR");
   const featLabel = (f: string) => cat.features[f] || f;
-  const statusLabel: Record<string, string> = { active: "Actif ✅", trial: "Essai gratuit", expired: "Expiré ⚠️" };
+  const statusLabel: Record<string, string> = { active: "Actif", trial: "Essai gratuit", expired: "Expiré" };
   const isActive = b.status === "active";
 
   async function go(fn: () => Promise<any>, key: string) {
@@ -768,7 +773,7 @@ function BillingTab() {
           )}
 
           {upgrades.length === 0 && availableAddons.length === 0 && (
-            <div className="card text-sm text-muted">Vous bénéficiez déjà de la formule maximale et de toutes les options. 🎉</div>
+            <div className="card flex items-center gap-2 text-sm text-muted"><PartyPopper className="h-4 w-4 shrink-0 text-brand" /> Vous bénéficiez déjà de la formule maximale et de toutes les options.</div>
           )}
         </>
       )}
@@ -1106,10 +1111,11 @@ function HealthBanner({ isOwner, onGoWhatsApp }: { isOwner: boolean; onGoWhatsAp
   return (
     <div className={`mb-4 rounded-2xl border px-4 py-3 text-sm ${scan ? "border-brand/40 bg-brand-soft/50" : "border-brand/50 bg-brand-soft/70"}`}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <span>
+        <span className="flex items-start gap-2">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           {scan
-            ? "⚠️ Votre WhatsApp n'est plus lié (QR à scanner). Le bot ne peut pas répondre tant qu'il n'est pas reconnecté."
-            : "🚨 Votre session WhatsApp est hors ligne. Le bot ne reçoit plus les messages."}
+            ? "Votre WhatsApp n'est plus lié (QR à scanner). Le bot ne peut pas répondre tant qu'il n'est pas reconnecté."
+            : "Votre session WhatsApp est hors ligne. Le bot ne reçoit plus les messages."}
         </span>
         {isOwner && (
           <button className="btn text-xs" onClick={onGoWhatsApp}>Reconnecter</button>

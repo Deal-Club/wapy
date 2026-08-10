@@ -409,6 +409,9 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         cfg["staff_inbound_ids"] = tenant.staff_inbound_ids or ""
         cfg["wapy_model"] = tenant.wapy_model
         cfg["linked_number"] = _linked_number(s, tenant.id)
+        from saas import billing
+        cfg["ai_remaining"] = max(0, billing.AI_GENERATE_PER_MONTH - usage.ai_gen_count(s, tenant.id))
+        cfg["ai_limit"] = billing.AI_GENERATE_PER_MONTH
         return cfg
 
     @app.put("/api/config")
@@ -448,7 +451,15 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
 
     # --- Génération assistée par l'IA ---
     @app.post("/api/ai/generate")
-    def ai_generate_config(body: AiGenIn, tenant=Depends(owner_tenant)):
+    def ai_generate_config(body: AiGenIn, tenant=Depends(owner_tenant), s=Depends(db)):
+        from saas import billing
+        used = usage.ai_gen_count(s, tenant.id)
+        if used >= billing.AI_GENERATE_PER_MONTH:
+            raise HTTPException(
+                status_code=429,
+                detail=f"Limite atteinte : {billing.AI_GENERATE_PER_MONTH} générations IA par mois. "
+                       "Réessayez le mois prochain, ou remplissez/éditez manuellement.",
+            )
         gen = ai_generate
         if gen is None:
             import anthropic
@@ -458,7 +469,8 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             data = generate_config(client, tenant.wapy_model, body.sector, body.description, tenant.name)
         else:
             data = gen(tenant, body.sector, body.description)
-        return {"config": data}
+        remaining = max(0, billing.AI_GENERATE_PER_MONTH - usage.ai_gen_bump(s, tenant.id))
+        return {"config": data, "ai_remaining": remaining, "ai_limit": billing.AI_GENERATE_PER_MONTH}
 
     @app.put("/api/settings")
     def put_settings(body: SettingsIn, tenant=Depends(owner_tenant), s=Depends(db)):
@@ -1085,17 +1097,22 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
 
     @app.get("/api/widget/config")
     def widget_public_config(k: str = "", s=Depends(db)):
-        from saas import recaptcha
+        from saas import recaptcha, billing
         tenant = _tenant_by_widget(s, k)
         wc = (config_repo.get_config(s, tenant.id).get("webchat") or {}) if tenant else {}
         if not tenant or not wc.get("enabled"):
             return {"ok": False}
+        # Abonnement expiré / établissement suspendu / droit retiré -> on affiche le
+        # widget mais en mode "indisponible" (message propre, pas d'erreur brute).
+        sub = s.get(models.Subscription, tenant.id)
+        suspended = (getattr(tenant, "status", "active") or "active") != "active" or not billing.has_feature(sub, "webchat")
         return {
             "ok": True,
             "name": wc.get("name") or tenant.name,
             "welcome": wc.get("welcome") or "Bonjour 👋 Comment puis-je vous aider ?",
             "color": wc.get("color") or "#12b76a",
             "recaptcha_site_key": recaptcha.site_key(),
+            "suspended": suspended,
         }
 
     class WidgetChatIn(BaseModel):

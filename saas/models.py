@@ -296,6 +296,14 @@ class GoogleAuth(Base):
     connected_at = Column(DateTime, default=datetime.utcnow)
 
 
+class AiGenUsage(Base):
+    """Compteur MENSUEL des générations IA de config (garde-fou anti-abus/coût)."""
+    __tablename__ = "ai_gen_usage"
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), primary_key=True)
+    month = Column(String(7), primary_key=True)  # 'YYYY-MM'
+    count = Column(Integer, default=0)
+
+
 class Subscription(Base):
     """Abonnement d'un établissement à Wapy (facturation opérateur via GeniusPay)."""
     __tablename__ = "subscriptions"

@@ -36,7 +36,9 @@ export default function Widget() {
       .then((r) => r.json())
       .then((c) => {
         setCfg(c);
-        if (c.ok) setMsgs([{ role: "assistant", content: c.welcome }]);
+        if (c.ok && c.suspended)
+          setMsgs([{ role: "assistant", content: "Notre assistant est momentanément indisponible. Merci de revenir un peu plus tard." }]);
+        else if (c.ok) setMsgs([{ role: "assistant", content: c.welcome }]);
         // reCAPTCHA v3 invisible : charge le script si l'opérateur a configuré une clé.
         if (c.ok && c.recaptcha_site_key && !(window as any).grecaptcha) {
           const sc = document.createElement("script");
@@ -105,7 +107,11 @@ export default function Widget() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100dvh", background: "#efeae2", fontFamily: "system-ui, sans-serif" }}>
       <header style={{ background: color, color: "#fff", padding: "14px 16px", fontWeight: 600, display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,.25)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>💬</span>
+        <span style={{ width: 34, height: 34, borderRadius: "50%", background: "rgba(255,255,255,.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+          </svg>
+        </span>
         <span>{cfg?.name || "Assistant"}</span>
       </header>
 
@@ -138,23 +144,28 @@ export default function Widget() {
         <div ref={endRef} />
       </div>
 
-      <div style={{ display: "flex", gap: 8, padding: 10, background: "#f0f2f5" }}>
-        <input
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") send(); }}
-          placeholder="Votre message…"
-          style={{ flex: 1, border: "none", borderRadius: 20, padding: "10px 14px", fontSize: 14, outline: "none" }}
-        />
-        <button
-          onClick={send}
-          disabled={sending}
-          aria-label="Envoyer"
-          style={{ background: color, color: "#fff", border: "none", borderRadius: "50%", width: 42, height: 42, cursor: "pointer", fontSize: 18 }}
-        >
-          ➤
-        </button>
-      </div>
+      {!cfg?.suspended && (
+        <div style={{ display: "flex", gap: 8, padding: 10, background: "#f0f2f5" }}>
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") send(); }}
+            placeholder="Votre message…"
+            style={{ flex: 1, border: "none", borderRadius: 20, padding: "10px 14px", fontSize: 14, outline: "none" }}
+          />
+          <button
+            onClick={send}
+            disabled={sending}
+            aria-label="Envoyer"
+            style={{ background: color, color: "#fff", border: "none", borderRadius: "50%", width: 42, height: 42, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+          >
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

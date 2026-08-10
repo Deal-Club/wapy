@@ -57,6 +57,17 @@ def test_blocklist_blocks_only_listed_numbers():
     assert r2["status"] == "replied"
 
 
+def test_ai_gen_monthly_counter():
+    from saas import usage, billing
+    sf = _sf(); s = sf()
+    _, t = auth.signup(s, "ai@b.com", "x", "T")
+    assert usage.ai_gen_count(s, t.id) == 0
+    for i in range(1, 4):
+        assert usage.ai_gen_bump(s, t.id) == i
+    assert usage.ai_gen_count(s, t.id) == 3
+    assert billing.AI_GENERATE_PER_MONTH >= 1
+
+
 def test_recaptcha_disabled_is_passthrough(monkeypatch):
     monkeypatch.delenv("RECAPTCHA_SECRET", raising=False)
     monkeypatch.delenv("RECAPTCHA_SITE_KEY", raising=False)

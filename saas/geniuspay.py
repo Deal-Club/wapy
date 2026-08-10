@@ -33,7 +33,9 @@ def create_payment(cfg, amount: int, description: str, customer: dict,
             "Content-Type": "application/json",
         },
         json=body,
-        timeout=30,
+        # (connexion, lecture) : échoue vite si GeniusPay est injoignable, patiente
+        # un peu plus pour la réponse. L'activation réelle passe de toute façon par le webhook.
+        timeout=(5, 20),
     )
     r.raise_for_status()
     d = (r.json() or {}).get("data", {}) or {}
