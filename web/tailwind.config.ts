@@ -14,7 +14,7 @@ const config: Config = {
         emerald: { DEFAULT: "#1FA463", dark: "#178552", soft: "#E3F3EA" },
       },
       fontFamily: {
-        display: ["var(--font-display)", "Georgia", "serif"],
+        display: ["var(--font-sans)", "system-ui", "sans-serif"],
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
       },
       boxShadow: {

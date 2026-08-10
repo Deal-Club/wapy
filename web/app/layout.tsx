@@ -1,18 +1,14 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
-import { Fraunces, Instrument_Sans } from "next/font/google";
+import { Montserrat } from "next/font/google";
 import PWARegister from "@/components/PWARegister";
 import { SITE_URL } from "@/lib/site";
 
-const display = Fraunces({
+// Police unique du site : Montserrat (équivalent libre de GothamPro, la police du
+// site de référence eservices.anip.bj). Un seul jeu, décliné en graisses.
+const montserrat = Montserrat({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-display",
-  display: "swap",
-});
-const sans = Instrument_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "500", "600", "700", "800"],
   variable: "--font-sans",
   display: "swap",
 });
@@ -39,7 +35,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={`${display.variable} ${sans.variable}`}>
+    <html lang="fr" className={montserrat.variable}>
       <body>
         <PWARegister />
         {children}

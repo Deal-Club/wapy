@@ -506,6 +506,27 @@ ${CTA}
   },
 ];
 
+// Étiquette « secteur » de chaque article (affichage / rangement).
+const TAG: Record<string, string> = {
+  "repondre-automatiquement-clients-whatsapp": "Guide",
+  "chatbot-whatsapp-restaurant": "Restauration",
+  "assistant-whatsapp-salon-de-beaute": "Beauté",
+  "chatbot-whatsapp-boutique": "Commerce",
+  "assistant-whatsapp-hotel": "Hôtellerie",
+  "assistant-whatsapp-clinique-pharmacie": "Santé",
+  "chatbot-whatsapp-immobilier": "Immobilier",
+  "assistant-whatsapp-ecole": "Éducation",
+  "assistant-whatsapp-artisan": "Services",
+};
+
+export function tagFor(slug: string): string {
+  return TAG[slug] || "Article";
+}
+
 export function getPost(slug: string): Post | undefined {
   return POSTS.find((p) => p.slug === slug);
+}
+
+export function related(slug: string, n = 3): Post[] {
+  return POSTS.filter((p) => p.slug !== slug).slice(0, n);
 }
