@@ -2,6 +2,7 @@ import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { Fraunces, Instrument_Sans } from "next/font/google";
 import PWARegister from "@/components/PWARegister";
+import { SITE_URL } from "@/lib/site";
 
 const display = Fraunces({
   subsets: ["latin"],
@@ -17,6 +18,7 @@ const sans = Instrument_Sans({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: "Wapy · Votre assistant WhatsApp intelligent",
   description: "Répondez à vos clients sur WhatsApp, automatiquement. Pour tout secteur d'activité.",
   manifest: "/manifest.webmanifest",

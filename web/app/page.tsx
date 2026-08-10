@@ -1,8 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import AuthNav from "@/components/AuthNav";
-
-const SITE = "https://wapy.51.210.108.173.sslip.io";
+import { SITE_URL as SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Wapy · Assistant WhatsApp IA pour répondre à vos clients 24h/24",

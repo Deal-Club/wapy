@@ -1,6 +1,5 @@
 import type { MetadataRoute } from "next";
-
-const base = "https://wapy.51.210.108.173.sslip.io";
+import { SITE_URL as base } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
