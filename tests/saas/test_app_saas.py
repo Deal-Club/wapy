@@ -502,9 +502,9 @@ def test_billing_upgrade_pays_difference_and_addon_pays_supplement(monkeypatch):
         sig = hmac.new(b"whsec_op", f"{ts}.{body}".encode(), hashlib.sha256).hexdigest()
         return c.post("/webhook/geniuspay", content=body, headers={"X-Webhook-Signature": sig, "X-Webhook-Timestamp": ts})
 
-    # Upgrade Pro (25000) -> Business (60000) : ne paie QUE la différence (35000)
+    # Upgrade Pro (25000) -> Business (40000) : ne paie QUE la différence (15000)
     r = c.post("/api/billing/upgrade", json={"plan": "business"}, headers=_auth(tok))
-    assert r.status_code == 200 and cap["amount"] == 35000 and cap["meta"]["kind"] == "upgrade"
+    assert r.status_code == 200 and cap["amount"] == 15000 and cap["meta"]["kind"] == "upgrade"
     assert webhook("R-upgrade", {"plan": "business", "kind": "upgrade"}).status_code == 200
     assert c.get("/api/billing", headers=_auth(tok)).json()["plan"] == "business"
 

@@ -33,7 +33,7 @@ FEATURES = {
 # Plans mensuels. limits : 0 = illimité. Prix en XOF (à ajuster librement).
 PLANS = {
     "essentiel": {
-        "label": "Essentiel", "price": 9000, "model": "claude-haiku-4-5-20251001",
+        "label": "Starter", "price": 10000, "model": "claude-haiku-4-5-20251001",
         "features": ["handoff", "records", "knowledge"],
         "limits": {"conversations": 500, "agents": 1, "documents": 3},
     },
@@ -43,7 +43,7 @@ PLANS = {
         "limits": {"conversations": 2500, "agents": 3, "documents": 10},
     },
     "business": {
-        "label": "Business", "price": 60000, "model": "claude-opus-4-8",
+        "label": "Business", "price": 40000, "model": "claude-opus-4-8",
         "features": ["handoff", "records", "knowledge", "vision", "voice", "suggestions", "booking", "webchat", "data_connector", "priority_support"],
         "limits": {"conversations": 0, "agents": 0, "documents": 0},
     },
