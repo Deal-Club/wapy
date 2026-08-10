@@ -104,10 +104,16 @@ export function liensSortants(url: string): Lien[] {
   const ville = villesPubliees().find((v) => `/chatbot-whatsapp/${v.pays}/${v.slug}` === url);
   if (ville) {
     const p = getPays(ville.pays);
-    const voisines = villesPubliees()
-      .filter((v) => v.pays === ville.pays && v.slug !== ville.slug)
-      .sort((a, b) => (a.region === ville.region ? -1 : 0) - (b.region === ville.region ? -1 : 0))
-      .slice(0, 3);
+    // Rotation par index plutôt que `slice` en tête : chaque ville du groupe
+    // pointe vers les `k` suivantes (modulo la taille du groupe), ce qui rend
+    // chaque ville du groupe destinataire d'exactement `k` liens venus des
+    // autres villes (graphe circulant, entrée = sortie par construction). Un
+    // `slice(0, 3)` en tête privait systématiquement la dernière ville du
+    // groupe de tout lien entrant venu de ses voisines.
+    const groupe = villesDuPays(ville.pays).filter((v) => v.publie);
+    const indexVille = groupe.findIndex((v) => v.slug === ville.slug);
+    const k = Math.min(3, groupe.length - 1);
+    const voisines = Array.from({ length: Math.max(k, 0) }, (_, i) => groupe[(indexVille + 1 + i) % groupe.length]);
     return filtrer(url, [
       ...(p
         ? [{
@@ -128,7 +134,16 @@ export function liensSortants(url: string): Lien[] {
 
   const secteur = secteursPublies().find((s) => `/secteurs/${s.slug}` === url);
   if (secteur) {
-    const villesCibles = villesPubliees().slice(0, 5);
+    // Une ville par pays, choisie de façon déterministe mais différente pour
+    // chaque secteur (graine = secteur + pays), pour ne jamais concentrer les
+    // liens sortants des pages secteur sur un seul pays ni sur les mêmes
+    // villes d'un secteur à l'autre. Un `villesPubliees().slice(0, 5)` global
+    // prenait toujours les 5 premières villes du tableau, toutes du même pays.
+    const villesCibles = paysPublies().flatMap((p) => {
+      const groupe = villesDuPays(p.slug).filter((v) => v.publie);
+      if (groupe.length === 0) return [];
+      return [groupe[hash(secteur.slug + p.slug) % groupe.length]];
+    });
     return filtrer(url, [
       ...villesCibles.map((v) => ({
         href: `/chatbot-whatsapp/${v.pays}/${v.slug}`,
@@ -162,7 +177,11 @@ export function liensSortants(url: string): Lien[] {
         href: `/chatbot-whatsapp/${p.slug}`,
         ancre: `chatbot WhatsApp ${p.nom}`,
       })),
-      ...secteursPublies().slice(0, 6).map((s) => ({
+      // Les 11 secteurs, pas un sous-ensemble : l'accueil est la page la plus
+      // forte du site, en priver certains secteurs de son lien fragiliserait
+      // leur plancher de 3 entrants au moindre resserrement ailleurs (cf.
+      // ronde de correction 1, point 3).
+      ...secteursPublies().map((s) => ({
         href: `/secteurs/${s.slug}`,
         ancre: s.motCle,
       })),

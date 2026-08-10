@@ -74,11 +74,21 @@ describe("liens", () => {
     }
   });
 
-  it("rend liensEntrants cohérent avec liensSortants", () => {
-    const cible = `/secteurs/${secteursPublies()[0].slug}`;
-    const entrants = liensEntrants(cible);
-    for (const e of entrants) {
-      expect(liensSortants(e.href).some((l) => l.href === cible)).toBe(true);
+  // Le sens inverse de la simple relecture de liensSortants : ce test vérifie,
+  // sur tout le graphe et pas sur une seule cible choisie au hasard, que tout
+  // lien sortant de A vers B fait bien réapparaître A dans liensEntrants(B).
+  // Un test qui se contenterait de relire liensEntrants(cible) puis de
+  // revérifier liensSortants ne peut jamais échouer, liensEntrants étant
+  // dérivé mécaniquement de liensSortants : ce n'est pas un test.
+  it("chaque lien sortant se retrouve dans les entrants de sa cible, sur tout le graphe", () => {
+    for (const page of pagesPubliees()) {
+      for (const lien of liensSortants(page.url)) {
+        const entrants = liensEntrants(lien.href);
+        expect(
+          entrants.some((e) => e.href === page.url),
+          `${page.url} -> ${lien.href} absent de liensEntrants(${lien.href})`,
+        ).toBe(true);
+      }
     }
   });
 });

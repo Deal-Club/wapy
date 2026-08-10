@@ -41,12 +41,17 @@ export const COMPARATIFS: Comparatif[] = [
     slug: "meilleur-chatbot-whatsapp-afrique-2026",
     titre: "Meilleur chatbot WhatsApp en Afrique en 2026 : le comparatif",
     ancre: "meilleur chatbot WhatsApp en Afrique",
-    // Comparatif généraliste : couvre l'ensemble des secteurs du silo métier,
-    // conforme à son sujet (un tour d'horizon, pas un cas d'usage unique).
+    // Comparatif généraliste : couvre les 11 secteurs du silo métier, sans
+    // exception. C'est cohérent avec son sujet, un tour d'horizon et non un
+    // cas d'usage unique, et ça évite qu'un resserrement éditorial ultérieur
+    // (tâche 12, contenu réel de cette page) fasse retomber des pages secteur
+    // sous le plancher de 3 liens entrants sans que ce soit un choix assumé.
     secteursLies: [
       "restaurant",
+      "salon-de-beaute",
       "boutique",
       "hotel",
+      "clinique-pharmacie",
       "immobilier",
       "ecole",
       "artisan",
