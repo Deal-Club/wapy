@@ -15,3 +15,5 @@ qr.png
 qr_live.html
 web/tsconfig.tsbuildinfo
 *.tsbuildinfo
+
+deploy/.uptime_env
