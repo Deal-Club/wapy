@@ -54,7 +54,7 @@ export const PAYS: Pays[] = [
       },
       {
         q: "Le client sait-il qu'il parle à un assistant ?",
-        r: "Le ton reste celui de votre établissement, chaleureux et direct. Dès qu'une demande sort du cadre prévu, réclamation ou cas particulier, Wapy prévient le responsable et laisse la main à un humain.",
+        r: "Le ton reste celui de votre établissement, chaleureux et direct. L'assistant répond à partir de votre fiche et ne passe la main qu'en cas de réclamation ou de demande explicite de parler à quelqu'un. Si une information manque, il dit qu'il se renseigne au lieu d'inventer.",
       },
     ],
     secteursPhares: ["restaurant", "boutique", "salon-de-beaute"],
