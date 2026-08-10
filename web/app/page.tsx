@@ -117,6 +117,7 @@ export default function Landing() {
             <a href="#fonctionnalites" className="hover:text-ink">Fonctionnalités</a>
             <a href="#etapes" className="hover:text-ink">Comment ça marche</a>
             <a href="#secteurs" className="hover:text-ink">Secteurs</a>
+            <Link href="/blog" className="hover:text-ink">Blog</Link>
             <a href="#faq" className="hover:text-ink">FAQ</a>
           </div>
           <div className="flex items-center gap-2">
@@ -287,6 +288,7 @@ export default function Landing() {
           <div className="font-display text-lg text-brand">Wapy</div>
           <p>Assistant WhatsApp intelligent pour les entreprises · Conçu pour l'Afrique</p>
           <div className="flex gap-4">
+            <Link href="/blog" className="hover:text-ink">Blog</Link>
             <Link href="/login" className="hover:text-ink">Connexion</Link>
             <Link href="/signup" className="hover:text-ink">Commencer</Link>
           </div>

@@ -58,3 +58,19 @@ h1, h2, h3 {
 
 /* scrollbars discrètes */
 * { scrollbar-width: thin; scrollbar-color: #d9d1c5 transparent; }
+
+/* Mise en forme des articles de blog (contenu HTML statique de lib/blog.ts) */
+.article { color: #2b2622; line-height: 1.75; }
+.article > p { margin: 0 0 1.1rem; }
+.article h2 { font-family: var(--font-display), serif; font-size: 1.6rem; line-height: 1.25; margin: 2rem 0 0.75rem; }
+.article h3 { font-weight: 600; font-size: 1.15rem; margin: 1.5rem 0 0.5rem; }
+.article ul, .article ol { margin: 0 0 1.1rem; padding-left: 1.3rem; }
+.article li { margin: 0.35rem 0; }
+.article ul { list-style: disc; }
+.article ol { list-style: decimal; }
+.article a { color: #c2502f; text-decoration: underline; text-underline-offset: 2px; }
+.article strong { font-weight: 600; color: #1c1917; }
+.article-cta { margin: 1.75rem 0; border: 1px solid #e7ded2; background: rgba(194,80,47,0.06); border-radius: 1rem; padding: 1.1rem 1.25rem; }
+.article-cta p { margin: 0 0 0.75rem; }
+.article-cta a { display: inline-block; background: #c2502f; color: #fff; text-decoration: none; font-weight: 600; border-radius: 999px; padding: 0.55rem 1.1rem; }
+.article-cta a:hover { background: #a83f22; }
