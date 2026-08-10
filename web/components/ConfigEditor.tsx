@@ -97,20 +97,16 @@ export default function ConfigEditor({
       {err && <p className="text-sm text-brand">{err}</p>}
 
       {/* Infos */}
-      <Section title="Informations" onAdd={() => set({ infos: [...value.infos, { label: "", value: "" }] })}>
-        <div className="space-y-3">
-          {value.infos.map((it, i) => (
-            <div key={i} className="flex items-start gap-2">
-              <div className="flex flex-1 flex-col gap-2 sm:flex-row">
-                <input className="input sm:w-52" value={it.label} placeholder="Rubrique (Horaires…)" onChange={(e) => set({ infos: value.infos.map((x, j) => (j === i ? { ...x, label: e.target.value } : x)) })} />
-                <input className="input sm:flex-1" value={it.value} placeholder="Contenu" onChange={(e) => set({ infos: value.infos.map((x, j) => (j === i ? { ...x, value: e.target.value } : x)) })} />
-              </div>
-              <button type="button" className="mt-2.5 shrink-0 text-lg text-muted hover:text-brand" onClick={() => set({ infos: value.infos.filter((_, j) => j !== i) })} aria-label="Retirer">×</button>
-            </div>
-          ))}
-          {value.infos.length === 0 && <p className="text-sm text-muted">Aucune info. Ajoutez horaires, adresse, paiement…</p>}
-        </div>
-      </Section>
+      <PairEditor
+        title="Informations"
+        rows={value.infos}
+        onChange={(infos) => set({ infos })}
+        aKey="label" bKey="value"
+        aHeader="Rubrique" bHeader="Contenu"
+        aPlaceholder="Horaires, Adresse…" bPlaceholder="Contenu"
+        aMin="min-w-[150px]" bMin="min-w-[240px]"
+        empty="Aucune info. Ajoutez horaires, adresse, paiement…"
+      />
 
       {/* Tables flexibles */}
       <div>
@@ -132,48 +128,89 @@ export default function ConfigEditor({
       </div>
 
       {/* Consignes */}
-      <Section title="Consignes (comportement du bot)" onAdd={() => set({ consignes: [...value.consignes, { situation: "", action: "" }] })}>
-        <div className="space-y-3">
-          {value.consignes.map((c, i) => (
-            <div key={i} className="flex items-start gap-2">
-              <div className="flex flex-1 flex-col gap-2 sm:flex-row">
-                <input className="input sm:w-52" value={c.situation} placeholder="Situation (Réservations…)" onChange={(e) => set({ consignes: value.consignes.map((x, j) => (j === i ? { ...x, situation: e.target.value } : x)) })} />
-                <input className="input sm:flex-1" value={c.action} placeholder="Que faire (envoyer un lien, transmettre au responsable…)" onChange={(e) => set({ consignes: value.consignes.map((x, j) => (j === i ? { ...x, action: e.target.value } : x)) })} />
-              </div>
-              <button type="button" className="mt-2.5 shrink-0 text-lg text-muted hover:text-brand" onClick={() => set({ consignes: value.consignes.filter((_, j) => j !== i) })} aria-label="Retirer">×</button>
-            </div>
-          ))}
-          {value.consignes.length === 0 && <p className="text-sm text-muted">Aucune consigne pour le moment.</p>}
-        </div>
-      </Section>
+      <PairEditor
+        title="Consignes (comportement du bot)"
+        rows={value.consignes}
+        onChange={(consignes) => set({ consignes })}
+        aKey="situation" bKey="action"
+        aHeader="Situation" bHeader="Que faire"
+        aPlaceholder="Réservations…" bPlaceholder="Envoyer un lien, transmettre au responsable…"
+        aMin="min-w-[170px]" bMin="min-w-[280px]"
+        empty="Aucune consigne pour le moment."
+      />
 
       {/* FAQ */}
-      <Section title="Questions fréquentes" onAdd={() => set({ faq: [...value.faq, { question: "", reponse: "" }] })}>
-        <div className="space-y-3">
-          {value.faq.map((f, i) => (
-            <div key={i} className="flex items-start gap-2">
-              <div className="flex flex-1 flex-col gap-2 sm:flex-row">
-                <input className="input sm:flex-1" value={f.question} placeholder="Question" onChange={(e) => set({ faq: value.faq.map((x, j) => (j === i ? { ...x, question: e.target.value } : x)) })} />
-                <input className="input sm:flex-1" value={f.reponse} placeholder="Réponse" onChange={(e) => set({ faq: value.faq.map((x, j) => (j === i ? { ...x, reponse: e.target.value } : x)) })} />
-              </div>
-              <button type="button" className="mt-2.5 shrink-0 text-lg text-muted hover:text-brand" onClick={() => set({ faq: value.faq.filter((_, j) => j !== i) })} aria-label="Retirer">×</button>
-            </div>
-          ))}
-          {value.faq.length === 0 && <p className="text-sm text-muted">Aucune question fréquente.</p>}
-        </div>
-      </Section>
+      <PairEditor
+        title="Questions fréquentes"
+        rows={value.faq}
+        onChange={(faq) => set({ faq })}
+        aKey="question" bKey="reponse"
+        aHeader="Question" bHeader="Réponse"
+        aPlaceholder="Question" bPlaceholder="Réponse"
+        aMin="min-w-[200px]" bMin="min-w-[240px]"
+        empty="Aucune question fréquente."
+      />
     </div>
   );
 }
 
-function Section({ title, onAdd, children }: { title: string; onAdd: () => void; children: React.ReactNode }) {
+// Éditeur de liste à 2 colonnes rendu comme un VRAI tableau, scrollable
+// horizontalement sur mobile (largeur minimale au lieu de colonnes empilées).
+function PairEditor({
+  title, rows, onChange, aKey, bKey, aHeader, bHeader, aPlaceholder, bPlaceholder,
+  aMin, bMin, empty,
+}: {
+  title: string;
+  rows: any[];
+  onChange: (rows: any[]) => void;
+  aKey: string; bKey: string;
+  aHeader: string; bHeader: string;
+  aPlaceholder: string; bPlaceholder: string;
+  aMin: string; bMin: string;
+  empty: string;
+}) {
+  const add = () => onChange([...rows, { [aKey]: "", [bKey]: "" }]);
+  const setCell = (i: number, key: string, val: string) =>
+    onChange(rows.map((r, j) => (j === i ? { ...r, [key]: val } : r)));
+  const remove = (i: number) => onChange(rows.filter((_, j) => j !== i));
+  const cell = "w-full rounded-md px-2 py-1.5 outline-none focus:bg-brand-soft/30";
+  const th = "border-b border-line px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wide text-muted";
+
   return (
     <div>
-      <div className="mb-2 flex items-center justify-between">
+      <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-lg">{title}</h3>
-        <button type="button" className="chip" onClick={onAdd}>+ ajouter</button>
+        <button type="button" className="chip shrink-0" onClick={add}>+ ajouter</button>
       </div>
-      {children}
+      <div className="-mx-1 overflow-x-auto px-1">
+        <table className="w-full min-w-[480px] border-separate border-spacing-0 text-sm">
+          <thead>
+            <tr>
+              <th className={`${th} ${aMin}`}>{aHeader}</th>
+              <th className={`${th} ${bMin}`}>{bHeader}</th>
+              <th className="w-8 border-b border-line" />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} className="group">
+                <td className={`border-b border-line/60 p-1 align-top ${aMin}`}>
+                  <input className={cell} value={r[aKey] ?? ""} placeholder={aPlaceholder} onChange={(e) => setCell(i, aKey, e.target.value)} />
+                </td>
+                <td className={`border-b border-line/60 p-1 align-top ${bMin}`}>
+                  <input className={cell} value={r[bKey] ?? ""} placeholder={bPlaceholder} onChange={(e) => setCell(i, bKey, e.target.value)} />
+                </td>
+                <td className="border-b border-line/60 p-1 text-center align-middle">
+                  <button type="button" className="text-lg text-muted hover:text-brand" onClick={() => remove(i)} aria-label="Retirer">×</button>
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr><td colSpan={3} className="p-3 text-center text-muted">{empty}</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
