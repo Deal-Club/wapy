@@ -348,6 +348,162 @@ ${CTA}
 <p>Chaque établissement a son espace isolé. Vos informations et vos conversations ne sont accessibles qu'à vous, avec des accès protégés.</p>
 `,
   },
+
+  {
+    slug: "chatbot-whatsapp-immobilier",
+    title: "Chatbot WhatsApp pour agence immobilière : qualifiez les demandes sans en perdre une",
+    description:
+      "Un chatbot WhatsApp pour agence immobilière répond sur les biens disponibles, les prix et les visites, et transmet les demandes qualifiées à vos agents, 24h/24.",
+    keywords: [
+      "chatbot WhatsApp immobilier",
+      "agence immobilière WhatsApp",
+      "répondre clients immobilier WhatsApp",
+      "demande de visite WhatsApp",
+      "location vente WhatsApp",
+    ],
+    date: "2026-08-10",
+    readingMin: 5,
+    excerpt:
+      "Un acheteur ou un locataire qui contacte votre agence veut une réponse tout de suite. Un assistant WhatsApp qualifie la demande et la transmet à l'agent, sans en perdre une.",
+    body: `
+<p>Dans l'immobilier, une demande qui traîne est une visite perdue. L'acheteur ou le locataire écrit à plusieurs agences et va vers celle qui répond vite et bien. Un <strong>chatbot WhatsApp pour agence immobilière</strong> répond aux premières questions, qualifie la demande, et la transmet à l'agent au bon moment.</p>
+
+<h2>Les premières questions d'un prospect</h2>
+<ul>
+  <li>Ce bien est encore disponible ? C'est en location ou à la vente ?</li>
+  <li>Quel est le prix ? Y a-t-il des frais d'agence ?</li>
+  <li>Combien de pièces, quelle superficie, quel quartier ?</li>
+  <li>Je peux visiter cette semaine ?</li>
+</ul>
+<p>L'assistant répond à ces questions à partir de vos annonces, et retient l'intérêt du prospect au lieu de le laisser filer.</p>
+
+<h2>Des demandes déjà qualifiées pour vos agents</h2>
+<p>Plutôt que de recevoir un simple « bonjour », vos agents reçoivent une demande claire : type de bien recherché, budget, quartier, disponibilité pour une visite. Ils gagnent du temps et se concentrent sur les prospects sérieux.</p>
+
+<h2>Les biens présentés proprement</h2>
+<p>Vous renseignez vos annonces (type, prix, superficie, quartier, photos). L'assistant décrit le bon bien avec les bonnes informations, et peut envoyer une photo quand le prospect demande à voir.</p>
+
+<h2>Disponible quand vos agents ne le sont pas</h2>
+<p>Beaucoup de demandes arrivent le soir ou le week-end. L'assistant capte ces contacts, répond aux questions de base et note la demande de visite pour le lendemain.</p>
+
+<h2>L'agent reprend la main au bon moment</h2>
+<p>Pour une négociation, un dossier ou une visite à caler, l'assistant transmet à l'agent concerné. L'automatisation fait le tri, l'humain conclut.</p>
+
+${CTA}
+
+<h2>Questions fréquentes</h2>
+<h3>L'assistant peut-il organiser les visites ?</h3>
+<p>Il récolte la disponibilité du prospect et transmet la demande à l'agent, qui confirme le créneau. Vous gardez la main sur l'agenda des visites.</p>
+<h3>Comment mettre à jour les biens disponibles ?</h3>
+<p>Vous tenez vos annonces à jour dans un tableau. Dès qu'un bien est vendu ou loué, vous le retirez et l'assistant cesse de le proposer.</p>
+<h3>Peut-il gérer location et vente en même temps ?</h3>
+<p>Oui. Vous indiquez pour chaque bien s'il est en location ou à la vente, et l'assistant répond en conséquence.</p>
+`,
+  },
+
+  {
+    slug: "assistant-whatsapp-ecole",
+    title: "Assistant WhatsApp pour école et centre de formation : répondez aux parents à toute heure",
+    description:
+      "Un assistant WhatsApp pour école ou centre de formation répond sur les inscriptions, les tarifs et le calendrier, et transmet les demandes au secrétariat, jour et nuit.",
+    keywords: [
+      "assistant WhatsApp école",
+      "inscription WhatsApp école",
+      "répondre parents WhatsApp",
+      "centre de formation WhatsApp",
+      "chatbot école Afrique",
+    ],
+    date: "2026-08-10",
+    readingMin: 5,
+    excerpt:
+      "En période d'inscriptions, le secrétariat est débordé par les mêmes questions. Un assistant WhatsApp répond aux parents et note les demandes, sans saturer le standard.",
+    body: `
+<p>Au moment des inscriptions, une école ou un centre de formation reçoit des dizaines de messages par jour : frais de scolarité, dossier à fournir, dates, filières. Le secrétariat n'arrive pas à tout suivre, et des familles restent sans réponse. Un <strong>assistant WhatsApp pour école</strong> répond à ces questions et transmet les demandes d'inscription à votre équipe.</p>
+
+<h2>Les questions des parents, en boucle</h2>
+<ul>
+  <li>Quels sont les frais de scolarité ? Peut-on payer en plusieurs fois ?</li>
+  <li>Quels documents faut-il pour l'inscription ?</li>
+  <li>Quand commence l'année ? Quels sont les horaires ?</li>
+  <li>Vous proposez quelles filières, quelles formations ?</li>
+</ul>
+<p>Autant de questions auxquelles l'assistant répond à partir de vos informations, sans faire attendre les familles.</p>
+
+<h2>Le bon niveau d'information, tout de suite</h2>
+<p>Frais, filières, calendrier, pièces du dossier, moyens de paiement : vous renseignez tout une fois. L'assistant répond avec exactitude et rassure les parents, même en dehors des heures de bureau.</p>
+
+<h2>Les demandes d'inscription transmises au secrétariat</h2>
+<p>Quand une famille veut inscrire un enfant, l'assistant récolte les informations utiles et prévient votre équipe. Le secrétariat traite une demande claire au lieu de repartir de zéro à chaque appel.</p>
+
+<h2>Moins de pression pendant les pics</h2>
+<p>La période d'inscriptions concentre l'essentiel des demandes. En absorbant les questions répétitives, l'assistant évite la saturation du standard et permet à votre équipe de traiter les dossiers sereinement.</p>
+
+<h2>L'humain pour les cas particuliers</h2>
+<p>Bourse, situation spécifique, rendez-vous avec la direction : l'assistant transmet et vous reprenez la conversation. L'automatisation gère le volume, votre équipe gère l'accompagnement.</p>
+
+${CTA}
+
+<h2>Questions fréquentes</h2>
+<h3>L'assistant peut-il finaliser une inscription ?</h3>
+<p>Il récolte la demande et les informations utiles, puis transmet au secrétariat qui finalise. Vous gardez le contrôle sur les inscriptions.</p>
+<h3>Peut-il répondre sur les paiements ?</h3>
+<p>Oui, selon ce que vous configurez : montants, échéances, moyens de paiement acceptés comme le Mobile Money.</p>
+<h3>Fonctionne-t-il toute l'année ?</h3>
+<p>Oui, et il est particulièrement utile pendant les pics d'inscriptions, quand le volume de messages explose.</p>
+`,
+  },
+
+  {
+    slug: "assistant-whatsapp-artisan",
+    title: "Assistant WhatsApp pour artisan : ne ratez plus un devis ni un rendez-vous",
+    description:
+      "Plombier, électricien, menuisier, couturier : un assistant WhatsApp répond aux clients, note les demandes de devis et cale les rendez-vous pendant que vous travaillez.",
+    keywords: [
+      "assistant WhatsApp artisan",
+      "devis WhatsApp",
+      "prendre rendez-vous artisan WhatsApp",
+      "plombier électricien WhatsApp",
+      "répondre clients artisan",
+    ],
+    date: "2026-08-10",
+    readingMin: 5,
+    excerpt:
+      "Quand vous êtes sur un chantier, vous ne répondez pas. Le client appelle l'artisan suivant. Un assistant WhatsApp répond pour vous et note les demandes de devis.",
+    body: `
+<p>Quand vous êtes les mains dans le cambouis, sur un chantier ou chez un client, vous ne pouvez pas répondre au téléphone. Or un client qui cherche un artisan appelle plusieurs numéros et retient celui qui répond. Un <strong>assistant WhatsApp pour artisan</strong> répond à votre place, note les demandes de devis et cale vos rendez-vous.</p>
+
+<h2>Ce que vos clients demandent</h2>
+<ul>
+  <li>Vous pouvez passer pour un dépannage ? Quand êtes-vous disponible ?</li>
+  <li>C'est combien pour ce type de travail ?</li>
+  <li>Vous intervenez dans mon quartier ?</li>
+  <li>Je peux avoir un devis ?</li>
+</ul>
+<p>L'assistant répond aux questions de base et, pour un devis, récolte les informations utiles avant de vous transmettre la demande.</p>
+
+<h2>Des demandes de devis qui ne se perdent plus</h2>
+<p>Quand un client décrit un besoin, l'assistant note l'essentiel (type de travail, lieu, urgence, coordonnées) et vous prévient. Vous rappelez avec une demande déjà cadrée, au lieu de rater le message dans la journée.</p>
+
+<h2>Vos rendez-vous calés tout seuls</h2>
+<p>Si vous travaillez sur rendez-vous, l'assistant propose vos créneaux disponibles et enregistre celui que le client choisit, avec un rappel avant l'heure. Moins d'oublis, moins de déplacements pour rien.</p>
+
+<h2>Disponible quand vous travaillez</h2>
+<p>Pendant que vous êtes sur un chantier, l'assistant capte les nouvelles demandes. Le soir, vous retrouvez des contacts qualifiés au lieu d'appels manqués.</p>
+
+<h2>Vous gardez le contact direct</h2>
+<p>Pour chiffrer un travail ou discuter d'un chantier, rien ne remplace votre expertise. L'assistant prépare le terrain et vous reprenez la conversation quand vous êtes disponible.</p>
+
+${CTA}
+
+<h2>Questions fréquentes</h2>
+<h3>L'assistant peut-il donner un prix ?</h3>
+<p>Il donne les informations que vous avez renseignées (tarifs de base, zones d'intervention). Pour un chiffrage précis, il note la demande et vous la transmet.</p>
+<h3>Faut-il un site web pour l'utiliser ?</h3>
+<p>Non. Vous liez simplement votre WhatsApp professionnel. Aucun site ni compétence technique nécessaire.</p>
+<h3>Ça marche pour tous les métiers ?</h3>
+<p>Oui : plomberie, électricité, menuiserie, couture, mécanique et bien d'autres. Vous décrivez votre activité, l'assistant s'y adapte.</p>
+`,
+  },
 ];
 
 export function getPost(slug: string): Post | undefined {
