@@ -38,45 +38,69 @@ export const POSTS: Post[] = [
     excerpt:
       "Vos clients écrivent sur WhatsApp à toute heure. Voici comment leur répondre automatiquement, sans robot froid ni réponses à côté, et sans coder.",
     body: `
-<p>Aujourd'hui, un client qui s'intéresse à votre commerce ne vous appelle plus : il vous écrit sur WhatsApp. Et s'il n'a pas de réponse en quelques minutes, il va voir ailleurs. <strong>Répondre automatiquement aux clients sur WhatsApp</strong> n'est plus un luxe, c'est ce qui sépare une vente conclue d'un client perdu. Ce guide vous explique comment le faire correctement.</p>
+<p>Il est 21h. Une cliente écrit à votre page : « Bonsoir, vous êtes encore ouverts ? » Vous êtes en plein service, vous ne voyez le message qu'à 22h30. Trop tard : elle a dîné ailleurs. Ce scénario se répète chez des milliers de commerces chaque jour. <strong>Répondre automatiquement aux clients sur WhatsApp</strong> n'est pas un gadget, c'est ce qui décide, message après message, si la vente se conclut chez vous ou chez le voisin. Ce guide détaille comment le faire correctement, sans robot froid et sans réponses à côté.</p>
 
-<h2>Pourquoi la vitesse de réponse décide de la vente</h2>
-<p>Sur WhatsApp, l'attente d'un client se compte en minutes, pas en heures. Quand vous êtes en cuisine, en rendez-vous, ou tout simplement endormi, les messages s'accumulent. Chaque message sans réponse est une commande, une réservation ou un devis qui part chez un concurrent plus réactif. Une réponse instantanée, même simple, garde le client dans la conversation.</p>
+<h2>Le vrai coût de ne pas répondre (faites le calcul)</h2>
+<p>Prenez trois minutes pour estimer votre manque à gagner. Comptez le nombre de messages que vous ne traitez pas assez vite dans une journée : le soir, pendant le rush, le jour de repos. Mettons 8 messages par jour. Si seulement 2 d'entre eux étaient des ventes à 3 000 FCFA, cela fait 6 000 FCFA perdus par jour, soit environ <strong>180 000 FCFA par mois</strong> qui partent à la concurrence, sans que vous les voyiez jamais. Le problème n'est pas le prix de vos produits, c'est le silence pendant les heures où vous ne pouvez pas répondre.</p>
+<p>Un client sur WhatsApp raisonne en minutes. Passé un quart d'heure sans réponse, il a déjà écrit à deux autres commerces. Le premier qui répond, avec la bonne information, gagne. C'est aussi simple que ça.</p>
 
-<h2>Les 3 façons de répondre automatiquement (et leurs limites)</h2>
+<h2>Les 3 façons de répondre automatiquement (et leurs vraies limites)</h2>
 <h3>1. Le message d'absence WhatsApp Business</h3>
-<p>L'application WhatsApp Business propose un message d'absence et des réponses rapides. C'est utile, mais c'est figé : le même texte pour tout le monde, incapable de répondre à une vraie question comme un prix ou un horaire. Le client sait qu'il parle à un répondeur.</p>
-<h3>2. Les réponses pré-enregistrées</h3>
-<p>Vous préparez des réponses toutes faites et vous les envoyez à la main. Cela va plus vite, mais vous êtes toujours obligé d'être là, et ça ne couvre jamais tous les cas.</p>
+<p>L'application WhatsApp Business propose un message d'absence et des réponses rapides. C'est mieux que rien, mais c'est figé : le même texte pour tout le monde, incapable de dire un prix, un horaire ou si un article est disponible. Le client comprend tout de suite qu'il parle à un répondeur, et il n'obtient pas la réponse qui l'aurait fait acheter.</p>
+<h3>2. Les réponses pré-enregistrées, envoyées à la main</h3>
+<p>Vous préparez des réponses toutes faites et vous les collez au fil des messages. C'est plus rapide que tout écrire, mais vous devez toujours être là, téléphone en main. La nuit, en plein travail ou pendant votre jour de repos, personne ne répond. Et ça ne couvre jamais les questions imprévues.</p>
 <h3>3. L'assistant intelligent connecté à vos informations</h3>
-<p>C'est la solution qui change tout : un assistant qui comprend la question du client et répond à partir de vos informations réelles (menu, prix, horaires, adresse, prestations). Il travaille 24h/24, dans votre ton, et passe la main à un humain quand la demande le mérite.</p>
+<p>C'est la seule approche qui répond vraiment. L'assistant comprend la question, cherche dans vos informations réelles (menu, prix, horaires, adresse, prestations, stock) et répond dans votre ton, 24h/24. Quand la demande demande un humain (grosse commande, réclamation, cas sensible), il note tout et prévient votre équipe. Vous ne perdez plus une vente pendant les heures creuses, et vous gardez la main quand il le faut.</p>
 
-<h2>Le piège à éviter : l'assistant qui invente</h2>
-<p>Beaucoup d'outils génériques racontent n'importe quoi dès qu'on sort du script. Un bon assistant WhatsApp doit répondre <strong>uniquement</strong> à partir des informations que vous lui donnez. Pas de prix inventé, pas de disponibilité imaginée. Pour une réservation, une commande ou une réclamation, il note la demande et prévient votre équipe au lieu de bricoler une réponse.</p>
+<h2>À quoi ressemble un bon échange</h2>
+<p>Voici une conversation réelle, telle qu'un assistant bien configuré la mène :</p>
+<div class="article-chat">
+  <p class="in">Bonsoir, vous livrez à Cotonou ce soir ?</p>
+  <p class="out">Bonsoir 👋 Oui, nous livrons à Cotonou jusqu'à 22h. La livraison est à 1 000 FCFA dans la zone de Fidjrossè. Que puis-je vous préparer ?</p>
+  <p class="in">Deux poulets braisés, c'est combien ?</p>
+  <p class="out">Deux poulets braisés, c'est 7 000 FCFA, plus 1 000 de livraison, soit 8 000 FCFA. Je note votre commande et je transmets à l'équipe ?</p>
+  <p class="in">Oui, paiement Mobile Money</p>
+  <p class="out">Parfait, c'est noté. Vous recevez le numéro Mobile Money par message, et un livreur vous appelle en arrivant. Merci pour votre commande 🙏</p>
+</div>
+<p>Le client a eu son prix, sa livraison et son mode de paiement en trente secondes, sans que vous ayez posé votre travail. La commande atterrit dans votre carnet, votre équipe est prévenue.</p>
+
+<h2>Le piège numéro un : l'assistant qui invente</h2>
+<p>Beaucoup d'outils génériques disent n'importe quoi dès qu'on sort de leur script. C'est le pire scénario : un prix inventé, une disponibilité imaginée, et c'est vous qui gérez le client mécontent. Un bon assistant WhatsApp répond <strong>uniquement</strong> à partir des informations que vous lui donnez. S'il ne sait pas, il ne devine pas : il propose de vérifier ou passe la main. Pour une réservation, une commande ferme ou une réclamation, il enregistre la demande et alerte votre équipe plutôt que de bricoler une réponse hasardeuse.</p>
+
+<h2>Les erreurs à éviter</h2>
+<ul>
+  <li><strong>Automatiser puis disparaître.</strong> L'assistant gère le volume, mais gardez un œil sur les conversations importantes et reprenez la main quand ça compte.</li>
+  <li><strong>Nourrir l'assistant d'informations vagues.</strong> Plus vos prix, horaires et prestations sont précis, meilleures sont les réponses. Une fiche floue donne des réponses floues.</li>
+  <li><strong>Oublier de le tenir à jour.</strong> Un plat qui n'existe plus, un tarif qui a changé : mettez à jour votre fiche, l'assistant répond aussitôt avec la bonne information.</li>
+  <li><strong>Choisir un outil qui ne parle pas votre marché.</strong> En anglais, sans Mobile Money, sans ton local, l'outil sonne faux auprès de vos clients.</li>
+</ul>
 
 <h2>Garder le contrôle : le passage à l'humain</h2>
-<p>Automatiser ne veut pas dire disparaître. L'assistant gère les questions courantes et vous libère du temps, mais vous devez pouvoir reprendre la main à tout moment : voir les conversations en direct, répondre vous-même, puis rendre la main au bot. C'est ce qui rassure le client et vous garde maître de la relation.</p>
+<p>Automatiser ne veut pas dire s'effacer. Un bon tableau de bord vous montre toutes les conversations en direct. Vous pouvez lire, répondre vous-même depuis le web ou depuis WhatsApp, puis rendre la main au bot d'un clic. Le client ne voit qu'une conversation fluide ; vous, vous gardez la maîtrise de la relation et vous n'intervenez que sur ce qui mérite votre attention.</p>
 
 <h2>Le cas de l'Afrique francophone</h2>
-<p>Ici, WhatsApp est souvent le premier canal de vente, avant même un site web. Un bon assistant doit parler français avec un ton chaleureux, connaître les moyens de paiement locaux comme le Mobile Money, et s'adapter aux habitudes de vos clients. Un outil pensé ailleurs, en anglais et pour la carte bancaire, passe à côté.</p>
+<p>Ici, WhatsApp est souvent le premier canal de vente, avant même un site web. Un bon assistant doit parler français avec un ton chaleureux, connaître les moyens de paiement locaux comme le Mobile Money, comprendre les habitudes de livraison de quartier et les façons de commander de vos clients. Un outil pensé ailleurs, en anglais et pour la carte bancaire, passe à côté de l'essentiel.</p>
 
-<h2>Comment le mettre en place en quelques minutes</h2>
+<h2>Mettre en place, étape par étape</h2>
 <ol>
-  <li>Décrivez votre activité : l'assistant génère vos horaires, votre catalogue et vos réponses fréquentes.</li>
-  <li>Ajustez ce qui doit l'être (prix, prestations, consignes particulières).</li>
-  <li>Liez le WhatsApp de votre entreprise en scannant un QR code.</li>
+  <li><strong>Décrivez votre activité.</strong> En quelques phrases, l'assistant génère une première fiche : horaires, catalogue, prix, réponses fréquentes. Vous partez d'une base, pas d'une page blanche.</li>
+  <li><strong>Corrigez et précisez.</strong> Ajustez les prix, ajoutez vos prestations, écrivez vos consignes particulières (« pour une réservation, transmets au responsable », « nous ne livrons pas le dimanche »).</li>
+  <li><strong>Réglez le passage à l'humain.</strong> Indiquez le numéro du responsable qui reçoit les alertes, et les cas où l'assistant doit prévenir plutôt que répondre.</li>
+  <li><strong>Liez votre WhatsApp.</strong> Scannez un QR code avec le WhatsApp de votre entreprise. L'assistant est en ligne.</li>
 </ol>
-<p>À partir de là, vos clients reçoivent une réponse en quelques secondes, jour et nuit.</p>
+<p>Comptez une quinzaine de minutes en tout. À partir de là, chaque client reçoit une réponse en quelques secondes, jour et nuit.</p>
 
 ${CTA}
 
 <h2>Questions fréquentes</h2>
 <h3>Est-ce que mes clients verront que c'est automatique ?</h3>
-<p>Un bon assistant répond dans votre ton, avec vos informations. La conversation reste naturelle, et vous pouvez reprendre la main dès qu'un échange devient important.</p>
+<p>L'assistant répond dans votre ton, avec vos informations, comme le ferait un bon employé. La conversation reste naturelle, et vous reprenez la main dès qu'un échange devient important, sans que le client ne perçoive de rupture.</p>
+<h3>Que se passe-t-il si l'assistant ne connaît pas la réponse ?</h3>
+<p>Il ne l'invente pas. Il propose de vérifier, oriente vers le bon contact, ou enregistre la demande et prévient votre équipe. C'est cette prudence qui protège votre réputation.</p>
 <h3>Est-ce que ça marche pour mon métier ?</h3>
-<p>Oui. Restaurant, salon, boutique, hôtel, clinique, artisan : l'assistant s'adapte à vos informations. C'est vous qui décidez de ce qu'il sait.</p>
-<h3>Faut-il un deuxième téléphone ?</h3>
-<p>Non. Vous liez le WhatsApp de votre entreprise. L'assistant répond à votre place quand vous n'êtes pas disponible.</p>
+<p>Oui. Restaurant, salon, boutique, hôtel, clinique, artisan, agence : l'assistant s'adapte à vos informations. C'est vous qui décidez de ce qu'il sait et de ce qu'il transmet.</p>
+<h3>Faut-il un deuxième téléphone ou un site web ?</h3>
+<p>Ni l'un ni l'autre. Vous liez le WhatsApp de votre entreprise, sans site ni compétence technique. L'assistant répond à votre place quand vous n'êtes pas disponible.</p>
 `,
   },
 
@@ -97,48 +121,72 @@ ${CTA}
     excerpt:
       "Menu, prix, horaires, réservations : votre restaurant reçoit les mêmes questions toute la journée sur WhatsApp. Un chatbot y répond pour vous, sans en rater une.",
     body: `
-<p>Dans un restaurant ou un maquis, le téléphone et WhatsApp sonnent au pire moment : en plein coup de feu. Résultat, des messages restent sans réponse et des commandes vous filent entre les doigts. Un <strong>chatbot WhatsApp pour restaurant</strong> répond à votre place, tout de suite, avec votre vrai menu et vos vrais prix. Voici ce qu'il change et comment le mettre en place.</p>
+<p>Samedi soir, 20h30. La salle est pleine, la cuisine envoie, et le téléphone vibre sans arrêt : « Vous livrez à Akpakpa ? », « C'est quoi le plat du jour ? », « Une table pour six, c'est possible ? ». Vous ne pouvez pas lâcher le service pour répondre, alors les messages attendent. Le lendemain, la moitié de ces clients ont mangé ailleurs. Un <strong>chatbot WhatsApp pour restaurant</strong> répond à leur place, tout de suite, avec votre vrai menu et vos vrais prix. Voici comment il travaille, concrètement.</p>
 
-<h2>Les questions qui reviennent tous les jours</h2>
-<p>La plupart des messages que vous recevez sont toujours les mêmes :</p>
+<h2>Combien vous coûtent les messages non lus</h2>
+<p>Un maquis reçoit facilement 15 à 30 messages par soir de rush. Si 5 d'entre eux sont des commandes que vous ne traitez pas à temps, à 4 000 FCFA en moyenne, c'est 20 000 FCFA qui s'envolent chaque soir de forte affluence. Sur un mois, on parle vite de <strong>plusieurs centaines de milliers de FCFA</strong> perdus, non pas parce que vos plats sont trop chers, mais parce que personne n'était libre pour répondre à temps. C'est exactement ce trou-là qu'un assistant vient boucher.</p>
+
+<h2>Les questions qui reviennent chaque jour</h2>
+<p>La plupart de vos messages sont toujours les mêmes :</p>
 <ul>
   <li>Vous êtes ouverts ce soir ? Jusqu'à quelle heure ?</li>
   <li>C'est combien le poisson braisé ? Le poulet ?</li>
-  <li>Vous livrez dans mon quartier ?</li>
+  <li>Vous livrez dans mon quartier ? C'est combien la livraison ?</li>
   <li>Je peux réserver une table pour ce soir ?</li>
 </ul>
-<p>Chacune de ces questions mérite une réponse en quelques secondes. Un assistant qui connaît votre menu y répond sans vous déranger.</p>
+<p>Chacune mérite une réponse en quelques secondes. Un assistant qui connaît votre menu y répond sans jamais vous déranger en plein service.</p>
+
+<h2>Un échange typique, du bonjour à la commande</h2>
+<div class="article-chat">
+  <p class="in">Bonsoir, le poisson braisé est dispo ce soir ?</p>
+  <p class="out">Bonsoir 👋 Oui, poisson braisé disponible, c'est un tilapia sauce piment à 3 500 FCFA, accompagné d'attiéké ou de frites. Sur place ou en livraison ?</p>
+  <p class="in">Livraison à Cadjèhoun, 2 portions</p>
+  <p class="out">C'est noté : 2 poissons braisés à 3 500, soit 7 000 FCFA, plus 1 000 de livraison à Cadjèhoun. Total 8 000 FCFA. Vous confirmez la commande ?</p>
+  <p class="in">Oui</p>
+  <p class="out">Parfait, commande confirmée 🙏 Vous réglez par Mobile Money à la livraison. Notre équipe prépare et un livreur vous appelle en arrivant. Merci !</p>
+</div>
+<p>La commande arrive dans votre carnet, votre équipe reçoit une alerte, et vous n'avez pas quitté la cuisine une seconde.</p>
 
 <h2>Ce qu'un bon assistant sait faire pour un restaurant</h2>
-<h3>Donner le menu et les prix, sans se tromper</h3>
-<p>Vous entrez votre carte une fois (ou vous laissez l'IA la générer puis vous corrigez). L'assistant cite ensuite le bon plat au bon prix, exactement comme vous l'avez écrit. Aucun prix inventé.</p>
-<h3>Noter les commandes et les réservations</h3>
-<p>Quand un client veut commander ou réserver une table, l'assistant récolte l'essentiel (plats, quantité, nombre de personnes, heure) et transmet la demande à votre équipe. Vous recevez une notification propre, prête à traiter.</p>
-<h3>Gérer la livraison et le paiement</h3>
-<p>Zones de livraison, frais, Mobile Money : l'assistant répond selon ce que vous avez configuré, et guide le client vers le paiement quand c'est pertinent.</p>
+<h3>Donner le menu et les prix, sans jamais se tromper</h3>
+<p>Vous entrez votre carte une fois dans un tableau (ou l'IA la génère et vous corrigez). L'assistant cite ensuite le bon plat au bon prix, exactement comme vous l'avez écrit. Si un client demande à voir un plat et que vous avez ajouté une photo, il peut l'envoyer. Aucun prix inventé, jamais.</p>
+<h3>Noter commandes et réservations proprement</h3>
+<p>Quand un client commande ou réserve, l'assistant récolte l'essentiel (plats, quantité, nombre de personnes, heure, adresse) et transmet une fiche claire à votre équipe. Fini la commande perdue au milieu d'un fil de discussion.</p>
+<h3>Gérer livraison et paiement</h3>
+<p>Zones de livraison, frais par quartier, Mobile Money : l'assistant répond selon ce que vous avez réglé et guide le client jusqu'au paiement. Moins d'allers-retours, plus de commandes bouclées.</p>
+
+<h2>Les erreurs à éviter</h2>
+<ul>
+  <li><strong>Laisser un menu périmé.</strong> Un plat qui n'existe plus déçoit le client. Mettez à jour votre tableau, l'assistant suit aussitôt.</li>
+  <li><strong>Ne pas préciser les zones de livraison.</strong> Sans zones ni frais clairs, l'assistant ne peut pas conclure. Renseignez-les une fois pour toutes.</li>
+  <li><strong>Vouloir tout automatiser.</strong> Une grosse tablée, un événement, une réclamation : laissez l'assistant vous passer la main. Ces cas méritent votre voix.</li>
+</ul>
 
 <h2>Le service ne s'arrête jamais</h2>
-<p>Un client qui écrit à 23h ou le lundi de fermeture obtient quand même une réponse. Vous ne perdez plus les ventes qui arrivent en dehors des heures où vous êtes derrière le téléphone.</p>
+<p>Un client qui écrit à 23h ou le lundi de fermeture obtient quand même une réponse et peut commander pour le lendemain. Vous captez des ventes qui, sinon, seraient parties chez le concurrent d'à côté, resté injoignable.</p>
 
 <h2>Vous gardez la main sur la salle</h2>
-<p>L'assistant gère les questions courantes, mais dès qu'une demande compte vraiment (grosse tablée, événement, réclamation), il vous prévient et vous reprenez la conversation en un clic. Vous restez le patron, l'assistant fait le tri.</p>
+<p>L'assistant gère le répétitif, mais dès qu'une demande compte vraiment, il vous prévient et vous reprenez la conversation en un clic depuis le tableau de bord ou WhatsApp. Vous restez le patron, l'assistant fait le tri.</p>
 
-<h2>Mise en place</h2>
+<h2>Mettre en place, étape par étape</h2>
 <ol>
-  <li>Décrivez votre restaurant : cuisine, ambiance, horaires. L'IA propose une première carte et vos réponses fréquentes.</li>
-  <li>Ajustez le menu et les prix dans un tableau simple.</li>
-  <li>Scannez le QR pour lier le WhatsApp du restaurant. C'est en ligne.</li>
+  <li><strong>Décrivez votre restaurant</strong> (cuisine, ambiance, horaires). L'IA propose une première carte et vos réponses fréquentes.</li>
+  <li><strong>Ajustez le menu et les prix</strong> dans un tableau simple, ajoutez vos zones et frais de livraison, votre numéro Mobile Money.</li>
+  <li><strong>Réglez les alertes</strong> : le numéro qui reçoit les commandes et les cas à transmettre (grosses tablées, événements).</li>
+  <li><strong>Scannez le QR</strong> pour lier le WhatsApp du restaurant. C'est en ligne.</li>
 </ol>
 
 ${CTA}
 
 <h2>Questions fréquentes</h2>
 <h3>Le chatbot peut-il prendre le paiement ?</h3>
-<p>Il guide le client vers votre moyen de paiement (Mobile Money par exemple) selon ce que vous avez configuré, et note la commande pour votre équipe.</p>
+<p>Il guide le client vers votre moyen de paiement (Mobile Money par exemple) selon ce que vous avez configuré, et enregistre la commande pour votre équipe. Vous restez maître de l'encaissement.</p>
 <h3>Et si un client veut parler à quelqu'un ?</h3>
-<p>L'assistant transmet la demande et vous prévient. Vous répondez vous-même depuis le tableau de bord ou WhatsApp, puis vous rendez la main au bot.</p>
-<h3>Est-ce que je peux changer le menu quand je veux ?</h3>
-<p>Oui, à tout moment. Vous modifiez votre tableau et l'assistant répond aussitôt avec les nouvelles informations.</p>
+<p>L'assistant transmet la demande et vous prévient. Vous répondez vous-même depuis le tableau de bord ou WhatsApp, puis vous rendez la main au bot d'un clic.</p>
+<h3>Peut-il gérer plusieurs commandes en même temps ?</h3>
+<p>Oui. Chaque conversation est indépendante : l'assistant peut répondre à des dizaines de clients en parallèle sans les mélanger.</p>
+<h3>Je peux changer le menu quand je veux ?</h3>
+<p>À tout moment. Vous modifiez votre tableau et l'assistant répond aussitôt avec les nouvelles informations, sans manipulation technique.</p>
 `,
   },
 
@@ -159,41 +207,57 @@ ${CTA}
     excerpt:
       "Entre deux clientes, vous n'avez pas le temps de répondre à chaque message. Un assistant WhatsApp donne vos tarifs et prend les rendez-vous à votre place.",
     body: `
-<p>Dans un salon de coiffure ou un institut de beauté, les mains sont prises toute la journée. Pendant ce temps, les messages WhatsApp s'accumulent : tarifs, disponibilités, prise de rendez-vous. Un <strong>assistant WhatsApp pour salon de beauté</strong> répond à ces demandes et réserve les créneaux à votre place, sans vous interrompre.</p>
+<p>Vous êtes en train de poser des tresses. Le téléphone sonne, un message, puis un autre : « Bonjour, c'est combien un défrisage ? », « Vous avez de la place demain matin ? ». Vous ne pouvez pas lâcher la cliente en fauteuil pour répondre. Une heure plus tard, la cliente qui voulait un rendez-vous a réservé dans le salon d'à côté. Un <strong>assistant WhatsApp pour salon de beauté</strong> répond à ces messages et réserve les créneaux à votre place, sans jamais vous interrompre.</p>
 
-<h2>Le problème : répondre coûte du temps que vous n'avez pas</h2>
-<p>Chaque fois que vous posez vos ciseaux pour répondre à un message, vous ralentissez la cliente en fauteuil. Et si vous ne répondez pas tout de suite, la cliente qui voulait un rendez-vous prend celui d'un autre salon. Vous perdez sur les deux tableaux.</p>
+<h2>Ce que coûte une cliente qui n'a pas eu de réponse</h2>
+<p>Dans un salon, chaque rendez-vous vaut cher : une prestation, c'est souvent 3 000 à 15 000 FCFA. Si vous ratez ne serait-ce que 2 demandes de rendez-vous par jour faute de répondre à temps, à 6 000 FCFA en moyenne, c'est 12 000 FCFA par jour, soit près de <strong>300 000 FCFA par mois</strong> qui vont ailleurs. Ajoutez les créneaux perdus à cause d'oublis de rendez-vous, et la facture grimpe encore. Un assistant s'attaque aux deux : capter les demandes, et faire venir les clientes le jour J.</p>
+
+<h2>Un échange typique, jusqu'au rendez-vous</h2>
+<div class="article-chat">
+  <p class="in">Bonjour, je voudrais des tresses, c'est combien et vous avez de la place cette semaine ?</p>
+  <p class="out">Bonjour 👋 Les tresses commencent à 8 000 FCFA selon le modèle et la longueur, comptez environ 3h. Cette semaine, j'ai jeudi 9h ou vendredi 14h. Quel créneau vous convient ?</p>
+  <p class="in">Jeudi 9h c'est parfait</p>
+  <p class="out">C'est réservé pour jeudi à 9h ✨ Je vous envoie un petit rappel la veille. À très vite au salon !</p>
+</div>
+<p>Le rendez-vous est enregistré dans votre agenda, la cliente reçoit un rappel automatique, et vous n'avez pas quitté votre poste de travail.</p>
 
 <h2>Ce que l'assistant gère pour vous</h2>
 <h3>Vos prestations et vos prix</h3>
-<p>Coupe, tresses, soins, manucure, pose : vous listez vos prestations et leurs prix une fois. L'assistant répond ensuite à chaque cliente avec les bonnes informations, sans erreur.</p>
+<p>Coupe, tresses, défrisage, soins, manucure, pose d'ongles : vous listez vos prestations, leurs prix et leur durée une fois. L'assistant répond ensuite à chaque cliente avec la bonne information, sans se tromper ni sous-estimer le temps d'une prestation.</p>
 <h3>La prise de rendez-vous automatique</h3>
-<p>L'assistant propose vos créneaux libres, la cliente choisit, et le rendez-vous est enregistré. Il envoie même un rappel avant l'heure, ce qui réduit les oublis et les créneaux perdus.</p>
-<h3>Les questions du quotidien</h3>
-<p>Horaires, adresse, moyens de paiement, durée d'une prestation : l'assistant répond instantanément, jour et nuit.</p>
+<p>L'assistant propose vos créneaux réellement libres, la cliente choisit, et le rendez-vous est enregistré. Il vérifie la disponibilité au moment de réserver : si deux clientes visent le même créneau, la seconde se voit proposer une autre heure. Aucun double-booking.</p>
+<h3>Les rappels qui remplissent votre agenda</h3>
+<p>Un rappel la veille et un autre quelques heures avant, et vos clientes se présentent. Chaque créneau qui serait passé à la trappe devient une prestation réalisée. C'est souvent ce détail qui rentabilise l'outil à lui seul.</p>
 
-<h2>Moins de rendez-vous manqués</h2>
-<p>Un rappel automatique la veille et quelques heures avant, et vos clientes se présentent. Chaque créneau qui aurait été oublié devient une prestation réalisée.</p>
+<h2>Les erreurs à éviter</h2>
+<ul>
+  <li><strong>Ne pas indiquer la durée des prestations.</strong> Sans durée, l'agenda se remplit mal. Précisez-la, l'assistant cale les créneaux correctement.</li>
+  <li><strong>Oublier de bloquer vos indisponibilités.</strong> Renseignez vos horaires réels et vos pauses ; l'assistant ne propose que ce que vous autorisez.</li>
+  <li><strong>Laisser le bot gérer une cliente mécontente.</strong> Pour une réclamation ou une demande délicate, reprenez la main : c'est votre relationnel qui fidélise.</li>
+</ul>
 
 <h2>Vous gardez le contact humain</h2>
-<p>Pour une demande particulière ou une cliente fidèle, vous reprenez la conversation quand vous voulez. L'assistant fait gagner du temps sur le répétitif et vous laisse le relationnel qui compte.</p>
+<p>Pour une demande particulière, une cliente fidèle ou un conseil personnalisé, vous reprenez la conversation quand vous voulez, puis vous rendez la main au bot. L'assistant absorbe le répétitif et vous laisse le relationnel, celui qui compte vraiment dans un métier de proximité.</p>
 
-<h2>Mise en place</h2>
+<h2>Mettre en place, étape par étape</h2>
 <ol>
-  <li>Décrivez votre salon et listez vos prestations avec leurs prix.</li>
-  <li>Réglez vos horaires et la durée des rendez-vous.</li>
-  <li>Liez votre WhatsApp en scannant un QR. Les clientes peuvent réserver le jour même.</li>
+  <li><strong>Décrivez votre salon</strong> et listez vos prestations avec prix et durée.</li>
+  <li><strong>Réglez vos horaires</strong> d'ouverture et la durée type d'un rendez-vous, ainsi que vos jours de fermeture.</li>
+  <li><strong>Activez les rappels</strong> et indiquez le numéro qui reçoit les alertes de nouveaux rendez-vous.</li>
+  <li><strong>Liez votre WhatsApp</strong> en scannant un QR. Vos clientes peuvent réserver dès le jour même.</li>
 </ol>
 
 ${CTA}
 
 <h2>Questions fréquentes</h2>
 <h3>L'assistant peut-il vraiment prendre les rendez-vous seul ?</h3>
-<p>Oui. Il propose vos créneaux réellement libres, enregistre le rendez-vous choisi et envoie un rappel. Vous voyez tout dans votre tableau de bord.</p>
+<p>Oui. Il propose vos créneaux réellement libres, enregistre le rendez-vous choisi et envoie un rappel. Vous voyez tout dans votre tableau de bord et pouvez annuler ou ajuster à tout moment.</p>
 <h3>Et si deux clientes veulent le même créneau ?</h3>
-<p>L'assistant vérifie la disponibilité au moment de réserver. Si le créneau vient d'être pris, il en propose un autre.</p>
+<p>Il vérifie la disponibilité au moment de réserver. Si le créneau vient d'être pris, il en propose automatiquement un autre. Pas de double réservation.</p>
 <h3>Puis-je bloquer certains horaires ?</h3>
-<p>Oui, vous définissez vos horaires d'ouverture et vos disponibilités. L'assistant ne propose que ce que vous autorisez.</p>
+<p>Oui, vous définissez vos horaires et vos indisponibilités. L'assistant ne propose que les créneaux que vous autorisez.</p>
+<h3>Ça marche pour un salon de coiffure comme pour un institut ?</h3>
+<p>Oui. Coiffure, esthétique, onglerie, barber : vous décrivez vos prestations, l'assistant s'y adapte.</p>
 `,
   },
 
