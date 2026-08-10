@@ -23,9 +23,10 @@ export const PAYS: Pays[] = [
       "WhatsApp sert de vitrine principale à beaucoup de commerces sans site web",
       "Paiement majoritairement Mobile Money, rarement par carte",
     ],
-    // RGPH4 (2013) : dernier dénombrement officiel publié par l'INStaD. Le RGPH5
-    // en est au stade du dénombrement, aucun résultat national n'est publié.
-    population: { valeur: 10008749, annee: 2013, source: "insae-benin-rgph4" },
+    // Pas de `population` : le dernier dénombrement publié par l'INStaD est le
+    // RGPH4 de 2013 (10 008 749), qui sous-estime la réalité de 2026 de 25 à 30 %.
+    // Le RGPH5 n'a pas encore livré de résultat national. On préfère l'omission
+    // à un chiffre exact mais trompeur.
     enBref:
       "Au Bénin, un assistant WhatsApp répond aux clients 24h/24 avec les informations de l'entreprise : horaires, prix, disponibilité. Wapy se configure en quelques minutes, sans code, et transmet au responsable ce qui mérite un humain.",
     angle:
@@ -45,7 +46,7 @@ export const PAYS: Pays[] = [
       },
       {
         q: "Que se passe-t-il si le réseau coupe ?",
-        r: "Les messages reçus pendant une coupure sont traités dès le retour de la connexion. WhatsApp conserve la file d'attente, Wapy y répond dans l'ordre sans perdre de demande.",
+        r: "L'assistant ne tourne pas sur votre téléphone mais sur un serveur, votre appareil peut donc être éteint ou hors réseau. Les messages qu'un client envoie pendant sa propre coupure arrivent quand sa connexion revient, et un message livré deux fois n'est traité qu'une seule fois.",
       },
       {
         q: "Combien de temps pour mettre en place l'assistant ?",
@@ -75,31 +76,36 @@ export const PAYS: Pays[] = [
       "Le Mobile Money est le mode de règlement courant, les frais de transfert ayant beaucoup baissé",
       "Beaucoup de commerces publient leur catalogue en statut WhatsApp plutôt que sur un site",
     ],
-    population: { valeur: 29389150, annee: 2021, source: "ins-cotedivoire-rgph" },
+    population: {
+      valeur: 29389150,
+      annee: 2021,
+      source: "ins-cotedivoire-rgph",
+      nature: "recensement",
+    },
     enBref:
-      "En Côte d'Ivoire, Wapy répond sur WhatsApp à la place du commerçant : horaires, adresse, tarifs, disponibilité, modalités de livraison. L'assistant se configure sans code depuis un téléphone et prévient le responsable dès qu'une demande réclame une décision humaine.",
+      "En Côte d'Ivoire, Wapy répond sur WhatsApp à la place du commerçant : horaires, adresse, tarifs, disponibilité, modalités de livraison. L'assistant se configure sans code et prévient le responsable dès qu'une demande réclame une décision humaine.",
     angle:
       "À Abidjan, une demande commerciale commence rarement par un appel : elle commence par un message WhatsApp envoyé depuis un embouteillage de Cocody ou une cour de Yopougon. Pendant ce temps, le commerçant est au comptoir, en livraison ou chez son fournisseur. Aux heures de pointe, les messages s'empilent pendant des heures, et le client a souvent déjà écrit à deux concurrents avant d'obtenir une réponse.",
     faq: [
       {
         q: "Mon numéro a changé lors du passage aux 10 chiffres, faut-il refaire quelque chose ?",
-        r: "Non, rien à refaire. Depuis le 31 janvier 2021, votre numéro porte un préfixe 07, 05 ou 01 selon votre opérateur, et c'est ce compte que Wapy reconnaît à la connexion. Si un ancien contact vous écrit encore avec l'ancien format, WhatsApp fait lui-même le rapprochement.",
+        r: "Non, rien à refaire. Depuis le 31 janvier 2021, votre numéro porte un préfixe 07, 05 ou 01 selon votre opérateur. Pour le numéro du responsable, Wapy essaie les variantes plausibles et envoie un code de vérification sur WhatsApp, plutôt que de deviner un format à votre place.",
       },
       {
         q: "L'assistant comprend-il le français tel qu'on l'écrit à Abidjan ?",
-        r: "Oui. Les clients écrivent vite, avec des abréviations, des fautes de frappe et des tournures locales. Wapy interprète l'intention derrière le message plutôt que sa forme exacte, et répond dans un français simple et direct, celui que vous emploieriez vous-même au comptoir.",
+        r: "Les clients écrivent vite, avec des abréviations, des fautes de frappe et des tournures locales, et l'assistant s'attache à l'intention plutôt qu'à la forme exacte. Il répond en français, la seule langue de réponse prévue à ce jour, dans le ton que vous avez indiqué.",
       },
       {
-        q: "Peut-on faire répondre l'assistant seulement le soir et le week-end ?",
-        r: "Oui. Beaucoup de commerçants gardent la main pendant les heures d'ouverture et laissent l'assistant prendre le relais après la fermeture, quand les messages continuent d'arriver. Vous choisissez les plages où Wapy répond seul et celles où il se contente de vous alerter.",
+        q: "Puis-je empêcher l'assistant de répondre à certains numéros ?",
+        r: "Oui. Vous tenez une liste de numéros exclus, et l'assistant ne répond jamais à ceux-là. C'est utile pour vos fournisseurs, vos proches ou vos employés, dont les messages n'ont pas à être traités comme des demandes de clients. En revanche, aucune plage horaire d'activité n'existe.",
       },
       {
         q: "Comment l'assistant traite-t-il une demande de livraison dans Abidjan ?",
-        r: "Wapy annonce les communes que vous desservez, vos délais habituels et vos frais de livraison, tels que vous les avez renseignés. Il collecte ensuite le quartier et le point de repère du client, puis vous transmet la commande pour que vous organisiez la course.",
+        r: "Wapy annonce les communes que vous desservez, vos délais habituels et vos frais de livraison, tels que vous les avez renseignés. Il collecte ensuite le quartier et le point de repère du client, enregistre la commande et vous la transmet pour que vous organisiez la course.",
       },
       {
         q: "Que devient un client qui veut négocier le prix ?",
-        r: "La négociation reste votre terrain. Wapy annonce le tarif affiché, explique ce qu'il comprend, puis signale au responsable toute demande de remise ou de conditions particulières. Vous reprenez la conversation au moment qui vous arrange, sans que le client soit laissé sans réponse.",
+        r: "L'assistant s'en tient à votre fiche et n'annonce jamais un tarif qui n'y figure pas. Devant une demande de remise que rien ne prévoit, il répond sans s'engager. Vous pouvez lui écrire une consigne qui lui dit exactement quoi faire dans ce cas, il la suivra.",
       },
       {
         q: "Faut-il laisser mon téléphone allumé en permanence ?",
@@ -125,7 +131,12 @@ export const PAYS: Pays[] = [
       "Les clients passent du français au wolof dans un même message et envoient beaucoup de notes vocales",
       "Dakar concentre les sièges, les commerces et la majorité des livraisons",
     ],
-    population: { valeur: 18126390, annee: 2023, source: "ansd-senegal-rgphae" },
+    population: {
+      valeur: 18126390,
+      annee: 2023,
+      source: "ansd-senegal-rgphae",
+      nature: "recensement",
+    },
     enBref:
       "Au Sénégal, Wapy tient la conversation WhatsApp de votre établissement : horaires, adresse, tarifs, réservations, moyens de paiement. L'assistant se met en place en quelques minutes, sans développeur, et vous alerte dès qu'une demande sort du cadre prévu.",
     angle:
@@ -133,11 +144,11 @@ export const PAYS: Pays[] = [
     faq: [
       {
         q: "Wapy comprend-il un message qui mélange français et wolof ?",
-        r: "Oui pour le français, y compris quand un mot ou une formule wolof s'y glisse. Wapy reconnaît l'intention et répond en français clair. Si l'échange devient difficile à suivre, l'assistant préfère prévenir le responsable plutôt que de donner une réponse approximative au client.",
+        r: "L'assistant répond en français, seule langue de réponse prévue à ce jour, y compris quand un mot ou une formule wolof se glisse dans la question. Il ne s'appuie que sur votre fiche : si l'information manque, il dit qu'il se renseigne plutôt que d'improviser une réponse.",
       },
       {
         q: "Beaucoup de mes clients envoient des notes vocales, comment cela se passe ?",
-        r: "Wapy est conçu pour l'écrit. Une note vocale n'est pas interprétée automatiquement : elle est signalée au responsable, qui l'écoute et reprend l'échange. Vos clients habitués au vocal ne se retrouvent donc jamais devant un silence, mais devant une vraie personne qui poursuit.",
+        r: "Les notes vocales sont transcrites, puis l'assistant répond au contenu comme si le client avait écrit. C'est une option facturée en plus du forfait de base. Si la transcription échoue, l'assistant remercie le client et lui demande d'écrire sa demande en quelques mots.",
       },
       {
         q: "Puis-je indiquer que je suis payé par Wave ou par Orange Money ?",
@@ -145,11 +156,11 @@ export const PAYS: Pays[] = [
       },
       {
         q: "Mon numéro sénégalais fait 9 chiffres, faut-il un format particulier ?",
-        r: "Non. Vous connectez le compte WhatsApp que vous utilisez déjà, quel que soit l'opérateur. Le plan sénégalais compte 9 chiffres après l'indicatif +221, et c'est ce numéro qui identifie votre établissement auprès de vos clients. Rien à changer, ni carte SIM ni abonnement.",
+        r: "Non. La connexion se fait par un scan de QR code depuis le compte WhatsApp que vous utilisez déjà, quel que soit l'opérateur. Le plan sénégalais compte 9 chiffres après l'indicatif +221, et c'est ce numéro qui vous identifie. Rien à changer, ni carte SIM ni abonnement.",
       },
       {
         q: "L'assistant peut-il prendre des réservations pour mon établissement ?",
-        r: "Il recueille les éléments utiles auprès du client, la date, l'heure, le nombre de personnes et le nom, puis vous transmet la demande. La confirmation reste de votre côté, ce qui évite de bloquer une table ou une chambre qui vient d'être prise ailleurs.",
+        r: "Avec l'option rendez-vous, il propose vos créneaux libres et, quand le client en choisit un, enregistre la réservation, la confirme et vous notifie. Sans cette option, il récolte la date, le nombre de personnes et le nom, confirme au client et vous transmet la demande.",
       },
       {
         q: "Est-ce que cela coûte quelque chose à mes clients ?",
@@ -175,7 +186,14 @@ export const PAYS: Pays[] = [
       "Douala porte le commerce et le port, Yaoundé l'administration et les décisions publiques",
       "Monnaie en franc CFA d'Afrique centrale (XAF), distincte du XOF ouest-africain",
     ],
-    population: { valeur: 28856127, annee: 2023, source: "bucrep-cameroun-rgph" },
+    // Estimation modélisée du BUCREP, pas un dénombrement : le Cameroun n'a pas
+    // recensé sa population depuis 2005 et le 4e RGPH est en préparation.
+    population: {
+      valeur: 28856127,
+      annee: 2023,
+      source: "bucrep-cameroun-rgph",
+      nature: "estimation",
+    },
     enBref:
       "Au Cameroun, Wapy répond sur WhatsApp aux questions courantes de vos clients : horaires, adresse, tarifs en francs CFA, disponibilité. L'assistant se configure sans code et transmet au responsable les demandes qui exigent un arbitrage humain.",
     angle:
@@ -183,7 +201,7 @@ export const PAYS: Pays[] = [
     faq: [
       {
         q: "Mes clients écrivent en français et en anglais, comment l'assistant s'adapte-t-il ?",
-        r: "Wapy détecte la langue du message et répond dans celle-ci, sans que vous ayez à trier les conversations. Vous rédigez vos informations une seule fois. Si une formulation vous tient à cœur dans une langue précise, vous pouvez l'imposer telle quelle dans la fiche.",
+        r: "Autant le dire clairement : l'assistant répond en français, c'est la seule langue prévue par son fonctionnement actuel. Un client qui écrit en anglais reçoit donc une réponse en français. Si votre clientèle est majoritairement anglophone, mieux vaut le savoir avant de vous engager.",
       },
       {
         q: "Les numéros camerounais commencent par 6, est-ce un problème pour la connexion ?",
@@ -191,7 +209,7 @@ export const PAYS: Pays[] = [
       },
       {
         q: "Puis-je gérer deux établissements, un à Douala et un à Yaoundé ?",
-        r: "Oui, à condition de traiter chaque établissement séparément, avec ses propres horaires, son adresse et ses tarifs. Un client qui écrit au numéro de Douala reçoit les informations de Douala. Mélanger les deux dans une même fiche conduirait vite à des réponses fausses.",
+        r: "Chaque établissement se gère comme un compte à part : sa fiche, son numéro et sa propre connexion WhatsApp. Un client qui écrit au numéro de Douala reçoit donc les informations de Douala. Il n'existe pas de fiche unique qui servirait les deux adresses à la fois.",
       },
       {
         q: "L'assistant sait-il annoncer des prix en francs CFA ?",
@@ -199,11 +217,11 @@ export const PAYS: Pays[] = [
       },
       {
         q: "Que se passe-t-il quand un client demande un devis détaillé ?",
-        r: "Wapy pose les questions de cadrage que vous avez prévues, comme la quantité, le délai ou le lieu, puis vous transmet le dossier constitué. Le chiffrage reste à vous. Le client, lui, n'a pas attendu dans le vide et sait quand il aura sa réponse.",
+        r: "Wapy pose les questions de cadrage prévues par votre consigne, comme la quantité, le délai ou le lieu, enregistre la demande et vous la notifie avec le récapitulatif. Le chiffrage reste à vous, l'assistant n'avance aucun montant qui ne figure pas dans votre fiche.",
       },
       {
-        q: "Puis-je reprendre la main sur une conversation à tout moment ?",
-        r: "Oui, et sans manipulation compliquée. Les échanges se déroulent dans WhatsApp, sur votre compte. Vous ouvrez la discussion et vous écrivez : l'assistant s'efface pour laisser passer votre message. C'est le fonctionnement attendu dès qu'une réclamation ou un cas sensible apparaît.",
+        q: "Puis-je reprendre la main sur une conversation ?",
+        r: "Oui. Quand l'assistant passe la main, vous recevez une alerte sur WhatsApp : vous citez ce message et votre réponse part au client, sous votre identité habituelle. La conversation vous reste tant que vous ne tapez pas la commande de retour, qui la rend à l'assistant.",
       },
     ],
     secteursPhares: ["ecole", "evenementiel-traiteur", "clinique-pharmacie"],
@@ -225,7 +243,12 @@ export const PAYS: Pays[] = [
       "T-Money et Flooz couvrent l'essentiel des règlements par téléphone",
       "Le port de Lomé irrigue un corridor commercial vers les pays sans littoral",
     ],
-    population: { valeur: 8095498, annee: 2022, source: "inseed-togo-rgph" },
+    population: {
+      valeur: 8095498,
+      annee: 2022,
+      source: "inseed-togo-rgph",
+      nature: "recensement",
+    },
     enBref:
       "Au Togo, Wapy répond aux clients sur WhatsApp avec les informations de votre activité : horaires, adresse, tarifs, délais, moyens de paiement. La mise en place prend quelques minutes et ne demande ni site web ni compétence technique.",
     angle:
@@ -245,11 +268,11 @@ export const PAYS: Pays[] = [
       },
       {
         q: "L'assistant peut-il donner mon adresse avec un point de repère à Lomé ?",
-        r: "Oui, et c'est même conseillé. Beaucoup d'adresses se décrivent mieux par un repère que par un nom de rue. Vous rédigez l'itinéraire comme vous l'expliqueriez au téléphone, et l'assistant le répète mot pour mot à chaque client qui cherche votre atelier ou votre boutique.",
+        r: "Oui, et c'est même conseillé. Beaucoup d'adresses se décrivent mieux par un repère que par un nom de rue. Vous rédigez l'itinéraire comme vous l'expliqueriez au téléphone, et l'assistant s'appuie dessus sans jamais inventer une adresse qui ne figure pas dans votre fiche.",
       },
       {
         q: "Que fait Wapy lorsqu'il ne connaît pas la réponse ?",
-        r: "Il le dit simplement au client, sans inventer, puis prévient le responsable de la question restée en suspens. Cette limite est volontaire : mieux vaut une réponse humaine différée d'une heure qu'une information fausse qui vous engage auprès de quelqu'un que vous ne connaissez pas.",
+        r: "Il ne l'invente pas, c'est la première règle de son fonctionnement. Il dit qu'il se renseigne, ou propose le moyen de contact indiqué dans votre fiche. Il ne dérange le responsable que si le client insiste, ou si le sujet est une réclamation ou un litige.",
       },
       {
         q: "Dois-je changer ma façon de travailler pour utiliser l'assistant ?",

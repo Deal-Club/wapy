@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { SOURCES, sourceExiste } from "@/content/sources";
 import { PAYS, getPays, paysPublies } from "@/content/pays";
+import type { Pays } from "@/content/types";
 
 describe("registre des sources", () => {
   it("indexe chaque source sous son propre id", () => {
@@ -38,6 +39,20 @@ const SECTEURS_ATTENDUS = [
   "garage-auto",
 ];
 
+/**
+ * Tout le texte d'un pays qui finit sur la page publiée, `particularites`
+ * comprise : les garde-fous rédactionnels doivent couvrir chaque champ affiché,
+ * pas seulement les plus visibles.
+ */
+function textePublie(p: Pays): string {
+  return [
+    p.enBref,
+    p.angle,
+    ...p.particularites,
+    ...p.faq.map((f) => `${f.q} ${f.r}`),
+  ].join(" ");
+}
+
 describe("données pays", () => {
   it("contient les 5 pays de la vague 1", () => {
     expect(PAYS.map((p) => p.slug).sort()).toEqual(
@@ -59,6 +74,20 @@ describe("données pays", () => {
         expect(p.population.valeur).toBeGreaterThan(0);
       }
     }
+  });
+
+  // G1 : la nature du chiffre ne peut pas être omise silencieusement.
+  it("qualifie chaque population de recensement ou d'estimation", () => {
+    for (const p of PAYS) {
+      if (p.population) {
+        expect(["recensement", "estimation"], `nature manquante ou invalide pour ${p.slug}`)
+          .toContain(p.population.nature);
+      }
+    }
+  });
+
+  it("omet la population plutôt que de publier un chiffre périmé (Bénin)", () => {
+    expect(getPays("benin")?.population).toBeUndefined();
   });
 
   // G3 : angle rédigé
@@ -92,20 +121,11 @@ describe("données pays", () => {
     expect(new Set(questions).size).toBe(questions.length);
   });
 
-  // AEO : réponses de 40 à 60 mots (contrainte du type QuestionReponse).
-  // Exception assumée : la FAQ du Bénin est reprise mot pour mot du brief de la
-  // tâche 2, où les réponses tiennent en 28 à 37 mots. On ne la réécrit pas ici,
-  // mais on n'assouplit pas le gabarit pour autant sur le contenu rédigé.
-  const SOUS_GABARIT_HERITE = ["benin"];
-
-  it("répond en 40 à 60 mots à chaque question", () => {
+  // AEO : plafond de 60 mots par réponse, sans exception.
+  it("répond en 60 mots maximum à chaque question", () => {
     for (const p of PAYS) {
       for (const f of p.faq) {
         const mots = f.r.trim().split(/\s+/).length;
-        if (!SOUS_GABARIT_HERITE.includes(p.slug)) {
-          expect(mots, `réponse trop courte (${mots} mots) dans ${p.slug} : ${f.q}`)
-            .toBeGreaterThanOrEqual(40);
-        }
         expect(mots, `réponse trop longue (${mots} mots) dans ${p.slug} : ${f.q}`)
           .toBeLessThanOrEqual(60);
       }
@@ -114,17 +134,28 @@ describe("données pays", () => {
 
   it("n'utilise pas de tiret long dans le contenu publié", () => {
     for (const p of PAYS) {
-      const texte = [p.enBref, p.angle, ...p.faq.map((f) => f.q + f.r)].join(" ");
+      const texte = textePublie(p);
       expect(texte, `tiret long dans ${p.slug}`).not.toContain("—");
     }
   });
 
   it("ne revendique aucun client ni résultat client", () => {
-    const interdits =
-      /nos clients|nos utilisateurs|témoignage|ont vu leurs|ont augmenté|des centaines d'entreprises|milliers d'entreprises/i;
+    // Première personne (« nos clients ») ET troisième personne
+    // (« beaucoup de commerçants font X »), qui présuppose une base installée
+    // alors que Wapy n'a aucun client en production.
+    const interdits = [
+      /nos clients|nos utilisateurs|nos établissements/i,
+      /témoignage|avis clients?/i,
+      /ont vu leurs?|ont augmenté|ont gagné|ont doublé/i,
+      /(centaines|milliers|dizaines) d[eu']/i,
+      /(beaucoup|la plupart|nombre|certains|de nombreux|des milliers) (de |d')?(commer[çc]ants?|[ée]tablissements?|entreprises?|utilisateurs?|restaurants?|boutiques?|clients?) (qui )?(gardent|utilisent|ont|font|laissent|choisissent|passent|constatent)/i,
+      /déjà adopté|nous font confiance|rejoignez les/i,
+    ];
     for (const p of PAYS) {
-      const texte = [p.enBref, p.angle, ...p.faq.map((f) => f.q + " " + f.r)].join(" ");
-      expect(texte, `revendication client dans ${p.slug}`).not.toMatch(interdits);
+      const texte = textePublie(p);
+      for (const motif of interdits) {
+        expect(texte, `revendication client dans ${p.slug} (motif ${motif})`).not.toMatch(motif);
+      }
     }
   });
 

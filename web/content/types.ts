@@ -13,11 +13,21 @@ export type Chiffre = {
   annee: number;
   /** id d'une entrée de SOURCES. */
   source: string;
+  /**
+   * Comment le chiffre a été produit. Obligatoire : un dénombrement exhaustif et
+   * une estimation modélisée ne se citent pas de la même façon, et l'omission
+   * silencieuse de cette distinction est précisément ce qu'on veut empêcher.
+   */
+  nature: "recensement" | "estimation";
 };
 
 export type QuestionReponse = {
   q: string;
-  /** Réponse de 40 à 60 mots (contrainte AEO). */
+  /**
+   * Réponse courte, orientée AEO. Règle appliquée par les tests : 60 mots
+   * maximum, sans exception. Cible rédactionnelle indicative : 40 à 60 mots,
+   * non imposée par un test.
+   */
   r: string;
 };
 

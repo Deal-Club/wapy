@@ -49,9 +49,11 @@ export const SOURCES: Record<string, Source> = {
     url: "https://arcep.bj/a-partir-de-30-novembre-2024-les-numeros-de-telephone-au-benin-passent-de-08-a-10-chiffres/",
     consulteLe: "2026-08-10",
   },
-  "artci-cotedivoire-numerotation-2021": {
-    id: "artci-cotedivoire-numerotation-2021",
-    label: "Orange Côte d'Ivoire, plan national de numérotation à 10 chiffres (décision ARTCI, 31 janvier 2021)",
+  // Source réelle : la page d'Orange Côte d'Ivoire, qui rapporte la décision de
+  // l'ARTCI. L'id nomme l'éditeur de la page, pas le régulateur.
+  "orange-ci-numerotation-2021": {
+    id: "orange-ci-numerotation-2021",
+    label: "Orange Côte d'Ivoire, plan national de numérotation à 10 chiffres (rapporte la décision ARTCI du 31 janvier 2021)",
     url: "https://www.orange.ci/fr/plan-national-de-numerotation-a-10-chiffres.html",
     consulteLe: "2026-08-10",
   },
