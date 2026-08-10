@@ -14,7 +14,7 @@ PERIOD_DAYS = 30
 TRIAL_DAYS = 7
 CURRENCY = "XOF"
 # Garde-fou : générations « Remplir avec l'IA » autorisées par mois et par établissement.
-AI_GENERATE_PER_MONTH = 15
+AI_GENERATE_PER_MONTH = 3
 
 # Catalogue des fonctionnalités (services) activables.
 FEATURES = {

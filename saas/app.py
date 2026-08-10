@@ -13,6 +13,7 @@ from datetime import datetime, timedelta
 
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, UploadFile, File
 from fastapi.responses import RedirectResponse, Response, StreamingResponse
+from starlette.concurrency import run_in_threadpool
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, EmailStr
 
@@ -1330,7 +1331,14 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             if transcribe_fn is None:
                 from saas.transcribe import transcribe_audio
                 transcribe_fn = transcribe_audio
-        return process_incoming(s, channel, br, tenant, payload, vision_analyze=vision_fn, transcribe=transcribe_fn)
+        # process_incoming est BLOQUANT (appel LLM synchrone). On l'exécute dans un
+        # thread pour NE PAS figer la boucle asyncio : les messages de plusieurs
+        # conversations/établissements sont alors traités en parallèle (chaque requête
+        # a sa propre session DB -> aucune donnée partagée, aucun mélange de réponses).
+        return await run_in_threadpool(
+            process_incoming, s, channel, br, tenant, payload,
+            vision_analyze=vision_fn, transcribe=transcribe_fn,
+        )
 
     return app
 

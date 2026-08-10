@@ -103,8 +103,8 @@ export default function ConfigEditor({
         {typeof aiLeft === "number" && (
           <p className={`text-xs ${aiLeft === 0 ? "text-brand" : "text-muted"}`}>
             {aiLeft === 0
-              ? `Limite mensuelle atteinte (${aiLimit ?? 15} générations IA/mois). Réessayez le mois prochain ou remplissez à la main.`
-              : `Générations IA : ${aiLeft}/${aiLimit ?? 15} restantes ce mois-ci.`}
+              ? `Limite mensuelle atteinte (${aiLimit ?? 3} générations IA/mois). Réessayez le mois prochain ou remplissez à la main.`
+              : `Générations IA : ${aiLeft}/${aiLimit ?? 3} restantes ce mois-ci.`}
           </p>
         )}
       </div>
