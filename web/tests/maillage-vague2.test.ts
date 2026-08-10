@@ -24,7 +24,7 @@ vi.mock("@/content/villes", async (importOriginal) => {
 import { pagesPubliees, liensSortants, liensEntrants, auditMaillage } from "@/lib/maillage";
 import { paysPublies } from "@/content/pays";
 import { secteursPublies } from "@/content/secteurs";
-import { villesPubliees } from "@/content/villes";
+import { villesPubliees, villesDuPays } from "@/content/villes";
 import type { Ville } from "@/content/types";
 
 describe("simulation vague 2 (25 villes publiées)", () => {
@@ -53,9 +53,14 @@ describe("simulation vague 2 (25 villes publiées)", () => {
   });
 
   it("aucun pays n'est privilégié dans les villes ciblées par les pages secteur", () => {
-    const pays = paysPublies();
-    const villesParHref = new Map(
-      villesPubliees().map((v) => [`/chatbot-whatsapp/${v.pays}/${v.slug}`, v] as const),
+    // Attendu dérivé des données (tout pays ayant au moins une ville publiée
+    // doit être ciblé), pas une constante en dur : ce test reste valable même
+    // si un pays n'a, un jour, aucune ville publiée.
+    const paysAvecVillePubliee = paysPublies().filter((p) =>
+      villesDuPays(p.slug).some((v) => v.publie),
+    ).length;
+    const villesParHref = new Map<string, Ville>(
+      villesPubliees().map((v) => [`/chatbot-whatsapp/${v.pays}/${v.slug}`, v]),
     );
     for (const s of secteursPublies()) {
       const villesCiblees = liensSortants(`/secteurs/${s.slug}`)
@@ -65,7 +70,7 @@ describe("simulation vague 2 (25 villes publiées)", () => {
       expect(
         paysCouverts.size,
         `/secteurs/${s.slug} ne cible que le(s) pays ${JSON.stringify([...paysCouverts])}`,
-      ).toBe(pays.length);
+      ).toBe(paysAvecVillePubliee);
     }
   });
 

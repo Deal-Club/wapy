@@ -74,12 +74,13 @@ describe("liens", () => {
     }
   });
 
-  // Le sens inverse de la simple relecture de liensSortants : ce test vérifie,
-  // sur tout le graphe et pas sur une seule cible choisie au hasard, que tout
-  // lien sortant de A vers B fait bien réapparaître A dans liensEntrants(B).
-  // Un test qui se contenterait de relire liensEntrants(cible) puis de
-  // revérifier liensSortants ne peut jamais échouer, liensEntrants étant
-  // dérivé mécaniquement de liensSortants : ce n'est pas un test.
+  // Les deux sens de l'équivalence liensEntrants ↔ liensSortants, vérifiés sur
+  // tout le graphe et pas sur une seule cible choisie au hasard (une seule
+  // cible laisserait passer un bug qui n'affecterait que d'autres pages).
+  //
+  // Sens 1 : pas de sous-comptage. Tout lien sortant de A vers B doit
+  // réapparaître dans liensEntrants(B) — sinon auditMaillage() sous-estime le
+  // maillage réel d'une page et pourrait la signaler à tort comme en défaut.
   it("chaque lien sortant se retrouve dans les entrants de sa cible, sur tout le graphe", () => {
     for (const page of pagesPubliees()) {
       for (const lien of liensSortants(page.url)) {
@@ -87,6 +88,21 @@ describe("liens", () => {
         expect(
           entrants.some((e) => e.href === page.url),
           `${page.url} -> ${lien.href} absent de liensEntrants(${lien.href})`,
+        ).toBe(true);
+      }
+    }
+  });
+
+  // Sens 2 : pas de sur-comptage. Tout entrant déclaré pour une page B doit
+  // correspondre à un vrai lien sortant de sa source vers B — sinon
+  // auditMaillage() pourrait compter un faux entrant et masquer un
+  // sous-maillage réel sans qu'aucun test ne le signale.
+  it("chaque entrant déclaré correspond à un vrai lien sortant de sa source, sur tout le graphe", () => {
+    for (const page of pagesPubliees()) {
+      for (const entrant of liensEntrants(page.url)) {
+        expect(
+          liensSortants(entrant.href).some((l) => l.href === page.url),
+          `liensEntrants(${page.url}) déclare ${entrant.href} sans lien sortant réel vers ${page.url}`,
         ).toBe(true);
       }
     }
