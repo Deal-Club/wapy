@@ -504,6 +504,162 @@ ${CTA}
 <p>Oui : plomberie, électricité, menuiserie, couture, mécanique et bien d'autres. Vous décrivez votre activité, l'assistant s'y adapte.</p>
 `,
   },
+
+  {
+    slug: "assistant-whatsapp-agence-voyage",
+    title: "Assistant WhatsApp pour agence de voyage : répondez et réservez sans rater un départ",
+    description:
+      "Un assistant WhatsApp pour agence de voyage répond sur les destinations, les tarifs et les disponibilités, et transmet les demandes de réservation à votre équipe, 24h/24.",
+    keywords: [
+      "assistant WhatsApp agence de voyage",
+      "réservation voyage WhatsApp",
+      "billet d'avion WhatsApp",
+      "agence de voyage Afrique WhatsApp",
+      "répondre clients voyage WhatsApp",
+    ],
+    date: "2026-08-10",
+    readingMin: 5,
+    excerpt:
+      "Destinations, tarifs, dates, visa : vos clients posent toujours les mêmes questions avant de réserver. Un assistant WhatsApp y répond et note les demandes, même la nuit.",
+    body: `
+<p>Dans une agence de voyage, tout va vite : un client demande un tarif, hésite, puis réserve ailleurs si personne ne lui répond. Les questions arrivent à toute heure, souvent le soir quand on prépare son voyage. Un <strong>assistant WhatsApp pour agence de voyage</strong> répond tout de suite et transmet les demandes de réservation à votre équipe.</p>
+
+<h2>Les questions avant de réserver</h2>
+<ul>
+  <li>Vous avez des billets pour cette destination ? À quelles dates ?</li>
+  <li>C'est combien l'aller-retour ? Y a-t-il des frais en plus ?</li>
+  <li>Vous vous occupez du visa, de l'hôtel, du transfert ?</li>
+  <li>Quels sont vos horaires et votre adresse ?</li>
+</ul>
+<p>L'assistant répond à ces questions à partir de vos offres, et retient le client au lieu de le laisser partir.</p>
+
+<h2>Vos offres présentées avec exactitude</h2>
+<p>Destinations, formules, tarifs, services inclus : vous renseignez vos offres une fois. L'assistant décrit la bonne formule au bon prix, sans se tromper, et met en avant ce que vous proposez de plus.</p>
+
+<h2>Les demandes de réservation transmises à l'agence</h2>
+<p>Quand un client veut réserver, l'assistant récolte l'essentiel (destination, dates, nombre de personnes, services souhaités) et prévient votre équipe. Vous traitez une demande claire au lieu de repartir de zéro.</p>
+
+<h2>Disponible quand les clients préparent leur voyage</h2>
+<p>Beaucoup de recherches se font le soir et le week-end. Un assistant disponible 24h/24 capte ces demandes et évite qu'elles partent chez un concurrent plus réactif.</p>
+
+<h2>Votre équipe garde la main sur les dossiers</h2>
+<p>Pour un devis détaillé, un groupe ou une situation particulière, l'assistant transmet et vous prenez le relais. L'automatisation gère le premier contact, votre équipe finalise la vente.</p>
+
+${CTA}
+
+<h2>Questions fréquentes</h2>
+<h3>L'assistant peut-il émettre un billet ?</h3>
+<p>Non. Il informe et note la demande, puis votre équipe finalise la réservation et l'émission. Vous gardez la main sur les dossiers.</p>
+<h3>Comment mettre à jour les offres et les tarifs ?</h3>
+<p>Vous tenez vos offres à jour dans un tableau. L'assistant répond aussitôt avec les bonnes informations.</p>
+<h3>Peut-il gérer plusieurs destinations ?</h3>
+<p>Oui, autant que vous en proposez. Vous décrivez vos offres, l'assistant répond selon la destination demandée.</p>
+`,
+  },
+
+  {
+    slug: "assistant-whatsapp-evenementiel-traiteur",
+    title: "Assistant WhatsApp pour traiteur et événementiel : devis et réservations sans rien oublier",
+    description:
+      "Un assistant WhatsApp pour traiteur ou organisateur d'événements répond sur les formules, les tarifs et les dates, et transmet les demandes de devis à votre équipe.",
+    keywords: [
+      "assistant WhatsApp traiteur",
+      "devis événementiel WhatsApp",
+      "organisation mariage WhatsApp",
+      "réservation traiteur WhatsApp",
+      "événementiel Afrique WhatsApp",
+    ],
+    date: "2026-08-10",
+    readingMin: 5,
+    excerpt:
+      "Mariages, baptêmes, séminaires : chaque demande est un devis à préparer. Un assistant WhatsApp récolte l'essentiel et vous transmet des demandes prêtes à chiffrer.",
+    body: `
+<p>Dans l'événementiel et la restauration traiteur, chaque message est une opportunité de contrat : un mariage, un baptême, un séminaire. Mais quand vous êtes en pleine prestation, vous ne pouvez pas répondre, et le client contacte un autre prestataire. Un <strong>assistant WhatsApp pour traiteur et événementiel</strong> récolte les demandes et vous les transmet, prêtes à chiffrer.</p>
+
+<h2>Ce que les clients demandent</h2>
+<ul>
+  <li>Vous êtes disponible pour telle date ?</li>
+  <li>C'est quel prix pour 100, 200 personnes ?</li>
+  <li>Vous proposez quelles formules, quels menus ?</li>
+  <li>Vous fournissez aussi la déco, la sonorisation, le service ?</li>
+</ul>
+<p>L'assistant répond aux questions de base et, pour un devis, récolte les informations utiles avant de vous prévenir.</p>
+
+<h2>Des demandes de devis complètes</h2>
+<p>Plutôt qu'un simple message, vous recevez une demande cadrée : type d'événement, date, nombre d'invités, formule souhaitée, services annexes. Vous préparez un devis précis sans multiplier les allers-retours.</p>
+
+<h2>Vos formules bien présentées</h2>
+<p>Menus, formules, options, tarifs indicatifs : vous renseignez votre offre une fois. L'assistant la présente avec clarté et met en valeur ce qui vous distingue.</p>
+
+<h2>Vous ne ratez plus une demande pendant une prestation</h2>
+<p>Le samedi, en plein service, les nouvelles demandes arrivent quand même. L'assistant les capte et vous les retrouvez une fois la prestation terminée, sans rien perdre.</p>
+
+<h2>Vous gardez la relation pour conclure</h2>
+<p>Un devis, une visite, une négociation : c'est votre expertise qui fait la différence. L'assistant prépare le terrain et vous reprenez la conversation au bon moment.</p>
+
+${CTA}
+
+<h2>Questions fréquentes</h2>
+<h3>L'assistant peut-il envoyer un devis ?</h3>
+<p>Il donne des tarifs indicatifs si vous les avez renseignés, et récolte les informations pour que vous prépariez un devis précis. Le chiffrage final reste le vôtre.</p>
+<h3>Gère-t-il les dates déjà réservées ?</h3>
+<p>Il transmet les demandes à votre équipe, qui vérifie la disponibilité. Vous gardez la main sur votre agenda d'événements.</p>
+<h3>Ça marche pour un traiteur comme pour un organisateur complet ?</h3>
+<p>Oui. Vous décrivez vos prestations, l'assistant s'y adapte, que vous fassiez la cuisine, l'organisation ou les deux.</p>
+`,
+  },
+
+  {
+    slug: "assistant-whatsapp-garage-auto",
+    title: "Assistant WhatsApp pour garage auto : prenez rendez-vous et devis pendant que vous réparez",
+    description:
+      "Un assistant WhatsApp pour garage automobile répond aux clients, note les demandes de devis et cale les rendez-vous d'atelier pendant que vos mécaniciens travaillent.",
+    keywords: [
+      "assistant WhatsApp garage",
+      "prendre rendez-vous garage WhatsApp",
+      "devis réparation auto WhatsApp",
+      "mécanique WhatsApp",
+      "garage automobile WhatsApp",
+    ],
+    date: "2026-08-10",
+    readingMin: 5,
+    excerpt:
+      "Les mains dans le moteur, vous ne répondez pas au téléphone. Un assistant WhatsApp prend les demandes de devis et cale les rendez-vous d'atelier à votre place.",
+    body: `
+<p>Dans un garage, les mécaniciens ont les mains prises toute la journée. Pendant ce temps, des clients écrivent pour un devis, une vidange, un rendez-vous. Sans réponse rapide, ils vont voir le garage d'à côté. Un <strong>assistant WhatsApp pour garage auto</strong> répond, note les demandes de devis et cale les rendez-vous d'atelier.</p>
+
+<h2>Les questions d'un automobiliste</h2>
+<ul>
+  <li>Vous pouvez regarder ma voiture cette semaine ?</li>
+  <li>C'est combien une vidange, un changement de plaquettes ?</li>
+  <li>Vous faites la climatisation, la tôlerie, le diagnostic ?</li>
+  <li>Il faut prendre rendez-vous ou je peux passer ?</li>
+</ul>
+<p>L'assistant répond à ces questions à partir de vos prestations et de vos tarifs de base.</p>
+
+<h2>Des demandes de devis bien cadrées</h2>
+<p>Quand un client décrit un problème, l'assistant note l'essentiel (véhicule, panne décrite, urgence, coordonnées) et vous prévient. Vous rappelez avec une demande claire au lieu de la rater dans la journée.</p>
+
+<h2>Les rendez-vous d'atelier calés tout seuls</h2>
+<p>L'assistant propose vos créneaux disponibles, le client choisit, et le rendez-vous est enregistré avec un rappel avant l'heure. Votre planning d'atelier se remplit sans interrompre le travail en cours.</p>
+
+<h2>Disponible pendant que l'atelier tourne</h2>
+<p>Les nouvelles demandes arrivent en continu. L'assistant les capte pendant que vous réparez, et vous retrouvez des contacts qualifiés en fin de journée.</p>
+
+<h2>Le diagnostic reste votre métier</h2>
+<p>Pour chiffrer une réparation, rien ne remplace votre expertise. L'assistant récolte les informations et vous reprenez la main pour le devis et le conseil.</p>
+
+${CTA}
+
+<h2>Questions fréquentes</h2>
+<h3>L'assistant peut-il donner un prix de réparation ?</h3>
+<p>Il donne les tarifs de base que vous avez renseignés (vidange, révision…). Pour une panne précise, il note la demande et vous la transmet pour un devis.</p>
+<h3>Gère-t-il le planning de l'atelier ?</h3>
+<p>Il propose vos créneaux disponibles et enregistre les rendez-vous. Vous définissez vos horaires et votre capacité.</p>
+<h3>Faut-il un logiciel spécial ?</h3>
+<p>Non. Vous liez votre WhatsApp professionnel, sans site ni compétence technique.</p>
+`,
+  },
 ];
 
 // Étiquette « secteur » de chaque article (affichage / rangement).
@@ -517,6 +673,9 @@ const TAG: Record<string, string> = {
   "chatbot-whatsapp-immobilier": "Immobilier",
   "assistant-whatsapp-ecole": "Éducation",
   "assistant-whatsapp-artisan": "Services",
+  "assistant-whatsapp-agence-voyage": "Voyage",
+  "assistant-whatsapp-evenementiel-traiteur": "Événementiel",
+  "assistant-whatsapp-garage-auto": "Automobile",
 };
 
 export function tagFor(slug: string): string {
