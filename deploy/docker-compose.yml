@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:16
+    restart: unless-stopped
     environment:
       POSTGRES_USER: wapy
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -10,6 +11,7 @@ services:
 
   waha:
     image: devlikeapro/waha
+    restart: unless-stopped
     environment:
       - WHATSAPP_DEFAULT_ENGINE=NOWEB
       - WHATSAPP_API_KEY=${WHATSAPP_API_KEY}
@@ -17,6 +19,7 @@ services:
       - ./waha_sessions:/app/.sessions
 
   api:
+    restart: unless-stopped
     build:
       context: ..
       dockerfile: deploy/Dockerfile.api
@@ -56,6 +59,7 @@ services:
       - waha
 
   web:
+    restart: unless-stopped
     build:
       context: ../web
     depends_on:
@@ -66,6 +70,7 @@ services:
   # Cf. deploy/https-nginx.md pour la config nginx + certificat.
   caddy:
     image: caddy:2
+    restart: unless-stopped
     ports:
       - "127.0.0.1:8080:80"
     volumes:
