@@ -184,7 +184,7 @@ export const SECTEURS: Secteur[] = [
       },
       {
         q: "Peut-il gérer une demande de groupe ou de séminaire ?",
-        r: "Il recueille l'essentiel et vous la transmet. Vous pouvez écrire une consigne qui lui dit quoi faire dans ce cas précis, par exemple quelles informations demander avant de vous prévenir : il la suivra à la lettre.",
+        r: "Il recueille l'essentiel et vous la transmet. Vous pouvez écrire une consigne qui lui dit quoi faire dans ce cas précis, par exemple quelles informations demander avant de vous prévenir : elle guide son comportement sur ce type de demande.",
       },
       {
         q: "Puis-je gérer deux établissements avec un seul compte ?",
@@ -360,7 +360,7 @@ export const SECTEURS: Secteur[] = [
       },
       {
         q: "Peut-il caler mes rendez-vous d'intervention ?",
-        r: "Avec l'option rendez-vous, il propose vos créneaux libres calculés depuis vos horaires, enregistre celui que le client choisit et envoie un rappel la veille puis un dernier peu avant l'heure. Vous fixez la durée type d'une intervention.",
+        r: "Avec l'option rendez-vous, il propose vos créneaux libres calculés depuis vos horaires d'ouverture et la durée de créneau que vous fixez, enregistre celui que le client choisit et envoie un rappel la veille puis un dernier peu avant l'heure.",
       },
       {
         q: "Mes clients m'envoient des notes vocales, sait-il les traiter ?",
