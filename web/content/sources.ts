@@ -42,6 +42,25 @@ export const SOURCES: Record<string, Source> = {
     consulteLe: "2026-08-10",
   },
 
+  // --- Populations urbaines (villes) --------------------------------------
+  // Ces entrées pointent le document qui porte l'effectif PAR VILLE, distinct de
+  // celui qui porte le total national : un tableau national ne prouve pas un
+  // chiffre communal.
+  "anstat-cotedivoire-rgph2021-localites": {
+    id: "anstat-cotedivoire-rgph2021-localites",
+    label:
+      "ANStat Côte d'Ivoire, RGPH 2021, résultats globaux définitifs (octobre 2022), tableau 4 : effectifs des localités de plus de 100 000 habitants",
+    url: "https://www.anstat.ci/assets/publications/files/File_val_indicateur1701358694.pdf",
+    consulteLe: "2026-08-10",
+  },
+  "inseed-togo-rgph5-villes": {
+    id: "inseed-togo-rgph5-villes",
+    label:
+      "INSEED Togo, RGPH-5 (2022), livret 01 « Distribution spatiale de la population résidente par sexe », tableau 49 : effectif de la population résidente des villes du Togo",
+    url: "https://inseed.tg/download/6616/",
+    consulteLe: "2026-08-10",
+  },
+
   // --- Plans de numérotation nationaux ------------------------------------
   "arcep-benin-numerotation-2024": {
     id: "arcep-benin-numerotation-2024",
