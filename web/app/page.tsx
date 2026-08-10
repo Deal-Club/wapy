@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { MessageCircle, Sparkles, Table, Users, ShieldCheck, Globe, Check, type LucideIcon } from "lucide-react";
 import AuthNav from "@/components/AuthNav";
 import { SITE_URL as SITE } from "@/lib/site";
 
@@ -95,13 +96,13 @@ const jsonLd = {
 
 const SECTORS = ["Restaurant", "Maquis / Bar", "Salon de beauté", "Boutique", "Hôtel", "Pharmacie", "Clinique", "École", "Transport", "Immobilier", "Artisan", "E-commerce"];
 
-const FEATURES = [
-  { icon: "💬", title: "Réponses instantanées 24h/24", text: "Vos clients obtiennent une réponse en quelques secondes, jour et nuit, même quand vous êtes occupé." },
-  { icon: "✨", title: "Configuré par l'IA", text: "Décrivez votre activité : l'IA génère automatiquement horaires, catalogue, prix et FAQ. Vous éditez à volonté." },
-  { icon: "🧩", title: "Tout secteur, tout format", text: "Tableaux 100% personnalisables (menu, prestations, catalogue…). Ajoutez vos colonnes selon vos besoins." },
-  { icon: "🙋", title: "Passage à l'humain", text: "Réservation, commande, réclamation : Wapy prévient votre équipe et vous reprenez la conversation en un clic." },
-  { icon: "🔒", title: "Isolé et sécurisé", text: "Chaque entreprise a son espace privé. Vos données et conversations ne sont visibles que par vous." },
-  { icon: "🌍", title: "Pensé pour l'Afrique", text: "Mobile Money, formats locaux, ton chaleureux, français : Wapy parle le langage de vos clients." },
+const FEATURES: { Icon: LucideIcon; title: string; text: string }[] = [
+  { Icon: MessageCircle, title: "Réponses instantanées 24h/24", text: "Vos clients obtiennent une réponse en quelques secondes, jour et nuit, même quand vous êtes occupé." },
+  { Icon: Sparkles, title: "Configuré par l'IA", text: "Décrivez votre activité : l'IA génère automatiquement horaires, catalogue, prix et FAQ. Vous éditez à volonté." },
+  { Icon: Table, title: "Tout secteur, tout format", text: "Tableaux 100% personnalisables (menu, prestations, catalogue…). Ajoutez vos colonnes selon vos besoins." },
+  { Icon: Users, title: "Passage à l'humain", text: "Réservation, commande, réclamation : Wapy prévient votre équipe et vous reprenez la conversation en un clic." },
+  { Icon: ShieldCheck, title: "Isolé et sécurisé", text: "Chaque entreprise a son espace privé. Vos données et conversations ne sont visibles que par vous." },
+  { Icon: Globe, title: "Pensé pour l'Afrique", text: "Mobile Money, formats locaux, ton chaleureux, français : Wapy parle le langage de vos clients." },
 ];
 
 export default function Landing() {
@@ -142,9 +143,11 @@ export default function Landing() {
               <a href="#etapes" className="btn-ghost text-base">Voir comment ça marche</a>
             </div>
             <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
-              <span>✓ Prêt en 5 minutes</span>
-              <span>✓ Sans carte bancaire</span>
-              <span>✓ Configuré par l'IA</span>
+              {["Prêt en 5 minutes", "Sans carte bancaire", "Configuré par l'IA"].map((t) => (
+                <span key={t} className="inline-flex items-center gap-1.5">
+                  <Check className="h-4 w-4 text-emerald" strokeWidth={2.5} /> {t}
+                </span>
+              ))}
             </div>
           </div>
 
@@ -192,8 +195,10 @@ export default function Landing() {
         <div className="mt-12 grid gap-5 md:grid-cols-3">
           {FEATURES.map((f) => (
             <div key={f.title} className="card transition hover:shadow-lift">
-              <div className="text-3xl">{f.icon}</div>
-              <h3 className="mt-3 text-xl">{f.title}</h3>
+              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-brand-soft text-brand">
+                <f.Icon className="h-6 w-6" strokeWidth={1.75} />
+              </div>
+              <h3 className="mt-4 text-xl">{f.title}</h3>
               <p className="mt-2 text-muted">{f.text}</p>
             </div>
           ))}
@@ -242,10 +247,16 @@ export default function Landing() {
               Wapy est né d'un constat simple : les entreprises perdent des ventes parce qu'elles ne répondent pas assez vite sur WhatsApp. Nous avons construit un assistant qui répond avec exactitude, jamais d'invention, et qui sait passer la main à un humain quand il le faut.
             </p>
             <ul className="mt-4 space-y-2 text-sm">
-              <li>✓ Réponses fondées uniquement sur vos informations</li>
-              <li>✓ Passage à l'humain pour tout ce qui compte</li>
-              <li>✓ Données isolées par entreprise, accès sécurisés</li>
-              <li>✓ Adapté aux usages locaux (Mobile Money, français, ton chaleureux)</li>
+              {[
+                "Réponses fondées uniquement sur vos informations",
+                "Passage à l'humain pour tout ce qui compte",
+                "Données isolées par entreprise, accès sécurisés",
+                "Adapté aux usages locaux (Mobile Money, français, ton chaleureux)",
+              ].map((t) => (
+                <li key={t} className="flex items-start gap-2">
+                  <Check className="mt-0.5 h-4 w-4 shrink-0 text-emerald" strokeWidth={2.5} /> <span>{t}</span>
+                </li>
+              ))}
             </ul>
           </div>
           <div className="card">
