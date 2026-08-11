@@ -372,13 +372,22 @@ describe("données secteurs", () => {
     expect(new Set(sources).size, "redirection en double").toBe(sources.length);
   });
 
-  // Une redirection qui part d'un slug inexistant ne redirige rien : le maillage
-  // et le jus SEO de l'article se perdraient en silence.
-  it("ne redirige que depuis des articles de blog réellement existants", () => {
-    const connus = new Set(POSTS.map((p) => p.slug));
+  // Ce test disait l'inverse avant la mise en service des pages secteur : il
+  // exigeait que chaque `ancienSlugBlog` corresponde à un article encore
+  // publié, ce qui était la bonne garantie tant que la redirection n'existait
+  // pas. Maintenant que les 11 articles sont retirés du blog et redirigés, la
+  // propriété à tenir s'inverse : une source de redirection qui redeviendrait
+  // un article servi serait masquée par la redirection, et l'article
+  // réapparaîtrait invisible. L'existence passée de ces slugs, elle, n'est plus
+  // vérifiable depuis le code : elle vit dans l'historique Git.
+  it("ne redirige depuis aucun article de blog encore servi", () => {
+    const servis = new Set(POSTS.map((p) => p.slug));
     for (const s of SECTEURS) {
-      expect(connus.has(s.ancienSlugBlog ?? ""), `article inconnu ${s.ancienSlugBlog} (${s.slug})`)
-        .toBe(true);
+      if (s.ancienSlugBlog === null) continue;
+      expect(
+        servis.has(s.ancienSlugBlog),
+        `article encore servi alors qu'il est redirigé : ${s.ancienSlugBlog} (${s.slug})`,
+      ).toBe(false);
     }
   });
 

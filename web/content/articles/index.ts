@@ -1,48 +1,21 @@
 import type { Post } from "./types";
 import { post as repondreAutomatiquement } from "./repondre-automatiquement-clients-whatsapp";
-import { post as restaurant } from "./chatbot-whatsapp-restaurant";
-import { post as salon } from "./assistant-whatsapp-salon-de-beaute";
-import { post as boutique } from "./chatbot-whatsapp-boutique";
-import { post as hotel } from "./assistant-whatsapp-hotel";
-import { post as cliniquePharmacie } from "./assistant-whatsapp-clinique-pharmacie";
-import { post as immobilier } from "./chatbot-whatsapp-immobilier";
-import { post as ecole } from "./assistant-whatsapp-ecole";
-import { post as artisan } from "./assistant-whatsapp-artisan";
-import { post as agenceVoyage } from "./assistant-whatsapp-agence-voyage";
-import { post as evenementiel } from "./assistant-whatsapp-evenementiel-traiteur";
-import { post as garageAuto } from "./assistant-whatsapp-garage-auto";
 
 export type { Post };
 
-export const POSTS: Post[] = [
-  repondreAutomatiquement,
-  restaurant,
-  salon,
-  boutique,
-  hotel,
-  cliniquePharmacie,
-  immobilier,
-  ecole,
-  artisan,
-  agenceVoyage,
-  evenementiel,
-  garageAuto,
-];
+/**
+ * Les 11 articles sectoriels ont quitté le blog : leur substance vit désormais
+ * dans `content/secteurs.ts`, servie par `/secteurs/<slug>`. Leurs anciennes
+ * URL `/blog/<slug>` sont redirigées en permanence par `next.config.js`, ce que
+ * `tests/redirections.test.ts` vérifie. Les laisser ici en plus des pages
+ * secteur produirait deux pages sur le même mot-clé, chacune affaiblissant
+ * l'autre.
+ */
+export const POSTS: Post[] = [repondreAutomatiquement];
 
 // Étiquette « secteur » de chaque article (affichage / rangement).
 const TAG: Record<string, string> = {
   "repondre-automatiquement-clients-whatsapp": "Guide",
-  "chatbot-whatsapp-restaurant": "Restauration",
-  "assistant-whatsapp-salon-de-beaute": "Beauté",
-  "chatbot-whatsapp-boutique": "Commerce",
-  "assistant-whatsapp-hotel": "Hôtellerie",
-  "assistant-whatsapp-clinique-pharmacie": "Santé",
-  "chatbot-whatsapp-immobilier": "Immobilier",
-  "assistant-whatsapp-ecole": "Éducation",
-  "assistant-whatsapp-artisan": "Services",
-  "assistant-whatsapp-agence-voyage": "Voyage",
-  "assistant-whatsapp-evenementiel-traiteur": "Événementiel",
-  "assistant-whatsapp-garage-auto": "Automobile",
 };
 
 export function tagFor(slug: string): string {
