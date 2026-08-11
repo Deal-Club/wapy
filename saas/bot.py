@@ -35,7 +35,7 @@ def _csv(value: str | None) -> list[str]:
     return [x.strip() for x in (value or "").split(",") if x.strip()]
 
 
-def handle_message(channel, store, brain, fiche_text, staff_send, staff_recognize, payload, pay_link=None, book_slot=None, lookup_fn=None):
+def handle_message(channel, store, brain, fiche_text, staff_send, staff_recognize, payload, pay_link=None, book_slot=None, lookup_fn=None, extra_context=""):
     msg = channel.parse_incoming(payload)
     if msg is None:
         return {"status": "ignored"}
@@ -104,7 +104,8 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
     # Bot
     store.append(msg.chat_id, "user", msg.text)
     history = store.get_history(msg.chat_id, HISTORY_LIMIT)
-    decision = decide_with_lookup(brain, fiche_text, history, msg.text, lookup_fn)
+    decision = decide_with_lookup(brain, fiche_text, history, msg.text, lookup_fn,
+                                  extra_context=extra_context)
     if decision.action == "reply":
         img = getattr(decision, "image", "") or ""
         if img and hasattr(channel, "send_image"):
@@ -259,7 +260,10 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
             logger.info("Staff auto-reconnu (%s) : %s", "citation" if raw.quoted_id else "résolution @lid", raw.chat_id)
 
     # Rendez-vous : si activé et inclus dans l'abonnement, on injecte les créneaux
-    # disponibles dans la fiche et on fournit de quoi réserver.
+    # disponibles et on fournit de quoi réserver. Les créneaux vont dans
+    # `volatile` (bloc hors cache) et NON dans la fiche : la liste change à chaque
+    # créneau écoulé, elle invaliderait le cache de prompt à chaque demi-heure.
+    volatile = ""
     book_slot = None
     if "booking" in _feats:
         from datetime import datetime, timedelta
@@ -277,14 +281,14 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
             svc = ", ".join((x.get("name") or "") for x in bcfg.get("services", [])) or "prestation"
             if slots:
                 lines = "\n".join(f"- [{s:%Y-%m-%dT%H:%M}] {booking.human(s)}" for s in slots)
-                fiche_text += (
+                volatile += (
                     "\n\n## Rendez-vous\nRéservation possible. Services : " + svc +
                     ".\nCréneaux disponibles (utilise l'horodatage entre crochets pour book_datetime) :\n" + lines
                 )
             else:
                 # RDV activés mais aucun créneau libre (agenda plein ou horaires non
                 # renseignés) : ne JAMAIS nier la prise de RDV — proposer de noter.
-                fiche_text += (
+                volatile += (
                     "\n\n## Rendez-vous\nLa prise de rendez-vous est possible (services : " + svc +
                     "), mais aucun créneau n'est libre dans la fenêtre actuelle. Ne dis pas que tu ne "
                     "prends pas de rendez-vous : invite le client à laisser ses disponibilités "
@@ -341,7 +345,7 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
 
     result = handle_message(
         channel, store, brain, fiche_text, staff_send, staff_recognize, payload,
-        pay_link=None, book_slot=book_slot, lookup_fn=lookup_fn
+        pay_link=None, book_slot=book_slot, lookup_fn=lookup_fn, extra_context=volatile
     )
     status = result.get("status")
     if status not in ("ignored", "duplicate"):

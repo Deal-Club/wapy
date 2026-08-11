@@ -81,7 +81,10 @@ def reply(session, tenant, sess, message: str, brain: Brain, notify=None, feats=
     fiche = build_fiche_text(session, tenant.id)
     cfg = get_config(session, tenant.id)
 
-    # Rendez-vous (si inclus) : mêmes créneaux que sur WhatsApp.
+    # Rendez-vous (si inclus) : mêmes créneaux que sur WhatsApp. Ils vont dans
+    # `volatile` (bloc hors cache) et non dans la fiche : la liste change à chaque
+    # créneau écoulé et invaliderait le cache de prompt.
+    volatile = ""
     book_slot = None
     if "booking" in feats:
         from datetime import datetime
@@ -96,9 +99,9 @@ def reply(session, tenant, sess, message: str, brain: Brain, notify=None, feats=
             svc = ", ".join((x.get("name") or "") for x in bcfg.get("services", [])) or "prestation"
             if slots:
                 lines = "\n".join(f"- [{s:%Y-%m-%dT%H:%M}] {booking.human(s)}" for s in slots)
-                fiche += ("\n\n## Rendez-vous\nRéservation possible. Services : " + svc +
-                          ".\nCréneaux disponibles (utilise l'horodatage entre crochets pour "
-                          "book_datetime) :\n" + lines)
+                volatile += ("\n\n## Rendez-vous\nRéservation possible. Services : " + svc +
+                             ".\nCréneaux disponibles (utilise l'horodatage entre crochets pour "
+                             "book_datetime) :\n" + lines)
 
             def book_slot(dt_iso, service, chat_id, name, _b=bcfg):
                 try:
@@ -124,7 +127,8 @@ def reply(session, tenant, sess, message: str, brain: Brain, notify=None, feats=
         fiche += connector.fiche_note(dc)
         lookup_fn = connector.lookup_fn_for(dc)
 
-    decision = decide_with_lookup(brain, fiche, history, message, lookup_fn, channel="web")
+    decision = decide_with_lookup(brain, fiche, history, message, lookup_fn, channel="web",
+                                  extra_context=volatile)
     chat_id = f"web:{sess.session_key}"
     out = decision.message
 

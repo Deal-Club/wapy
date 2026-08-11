@@ -39,7 +39,7 @@ class _Ch:
 
 
 class _Brain:
-    def decide(self, fiche, history, text, channel="whatsapp"):
+    def decide(self, fiche, history, text, channel="whatsapp", extra=""):
         return Decision("reply", "Bonjour !", "ok")
 
 

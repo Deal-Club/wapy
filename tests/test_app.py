@@ -32,7 +32,7 @@ class _Brain:
         self.decision = decision
         self.called = False
 
-    def decide(self, fiche_text, history, incoming_text, channel="whatsapp"):
+    def decide(self, fiche_text, history, incoming_text, channel="whatsapp", extra=""):
         self.called = True
         return self.decision
 

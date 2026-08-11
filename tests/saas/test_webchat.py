@@ -18,7 +18,7 @@ class _Brain:
         self.decision = decision
         self.calls = 0
 
-    def decide(self, fiche, history, text, channel="whatsapp"):
+    def decide(self, fiche, history, text, channel="whatsapp", extra=""):
         self.calls += 1
         assert channel == "web"
         return self.decision

@@ -175,13 +175,22 @@ def build_system_prompt(fiche_text: str, channel: str = "whatsapp") -> str:
 # par heure et par établissement (2 + 0,1xN contre N sans cache).
 CACHE_TTL = "1h"
 
+# En-tête du bloc volatil. Il rattache explicitement ce bloc à la fiche : les
+# règles du prompt système disent « si la fiche contient une section ## Rendez-vous
+# / ## Données en direct », et ces sections vivent désormais ici (hors cache).
+FICHE_SUITE = (
+    "=== SUITE DE LA FICHE (données du moment) ===\n"
+    "Ce bloc fait partie de la fiche ci-dessus : applique-lui les mêmes règles."
+)
+
 
 def build_system_blocks(fiche_text: str, channel: str = "whatsapp", extra: str = "") -> list[dict]:
     """Blocs `system` : préfixe stable (mis en cache) puis contexte volatil.
 
     Bloc 0 = prompt système + fiche : identique d'un message à l'autre -> porte le
-    `cache_control` (point de rupture). Bloc 1 = `extra` (résultat d'un `lookup`,
-    propre à un message) : APRÈS le point de rupture, donc n'invalide rien.
+    `cache_control` (point de rupture). Bloc 1 = `extra` (créneaux de RDV du
+    moment, résultat d'un `lookup`) : APRÈS le point de rupture, donc n'invalide
+    rien même s'il change à chaque message.
     """
     blocks = [{
         "type": "text",
@@ -189,7 +198,7 @@ def build_system_blocks(fiche_text: str, channel: str = "whatsapp", extra: str =
         "cache_control": {"type": "ephemeral", "ttl": CACHE_TTL},
     }]
     if extra:
-        blocks.append({"type": "text", "text": extra})
+        blocks.append({"type": "text", "text": FICHE_SUITE + extra})
     return blocks
 
 
@@ -225,17 +234,19 @@ class Brain:
 
 
 def decide_with_lookup(brain, fiche_text, history, incoming_text, lookup_fn=None,
-                       channel: str = "whatsapp", max_loops: int = 2) -> Decision:
+                       channel: str = "whatsapp", max_loops: int = 2,
+                       extra_context: str = "") -> Decision:
     """Boucle de « function-calling » légère : si le cerveau demande une recherche
     (action='lookup') dans la base de l'établissement, on l'exécute et on lui repasse
     le résultat pour qu'il formule sa réponse finale. Sans connecteur, transparent.
 
-    Le résultat passe par `extra` (et non concaténé à la fiche) : la fiche reste
-    identique octet pour octet entre les deux appels, donc le 2e appel relit le
-    cache écrit par le 1er au lieu de tout repayer plein tarif.
+    `extra_context` = contexte volatil de l'appelant (créneaux de RDV du moment).
+    Lui comme le résultat de recherche passent par `extra`, jamais concaténés à la
+    fiche : la fiche reste identique octet pour octet, donc le cache tient d'un
+    message à l'autre (et entre les deux appels de la boucle).
     """
-    decision = brain.decide(fiche_text, history, incoming_text, channel)
-    extra, loops = "", 0
+    decision = brain.decide(fiche_text, history, incoming_text, channel, extra=extra_context)
+    extra, loops = extra_context, 0
     while decision.action == "lookup" and lookup_fn and loops < max_loops:
         loops += 1
         try:

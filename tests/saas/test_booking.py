@@ -49,8 +49,10 @@ class _Ch:
 class _Brain:
     def __init__(self, decision):
         self.decision = decision
+        self.calls = []
 
-    def decide(self, fiche, history, text, channel="whatsapp"):
+    def decide(self, fiche, history, text, channel="whatsapp", extra=""):
+        self.calls.append((fiche, extra))
         return self.decision
 
 
@@ -75,3 +77,34 @@ def test_booking_end_to_end():
     # créneau désormais occupé -> une 2e demande sur le même créneau propose une alternative
     r2 = process_incoming(s, ch, brain, t, {"event": "message", "payload": {"from": "cl2@c.us", "body": "meme creneau", "id": "m2"}})
     assert s.query(models.Booking).filter_by(tenant_id=t.id, status="booked").count() == 1
+
+
+def test_creneaux_hors_de_la_fiche_mise_en_cache():
+    """Les créneaux changent à chaque demi-heure et à chaque réservation : ils
+    doivent rester dans le bloc volatil, sinon ils invalident le cache de prompt.
+    La fiche, elle, doit être identique d'un message à l'autre."""
+    sf = _sf()
+    s = sf()
+    _, t = auth.signup(s, "c@d.com", "x", "T2")
+    t.staff_numbers = "st@c.us"
+    config_repo.save_config(s, t.id, {"booking": CFG, "infos": [{"label": "Nom", "value": "Salon X"}]})
+    s.commit()
+
+    bcfg = booking.cfg_of(config_repo.get_config(s, t.id))
+    dt = booking.free_slots(bcfg, [])[0]
+    brain = _Brain(Decision("book", "Je réserve.", "rdv",
+                            book_datetime=dt.strftime("%Y-%m-%dT%H:%M"), book_service="Coupe"))
+    ch = _Ch()
+    msg = {"event": "message", "payload": {"from": "cl@c.us", "body": "un rdv", "id": "b1"}}
+    process_incoming(s, ch, brain, t, msg)
+    # 2e message : un créneau a été pris entre-temps -> la liste des créneaux change
+    msg2 = {"event": "message", "payload": {"from": "cl3@c.us", "body": "un rdv aussi", "id": "b2"}}
+    process_incoming(s, ch, brain, t, msg2)
+
+    (fiche1, extra1), (fiche2, extra2) = brain.calls[0], brain.calls[1]
+    assert "## Rendez-vous" in extra1 and "Créneaux disponibles" in extra1
+    assert "## Rendez-vous" not in fiche1
+    assert "Salon X" in fiche1  # la vraie fiche est bien là
+    # le préfixe mis en cache est identique alors que les créneaux, eux, ont bougé
+    assert fiche1 == fiche2
+    assert extra1 != extra2

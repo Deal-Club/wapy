@@ -33,7 +33,7 @@ class _Brain:
     def __init__(self, decision):
         self.decision = decision
 
-    def decide(self, fiche_text, history, incoming_text, channel="whatsapp"):
+    def decide(self, fiche_text, history, incoming_text, channel="whatsapp", extra=""):
         return self.decision
 
 
