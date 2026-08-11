@@ -7,7 +7,7 @@ export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
 
 DIR="/home/ubuntu/wapy-platform/deploy"
 STATE_FILE="/home/ubuntu/wapy-backups/uptime.state"
-URL="https://wapy.51.210.108.173.sslip.io/api/widget/config?k=ping"  # exerce l'API
+URL="https://wapy.pro/api/widget/config?k=ping"  # exerce l'API
 [ -f "$DIR/.uptime_env" ] && . "$DIR/.uptime_env"
 : "${TG_TOKEN:=}" "${TG_CHAT:=}"
 

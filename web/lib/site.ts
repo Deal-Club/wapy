@@ -1,6 +1,5 @@
 // URL publique canonique du site (SEO : canonical, OpenGraph, sitemap, robots).
-// Le jour où un vrai domaine est branché, définir NEXT_PUBLIC_SITE_URL au build
-// (docker-compose web) — tout suit automatiquement. Sans domaine réel, le SEO est
-// quasi inopérant (une adresse IP/sslip.io n'a aucune autorité).
+// Domaine de production : wapy.pro. Surchargé au build par NEXT_PUBLIC_SITE_URL
+// (docker-compose web) si besoin d'un autre environnement.
 export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://wapy.51.210.108.173.sslip.io";
+  process.env.NEXT_PUBLIC_SITE_URL || "https://wapy.pro";
