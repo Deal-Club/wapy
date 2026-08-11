@@ -117,6 +117,18 @@ describe("sitemap.xml", () => {
     }
   });
 
+  /**
+   * `/secteurs` est le seul chemin du sitemap qu'aucune source ne produit
+   * automatiquement. Elle n'est pas dans `pagesPubliees()` : elle ne reçoit
+   * aucun lien contextuel et ferait échouer l'audit des 3 entrants du maillage.
+   * Elle est donc déclarée à la main dans `app/sitemap.ts`, et sa suppression
+   * accidentelle ne casserait rien sans ce test, alors qu'elle sortirait la
+   * page d'index du silo métier de l'exploration.
+   */
+  it("liste la page d'index des secteurs, absente du maillage", () => {
+    expect(urls).toContain(`${SITE_URL}/secteurs`);
+  });
+
   it("liste le blog et chacun de ses articles", () => {
     expect(urls).toContain(`${SITE_URL}/blog`);
     for (const post of POSTS) {

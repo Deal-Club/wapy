@@ -10,8 +10,10 @@ import { resume } from "@/lib/texte";
 
 const URL_PAGE = `${SITE_URL}/secteurs`;
 const TITRE = "Un assistant WhatsApp pour chaque métier";
+// 155 caractères maximum : au-delà, Google tronque et c'est lui qui choisit où.
+// `tests/metadonnees.test.ts` mesure la description réellement exportée.
 const DESCRIPTION =
-  "Onze guides métier pour répondre à vos clients sur WhatsApp : restaurant, boutique, salon, hôtel, garage et les autres. Chacun avec ses questions types et son vocabulaire.";
+  "Onze guides métier pour répondre à vos clients sur WhatsApp : restaurant, boutique, salon, hôtel, garage et les autres, avec leurs questions types.";
 
 export const metadata: Metadata = {
   title: `${TITRE} · Wapy`,

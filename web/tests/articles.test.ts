@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { createHash } from "node:crypto";
 import { POSTS, getPost, tagFor, related } from "@/lib/blog";
+import { REDIRECTIONS_SECTEURS } from "@/content/secteurs";
 
 // Empreinte du contenu intégral de POSTS (tous les champs, y compris `body`).
 // Un changement de longueur passerait les autres tests ; une altération d'un
@@ -49,6 +50,25 @@ describe("articles de blog", () => {
       expect(slugs.has(slug), `article migré encore publié : ${slug}`).toBe(false);
       expect(getPost(slug), `getPost renvoie encore ${slug}`).toBeUndefined();
     }
+  });
+
+  /**
+   * Seul garde-fou restant sur l'existence PASSÉE des URL redirigées.
+   *
+   * Tant que les 11 articles vivaient dans `POSTS`, `donnees.test.ts` vérifiait
+   * que chaque `ancienSlugBlog` désignait un article réel. Ce test s'est inversé
+   * quand les articles ont été retirés, et plus rien n'empêchait alors un futur
+   * secteur de déclarer `ancienSlugBlog: "article-jamais-publie"` : la
+   * redirection serait syntaxiquement valide et ne rendrait rien.
+   *
+   * `SLUGS_MIGRES` est la liste figée des 11 slugs qui ont réellement été
+   * servis sous `/blog/`. L'égalité d'ensembles ci-dessous est ce qui rattache
+   * les redirections à cette histoire : ni slug inventé, ni redirection perdue.
+   */
+  it("redirige exactement depuis les 11 URL d'articles ayant existé", () => {
+    const sources = REDIRECTIONS_SECTEURS.map((r) => r.source).sort();
+    const attendues = SLUGS_MIGRES.map((slug) => `/blog/${slug}`).sort();
+    expect(sources).toEqual(attendues);
   });
 
   it("n'a pas de slug en double", () => {
