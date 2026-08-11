@@ -205,23 +205,69 @@ describe("contenu des comparatifs", () => {
     // Les montants de `saas/billing.py` sont provisoires et n'ont pas été
     // validés commercialement : publier un prix Wapy engagerait une offre qui
     // n'existe pas. Les tarifs des tiers, eux, sont relevés et datés.
+    // Un montant sous toutes ses écritures : symboles, codes ISO, et surtout la
+    // monnaie en toutes lettres (« 12 000 francs CFA », « 10 000 F »), qu'une
+    // regex bornée aux sigles laissait passer.
+    const MONTANT =
+      /\d[\d\s .,]*\s*(FCFA|CFA|XOF|XAF|EUR|USD|€|\$|francs?\b|F\b|euros?\b|dollars?\b)/i;
+    // Un montant qui suit une mention de Wapy dans la même phrase est un prix
+    // annoncé, quelle que soit la tournure employée pour l'amener.
+    const PRIX_DE_NOUS = new RegExp(
+      `(wapy|chez nous|de notre côté|notre (offre|formule|abonnement|tarif|prix))[^.!?]{0,80}${MONTANT.source}`,
+      "i",
+    );
+
+    // Le garde-fou ne vaut que ce que vaut son détecteur. Les deux premiers
+    // exemples sont les angles morts relevés en ronde de correction 1 : une
+    // regex bornée aux sigles laissait passer la monnaie en toutes lettres et
+    // l'abréviation « F ».
+    for (const exemple of [
+      "12 000 francs CFA",
+      "L'abonnement démarre à 10 000 F",
+      "à partir de 39 EUR par mois",
+      "20 000 FCFA par mois",
+      "0 EUR par mois",
+      "100 XOF d'Airtime",
+      "9,99 euros",
+    ]) {
+      expect(MONTANT.test(exemple), `montant non détecté : « ${exemple} »`).toBe(true);
+    }
+    // Une durée, une quantité ou une devise sans chiffre ne sont pas des prix.
+    for (const exemple of [
+      "sept jours d'essai gratuit",
+      "facturation en francs CFA",
+      "3 000 messages WhatsApp par mois",
+      "engagement minimum de 3 mois",
+    ]) {
+      expect(MONTANT.test(exemple), `faux positif sur : « ${exemple} »`).toBe(false);
+    }
+    expect(PRIX_DE_NOUS.test("Wapy coûte 10 000 FCFA par mois")).toBe(true);
+    expect(PRIX_DE_NOUS.test("Notre abonnement démarre à 10 000 F")).toBe(true);
+    expect(PRIX_DE_NOUS.test("Wapy facture un abonnement mensuel en francs CFA")).toBe(false);
+
     for (const c of COMPARATIFS_PUBLIES) {
       // Les cellules « wapy » du tableau ne doivent porter aucun montant.
       for (const ligne of c.tableau.lignes) {
-        const cellule = [ligne.wapy ?? "", ligne.outil === "Wapy" ? Object.values(ligne).join(" ") : ""]
-          .join(" ");
-        expect(cellule, `montant dans la ligne Wapy de ${c.slug}`).not.toMatch(
-          /\d[\d\s]*\s*(FCFA|XOF|EUR|€)/,
-        );
+        const cellule = [
+          ligne.wapy ?? "",
+          ligne.outil === "Wapy" ? Object.values(ligne).join(" ") : "",
+        ].join(" ");
+        expect(cellule, `montant dans la ligne Wapy de ${c.slug}`).not.toMatch(MONTANT);
       }
-      // Et aucune phrase du corps ne doit rattacher un montant à Wapy.
+      // Et dans le corps, tout montant doit être attribué à un tiers nommé. Une
+      // phrase sans sujet nommé est traitée comme parlant de nous : dans une
+      // page comparative, un montant flottant est lu comme le nôtre. C'est ce
+      // qui attrape « L'abonnement démarre à 10 000 F ».
       const corps = [c.enBref, ...c.sections.flatMap((s) => s.paragraphes), ...c.faq.map((f) => f.r)]
         .join(" ");
-      const phrases = corps.split(/(?<=[.!?])\s+/).filter((p) => /wapy|chez nous|notre/i.test(p));
-      for (const phrase of phrases) {
-        expect(phrase, `prix de Wapy annoncé dans ${c.slug}`).not.toMatch(
-          /\d[\d\s]*\s*(FCFA|XOF|EUR|€)/,
-        );
+      const tiers = /NéoBot|Botnation|Callbell|LAfricaMobile|WhatsApp Business|Meta/i;
+      for (const phrase of corps.split(/(?<=[.!?])\s+/)) {
+        if (!MONTANT.test(phrase)) continue;
+        expect(
+          tiers.test(phrase),
+          `montant sans tiers nommé dans ${c.slug} : « ${phrase} »`,
+        ).toBe(true);
+        expect(phrase, `prix rattaché à Wapy dans ${c.slug}`).not.toMatch(PRIX_DE_NOUS);
       }
     }
   });

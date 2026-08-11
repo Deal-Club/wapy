@@ -195,7 +195,7 @@ const THEMATIQUES: Comparatif[] = [
         id: "familles",
         titre: "Trois familles d'outils, trois usages",
         paragraphes: [
-          "La première centralise les messages pour que plusieurs personnes y répondent. Callbell se présente comme « le seul outil qui vous permet de centraliser tous les messages de Whatsapp Business, Facebook Messenger, Instagram Direct et Telegram dans une seule plateforme », et il est pensé pour le travail à plusieurs agents sur les mêmes conversations. Ce sont toujours des humains qui répondent, mais ils ne se marchent plus dessus.",
+          "La première centralise les messages pour que plusieurs personnes y répondent. Callbell se présente comme « le seul outil qui vous permet de centraliser tous les messages de Whatsapp Business, Facebook Messenger, Instagram Direct et Telegram dans une seule plateforme », et il est pensé pour le travail à plusieurs agents sur les mêmes conversations. Cette famille organise le travail humain : plusieurs personnes traitent le même flux sans se marcher dessus.",
           "La deuxième passe par l'API officielle WhatsApp Business. Botnation AI annonce une solution reposant « sur l'API officielle WhatsApp Business » et des données « hébergées sur notre plateforme, sous juridiction française et européenne ». LAfricaMobile, opérateur dont le siège social est publié à Dakar, propose d'« intégrer WhatsApp Business Platform pour automatiser les conversations, envoyer des notifications, recueillir des réponses et gérer vos relations client à grande échelle ». C'est la voie des envois en nombre.",
           "La troisième laisse un assistant répondre seul, à partir des informations de l'entreprise. NéoBot, dont l'éditeur indique qu'il est « développé à Yaoundé », se présente comme « l'assistant IA WhatsApp conçu pour les entreprises africaines ». Wapy relève de cette famille : il répond sur le compte WhatsApp déjà utilisé, depuis une fiche remplie par l'établissement, et conclut réservations et commandes avant de prévenir le responsable.",
         ],
@@ -292,7 +292,7 @@ const THEMATIQUES: Comparatif[] = [
         titre: "Trois façons de couvrir la nuit",
         paragraphes: [
           "Le message d'absence de WhatsApp Business est gratuit et se règle en quelques minutes. Il annonce que vous répondrez demain, dans la langue que vous avez choisie. C'est mieux que le silence, mais le même texte part à tout le monde, et il ferme la conversation au lieu de l'ouvrir.",
-          "L'astreinte humaine reste la solution la plus fine : quelqu'un lit et répond pour de vrai. Elle a un coût, et il ne baisse pas. Les outils de ce marché sont d'ailleurs facturés à la personne : Callbell, conçu pour le travail à plusieurs agents sur les mêmes conversations, facture 14 EUR par mois et par utilisateur pour son offre Gestion de chat, avec le canal WhatsApp à 50 EUR par mois en supplément.",
+          "L'astreinte humaine reste la solution la plus fine : quelqu'un lit et répond pour de vrai. Elle a un coût, et il ne baisse pas. L'outil qui l'accompagne peut lui aussi se facturer à la personne : Callbell, pensé pour le travail à plusieurs agents sur les mêmes conversations, facture 14 EUR par mois et par utilisateur pour son offre Gestion de chat, avec le canal WhatsApp à 50 EUR par mois en supplément.",
           "L'assistant qui répond seul est la troisième voie. Il ne dort pas, il ne coûte pas plus cher la nuit que le jour, et il travaille sur un serveur : le téléphone du responsable peut être éteint. En contrepartie, il ne sait que ce que contient sa fiche, et il ne remplace personne quand la conversation devient difficile.",
         ],
       },
@@ -405,9 +405,9 @@ const THEMATIQUES: Comparatif[] = [
         titre: "Les cinq outils, et ce que chacun fait de mieux",
         paragraphes: [
           "Wapy est un assistant qui répond seul sur le compte WhatsApp déjà utilisé par l'entreprise, à partir d'une fiche qu'elle remplit. Il mène les demandes jusqu'à leur enregistrement, prévient le responsable, répond aussi sur le chat du site web avec l'option prévue, et facture en francs CFA après sept jours d'essai. Ce qu'il ne fait pas est aussi net : français uniquement, pas d'API officielle Meta donc pas d'envoi en nombre, et aucun encaissement des paiements de vos clients.",
-          "NéoBot est l'outil le plus proche du nôtre, et sur plusieurs points il va plus loin. Son éditeur indique qu'il est « développé à Yaoundé » et affiche « Made in Cameroon ». Son assistant est annoncé en français et en anglais, et il « comprend le pidgin camerounais » : Wapy, lui, ne répond qu'en français. Son tarif est publié directement en francs CFA, 20 000 FCFA par mois, avec paiement annoncé par Orange Money, MTN, Wave et Stripe, et un essai de 14 jours sans carte bancaire, soit le double du nôtre. Sa formule publiée est plafonnée à 3 000 messages WhatsApp par mois et 1 agent IA actif, sa base de connaissance bornée à 3 fichiers PDF, et son support annoncé « par email ».",
+          "NéoBot est l'outil le plus proche du nôtre, et sur plusieurs points il va plus loin. Son éditeur indique qu'il est « développé à Yaoundé » et affiche « Made in Cameroon ». Son assistant est annoncé en français et en anglais, et il « comprend le pidgin camerounais » : Wapy, lui, ne répond qu'en français. Le tarif de NéoBot est publié directement en francs CFA, 20 000 FCFA par mois, avec paiement annoncé par Orange Money, MTN, Wave et Stripe, et un essai de 14 jours sans carte bancaire, soit le double du nôtre. Sa formule publiée est plafonnée à 3 000 messages WhatsApp par mois et 1 agent IA actif, sa base de connaissance bornée à 3 fichiers PDF, et son support annoncé « par email ».",
           "Botnation AI est un éditeur français de chatbots no-code, avec une adresse à Paris et une ligne de support français publiées. Sa solution repose « sur l'API officielle WhatsApp Business » selon sa FAQ, il annonce des données « hébergées sur notre plateforme, sous juridiction française et européenne » et une conformité RGPD, une formule d'entrée gratuite pour créer et tester, et un chatbot déployable au-delà de WhatsApp, sur Messenger, Instagram et site web. Ses tarifs sont publiés en euros uniquement, et le coût des messages facturés par Meta s'ajoute à l'abonnement, l'éditeur annonçant « deux coûts distincts ».",
-          "Callbell répond à un besoin que les autres ne traitent pas : plusieurs personnes qui répondent aux mêmes conversations. Il centralise WhatsApp Business, Messenger, Instagram Direct et Telegram dans une même boîte de réception, son site, son offre et ses tarifs sont entièrement en français, et l'éditeur se déclare « une entreprise SaaS fondée à Paris en 2019 ». Un compte gratuit est annoncé à 0 EUR par mois. La facturation se fait ensuite par utilisateur et par mois, en euros, le canal WhatsApp coûte 50 EUR par mois en supplément, la création de bots 20 EUR et les campagnes 59 EUR, avec un engagement minimum de 3 mois annoncé.",
+          "Callbell répond à un besoin que les autres fiches de ce comparatif ne documentent pas : plusieurs personnes qui répondent aux mêmes conversations. Il centralise WhatsApp Business, Messenger, Instagram Direct et Telegram dans une même boîte de réception, son site, son offre et ses tarifs sont entièrement en français, et l'éditeur se déclare « une entreprise SaaS fondée à Paris en 2019 ». Callbell annonce un compte gratuit pour démarrer, à 0 EUR par mois. La facturation Callbell se fait ensuite par utilisateur et par mois, en euros : le canal WhatsApp coûte 50 EUR par mois en supplément, la création de bots fait l'objet d'un module à 20 EUR par mois et les campagnes WhatsApp d'un module à 59 EUR par mois, avec un engagement minimum de 3 mois annoncé.",
           "LAfricaMobile est un opérateur de messagerie professionnelle, dont le siège social est publié à Dakar, Immeuble CFI, 11 Rue Vincens. Il annonce une assistance téléphonique sur un numéro sénégalais du lundi au dimanche de 08h à 23h (GMT), une certification ISO 27001, et une gamme qui dépasse largement WhatsApp : Push SMS, Pull SMS, USSD, Push Vocal, Airtime et paiement. Aucun tarif n'est publié, sa page Pricing étant un formulaire « Demandez un devis », et aucune formule en libre-service n'est annoncée pour WhatsApp.",
         ],
       },
@@ -519,7 +519,7 @@ const NUANCES: Record<string, Nuance> = {
     avantages: [
       // pointsForts[3] (langues), pointsForts[4] (essai 14 jours sans carte),
       // pointsForts[1] (tarif publié en FCFA).
-      "Sur trois points au moins, NéoBot répond à des besoins que Wapy ne couvre pas. Son assistant est annoncé en français et en anglais, et il « comprend le pidgin camerounais » : si une partie de vos clients écrit ainsi, la question est réglée avant même de comparer le reste, puisque Wapy ne répond qu'en français. Son essai dure 14 jours sans carte bancaire, contre sept jours chez nous. Et son tarif d'entrée est publié directement en francs CFA, sans conversion, à 20 000 FCFA par mois.",
+      "Sur trois points au moins, NéoBot répond à des besoins que Wapy ne couvre pas. Son assistant est annoncé en français et en anglais, et il « comprend le pidgin camerounais » : si une partie de vos clients écrit ainsi, la question est réglée avant même de comparer le reste, puisque Wapy ne répond qu'en français. Son essai dure 14 jours sans carte bancaire, contre sept jours chez nous. Et le tarif d'entrée de NéoBot est publié directement en francs CFA, sans conversion, à 20 000 FCFA par mois.",
       // pointsForts[0] (éditeur camerounais), pointsForts[2] (moyens de paiement),
       // pointsForts[4] (inscription en libre-service).
       "L'éditeur est camerounais et l'assume : « NéoBot est développé à Yaoundé », et le pied de page de sa page comparative porte la mention « Made in Cameroon ». Le paiement est annoncé par Orange Money, MTN, Wave et Stripe, et l'inscription se fait en libre-service depuis le site. Pour une PME d'Afrique centrale, ce sont des arguments concrets, pas des slogans.",
@@ -547,7 +547,7 @@ const NUANCES: Record<string, Nuance> = {
       },
       {
         q: "Le tarif de 10 000 FCFA par mois est-il le prix courant ?",
-        r: "Non. NéoBot le présente comme une « offre fondateur » réservée à 10 places. Le tarif publié de sa formule Essential est de 20 000 FCFA par mois, après 14 jours d'essai gratuit sans carte. Vérifiez à la source : ces montants bougent.",
+        r: "Non. NéoBot le présente comme une « offre fondateur » réservée à 10 places. Le tarif publié de la formule Essential de NéoBot est de 20 000 FCFA par mois, après 14 jours d'essai gratuit sans carte. Vérifiez à la source : ces montants bougent.",
       },
       {
         q: "Que fait Wapy, concrètement ?",
@@ -560,6 +560,11 @@ const NUANCES: Record<string, Nuance> = {
       "Botnation AI est un éditeur français de chatbots no-code dont la solution repose sur l'API officielle WhatsApp Business. Wapy se connecte au compte existant par QR code, répond en français depuis votre fiche, et facture en francs CFA.",
     avantages: [
       // pointsForts[1] (API officielle), pointsForts[2] (hébergement et RGPD).
+      // « la voie prévue par Meta, celle qui ouvre les envois en nombre » est un
+      // énoncé général sur l'API officielle de Meta, hors périmètre de
+      // `concurrents.ts` : il n'attribue à Botnation AI rien de plus que son
+      // pointsForts[1]. Ne pas en déduire une capacité de campagnes, qui n'est
+      // documentée nulle part dans sa fiche.
       "Botnation AI apporte deux choses que Wapy n'a pas. D'abord l'API officielle WhatsApp Business, sur laquelle repose sa solution selon la FAQ de l'éditeur : c'est la voie prévue par Meta, celle qui ouvre les envois en nombre. Ensuite un engagement écrit sur l'hébergement, avec des données « hébergées sur notre plateforme, sous juridiction française et européenne » et une conformité RGPD annoncée. Nous ne publions pas d'engagement équivalent.",
       // pointsForts[0] (adresse et support français), pointsForts[3] (entrée
       // gratuite), pointsForts[4] (multi-canal).
@@ -568,7 +573,7 @@ const NUANCES: Record<string, Nuance> = {
     contrepartie:
       "Wapy ne passe pas par l'API officielle Meta : la connexion se fait en scannant un QR code depuis le compte WhatsApp existant, sans changement de numéro. Cela évite le coût par message facturé par Meta, mais écarte l'envoi en nombre et les campagnes, et le bot ignore les groupes comme les diffusions. Il répond en français uniquement, sur WhatsApp et, avec l'option prévue, sur le chat de votre site web. Ni Messenger ni Instagram ne sont couverts.",
     trancher:
-      "Si l'API officielle, les campagnes ou un engagement écrit sur l'hébergement en Europe font partie de vos exigences, Botnation AI y répond et Wapy non. Si vous voulez surtout que les messages reçus obtiennent une vraie réponse, en francs CFA et sans coût par message, la question se pose dans l'autre sens.",
+      "Si l'API officielle ou un engagement écrit sur l'hébergement en Europe font partie de vos exigences, Botnation AI y répond et Wapy non. Si vous voulez surtout que les messages reçus obtiennent une vraie réponse, en francs CFA et sans coût par message, la question se pose dans l'autre sens.",
     faq: [
       {
         q: "Botnation AI convient-il mieux que Wapy dans certains cas ?",
@@ -603,7 +608,7 @@ const NUANCES: Record<string, Nuance> = {
       // positionnement (citation), pointsForts[2] et [3] (multi-canal, multi-agents).
       "Callbell résout un problème que Wapy ne traite pas. Il se présente comme « le seul outil qui vous permet de centraliser tous les messages de Whatsapp Business, Facebook Messenger, Instagram Direct et Telegram dans une seule plateforme », et il est pensé pour le travail à plusieurs agents sur les mêmes conversations. Dès que trois personnes répondent au même compte, c'est ce genre d'outil qu'il faut, pas un assistant.",
       // pointsForts[0] (français), [1] (Paris 2019), [4] (compte gratuit).
-      "Son site, son offre et ses tarifs sont entièrement disponibles en français, l'éditeur se déclare « une entreprise SaaS fondée à Paris en 2019 », et un compte gratuit est annoncé à 0 EUR par mois pour démarrer. Rien n'oblige à choisir tout de suite : la version gratuite permet de voir si la boîte partagée correspond à votre organisation.",
+      "Son site, son offre et ses tarifs sont entièrement disponibles en français, et l'éditeur se déclare « une entreprise SaaS fondée à Paris en 2019 ». Callbell annonce aussi un compte gratuit pour démarrer, à 0 EUR par mois. Rien n'oblige à choisir tout de suite : la version gratuite permet de voir si la boîte partagée correspond à votre organisation.",
     ],
     contrepartie:
       "Wapy n'est pas une boîte de réception partagée. Quand l'assistant passe la main, la conversation apparaît dans le tableau de bord et vous y répondez depuis le web : c'est un point de reprise, pas un outil de répartition entre agents. En contrepartie, l'assistant traite lui-même l'essentiel des messages, enregistre commandes et réservations et vous notifie, sans facturation à la personne. Il répond en français uniquement, sur WhatsApp et sur le chat du site web avec l'option prévue.",
@@ -620,11 +625,11 @@ const NUANCES: Record<string, Nuance> = {
       },
       {
         q: "Comment le coût évolue-t-il chez Callbell ?",
-        r: "Il suit la taille de l'équipe : 14 EUR par mois et par utilisateur pour l'offre Gestion de chat, 18 EUR pour Gestion de chat Plus, plus 50 EUR par mois pour le canal WhatsApp, avec un engagement minimum de 3 mois annoncé sur sa page tarifs.",
+        r: "Le tarif Callbell suit la taille de l'équipe : 14 EUR par mois et par utilisateur pour l'offre Gestion de chat, 18 EUR pour Gestion de chat Plus, plus 50 EUR par mois pour le canal WhatsApp, avec un engagement minimum de 3 mois annoncé sur sa page tarifs.",
       },
       {
         q: "Faut-il payer en plus pour les bots chez Callbell ?",
-        r: "Sa page tarifs annonce la création de bots comme un module facturé 20 EUR par mois, et les campagnes WhatsApp comme un module à 59 EUR par mois. Chez Wapy, l'assistant est le produit lui-même : il n'y a pas de module à ajouter pour qu'il réponde.",
+        r: "La page tarifs de Callbell annonce la création de bots comme un module facturé 20 EUR par mois, et les campagnes WhatsApp comme un module à 59 EUR par mois. Chez Wapy, l'assistant est le produit lui-même : il n'y a pas de module à ajouter pour qu'il réponde.",
       },
       {
         q: "Peut-on reprendre la main sur une conversation avec Wapy ?",
@@ -661,7 +666,7 @@ const NUANCES: Record<string, Nuance> = {
       },
       {
         q: "Les crédits offerts à l'inscription couvrent-ils WhatsApp ?",
-        r: "Non. Les crédits de test annoncés à l'inscription portent sur 10 SMS, 10 sessions USSD, 10 messages vocaux et 100 XOF d'Airtime. WhatsApp n'en fait pas partie. C'était le cas au relevé du 11 août 2026 ; vérifiez à la source avant de vous engager.",
+        r: "Non. Les crédits de test annoncés par LAfricaMobile à l'inscription portent sur 10 SMS, 10 sessions USSD, 10 messages vocaux et 100 XOF d'Airtime. WhatsApp n'en fait pas partie. C'était le cas au relevé du 11 août 2026 ; vérifiez à la source avant de vous engager.",
       },
       {
         q: "Les deux sont-ils implantés en Afrique ?",
