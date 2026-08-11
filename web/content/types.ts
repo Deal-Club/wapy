@@ -50,6 +50,18 @@ export type Pays = {
   slug: string;
   nom: string;
   gentile: string;
+  /**
+   * Préposition de lieu qui précède le nom : « au Bénin », « en Côte d'Ivoire »,
+   * « à Madagascar », « aux Comores ».
+   *
+   * Donnée obligatoire plutôt que règle déduite du nom. Aucune heuristique ne
+   * couvre correctement le français : Djibouti, Madagascar, Maurice, Comores,
+   * Guinée-Bissau, Haïti et la RDC prennent chacun une préposition que la
+   * terminaison de leur nom ne prédit pas. L'union fermée oblige le
+   * contributeur qui ajoute un pays à trancher, ce qu'une valeur déduite
+   * ferait silencieusement et de travers.
+   */
+  preposition: "au" | "en" | "à" | "aux";
   indicatif: string;
   monnaie: "XOF" | "XAF";
   capitale: string;

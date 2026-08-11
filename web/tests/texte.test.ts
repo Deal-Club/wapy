@@ -52,26 +52,20 @@ describe("capitale", () => {
 });
 
 describe("auPays", () => {
-  it("emploie « en » devant un nom de pays féminin", () => {
-    expect(auPays("Côte d'Ivoire")).toBe("en Côte d'Ivoire");
-    expect(auPays("Guinée")).toBe("en Guinée");
-  });
-
-  it("emploie « au » devant un nom de pays masculin", () => {
-    expect(auPays("Bénin")).toBe("au Bénin");
-    expect(auPays("Sénégal")).toBe("au Sénégal");
-    expect(auPays("Togo")).toBe("au Togo");
-  });
-
-  it("respecte les exceptions masculines terminées par un « e »", () => {
-    expect(auPays("Mozambique")).toBe("au Mozambique");
-    expect(auPays("Zimbabwe")).toBe("au Zimbabwe");
+  it("colle la préposition portée par la donnée devant le nom", () => {
+    expect(auPays({ nom: "Madagascar", preposition: "à" })).toBe("à Madagascar");
+    expect(auPays({ nom: "Comores", preposition: "aux" })).toBe("aux Comores");
   });
 
   /**
-   * Le tableau attendu est écrit à la main, pas dérivé de la fonction : c'est
-   * la seule façon de tester une règle grammaticale, dont aucune donnée du
-   * dépôt ne porte la vérité (`Pays` n'a pas de champ de genre).
+   * Le tableau attendu est écrit à la main. Il ne teste plus une fonction (qui
+   * se borne désormais à concaténer) mais la DONNÉE : `Pays.preposition` est le
+   * seul endroit où la décision se prend, et une valeur fausse produirait « au
+   * Côte d'Ivoire » sur toute la page sans qu'aucun autre test ne bronche.
+   *
+   * L'union fermée de `content/types.ts` oblige déjà le contributeur qui ajoute
+   * un pays à choisir une préposition ; ce test vérifie qu'il a choisi la bonne
+   * pour les cinq pays du silo, et échoue tant qu'un nouveau pays n'y figure pas.
    */
   it("donne la bonne préposition pour chacun des pays du silo", () => {
     const attendu: Record<string, string> = {
@@ -81,9 +75,10 @@ describe("auPays", () => {
       cameroun: "au Cameroun",
       togo: "au Togo",
     };
+    expect(Object.keys(attendu).length, "pays ajouté sans entrée dans le test").toBe(PAYS.length);
     for (const p of PAYS) {
       expect(attendu[p.slug], `pays non couvert par le test : ${p.slug}`).toBeTypeOf("string");
-      expect(auPays(p.nom), `préposition de ${p.slug}`).toBe(attendu[p.slug]);
+      expect(auPays(p), `préposition de ${p.slug}`).toBe(attendu[p.slug]);
     }
   });
 });

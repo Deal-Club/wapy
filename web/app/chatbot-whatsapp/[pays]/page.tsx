@@ -9,14 +9,13 @@ import Sommaire, { ENTREE_FAQ } from "@/components/seo/Sommaire";
 import FAQ from "@/components/seo/FAQ";
 import TableauComparatif, { type Ligne } from "@/components/seo/TableauComparatif";
 import BlocPreuve from "@/components/seo/BlocPreuve";
+import Population from "@/components/seo/Population";
 import PagesLiees from "@/components/seo/PagesLiees";
 import Auteur from "@/components/seo/Auteur";
 import Dates from "@/components/seo/Dates";
 import { getPays, paysPublies } from "@/content/pays";
 import { villesDuPays } from "@/content/villes";
 import { getSecteur } from "@/content/secteurs";
-import { SOURCES } from "@/content/sources";
-import type { Chiffre, NatureChiffre } from "@/content/types";
 import { liensSortants } from "@/lib/maillage";
 import { serviceLd, faqLd, breadcrumbLd } from "@/lib/schema";
 import { SITE_URL } from "@/lib/site";
@@ -27,6 +26,7 @@ const MODIFIE_LE = "2026-08-11";
 
 /** Identifiants d'ancrage posés par les sections, repris tels quels par le sommaire. */
 const ID_CONTEXTE = "contexte";
+const ID_SOLUTION = "solution";
 const ID_REPERES = "reperes";
 const ID_VILLES = "villes";
 const ID_SECTEURS = "secteurs";
@@ -69,47 +69,6 @@ export function generateMetadata({ params }: { params: { pays: string } }): Meta
   };
 }
 
-/**
- * Comment lire le chiffre de population, en toutes lettres.
- *
- * Un dénombrement exhaustif et une projection modélisée ne se citent pas de la
- * même façon, et `content/types.ts` impose justement de porter la distinction :
- * l'effacer à l'affichage reviendrait à publier une estimation sous les habits
- * d'un recensement.
- */
-const NATURE_POPULATION: Record<NatureChiffre, string> = {
-  recensement: "Population recensée",
-  estimation: "Population estimée",
-  mesure: "Population relevée",
-};
-
-/**
- * Chiffre de population, avec son année, sa nature et sa source.
- *
- * Rendu hors du tableau de repères : une cellule ne peut pas porter le lien de
- * source qu'exige le garde-fou G1, et un chiffre sans source ne se publie pas.
- * Absent pour le Bénin, dont le dernier dénombrement publié date de 2013 : rien
- * ne s'affiche alors, ce qui est le comportement voulu et non une lacune.
- */
-function Population({ chiffre }: { chiffre: Chiffre | undefined }) {
-  if (!chiffre) return null;
-  const source = SOURCES[chiffre.source];
-  if (!source) return null;
-  return (
-    <p className="mt-4 text-sm text-muted">
-      {NATURE_POPULATION[chiffre.nature]} en {chiffre.annee} :{" "}
-      <strong className="font-semibold text-ink">
-        {chiffre.valeur.toLocaleString("fr-FR")} habitants
-      </strong>
-      . Source :{" "}
-      <a href={source.url} className="underline hover:text-brand">
-        {source.label}
-      </a>
-      .
-    </p>
-  );
-}
-
 export default function PagePays({ params }: { params: { pays: string } }) {
   const p = getPays(params.pays);
   if (!p || !p.publie) notFound();
@@ -121,7 +80,7 @@ export default function PagePays({ params }: { params: { pays: string } }) {
     return s && s.publie ? [s] : [];
   });
   const liens = liensSortants(`/chatbot-whatsapp/${p.slug}`);
-  const dansLePays = auPays(p.nom);
+  const dansLePays = auPays(p);
 
   const reperes: Ligne[] = [
     { critere: "Indicatif téléphonique", valeur: p.indicatif },
@@ -186,6 +145,7 @@ export default function PagePays({ params }: { params: { pays: string } }) {
         <Sommaire
           entrees={[
             { id: ID_CONTEXTE, libelle: `WhatsApp et le commerce ${dansLePays}` },
+            { id: ID_SOLUTION, libelle: "Ce que fait l'assistant" },
             { id: ID_REPERES, libelle: "Ce qui change localement" },
             { id: ID_VILLES, libelle: "Villes couvertes" },
             { id: ID_SECTEURS, libelle: "Secteurs les plus concernés" },
@@ -198,8 +158,12 @@ export default function PagePays({ params }: { params: { pays: string } }) {
             WhatsApp et le commerce {dansLePays}
           </h2>
           <p className="mt-4 text-muted">{p.angle}</p>
+        </section>
+
+        <section id={ID_SOLUTION} className="mt-12 scroll-mt-24">
+          <h2 className="font-display text-2xl font-bold">Ce que fait l&apos;assistant Wapy</h2>
           {/*
-            Chaque affirmation du paragraphe ci-dessous est vérifiable dans le
+            Chaque affirmation des paragraphes ci-dessous est vérifiable dans le
             code du produit : réponse tirée de la seule fiche et interdiction
             d'inventer une donnée absente, conduite de la demande jusqu'à son
             enregistrement avec notification du responsable, passage de main
@@ -208,7 +172,7 @@ export default function PagePays({ params }: { params: { pays: string } }) {
             (brain/brain.py, construction du prompt système).
           */}
           <p className="mt-4 text-muted">
-            Wapy répond à ces messages depuis la fiche que vous remplissez : vos horaires,
+            Wapy répond depuis la fiche que vous remplissez : vos horaires,
             votre adresse, votre catalogue, vos tarifs, vos consignes. Il mène la demande
             jusqu&apos;au bout au lieu d&apos;accuser réception, pose les questions qui
             manquent, confirme au client, enregistre la commande ou la réservation et vous

@@ -5,9 +5,10 @@ import { SECTEURS, getSecteur, secteursPublies, REDIRECTIONS_SECTEURS } from "@/
 import { VILLES, getVille, villesPubliees, villesDuPays } from "@/content/villes";
 import { POSTS } from "@/lib/blog";
 import { NATURES_CHIFFRE } from "@/content/types";
-import type { Pays, Preuve, Secteur, Ville } from "@/content/types";
+import type { Chiffre, Pays, Preuve, Secteur, Ville } from "@/content/types";
 import { PREUVES, getPreuve } from "@/content/preuves";
 import BlocPreuve, { resoudrePreuve } from "@/components/seo/BlocPreuve";
+import Population, { resoudrePopulation } from "@/components/seo/Population";
 import { ID_FAQ } from "@/components/seo/FAQ";
 
 /**
@@ -763,6 +764,52 @@ describe("garde-fou G1 au rendu (BlocPreuve)", () => {
   it("n'affiche rien pour un identifiant de preuve inconnu", () => {
     expect(BlocPreuve({ id: "identifiant-inexistant" })).toBeNull();
     expect(resoudrePreuve(undefined)).toBeNull();
+  });
+});
+
+describe("garde-fou G1 au rendu (Population)", () => {
+  it("résout une population sourcée et porte sa nature", () => {
+    const resolu = resoudrePopulation(getPays("cote-divoire")?.population);
+    expect(resolu).not.toBeNull();
+    expect(resolu?.source.id).toBe("ins-cotedivoire-rgph");
+    expect(resolu?.libelleNature).toBe("Population recensée");
+  });
+
+  it("distingue une estimation modélisée d'un dénombrement", () => {
+    // Le Cameroun n'a pas recensé sa population depuis 2005 : son chiffre est
+    // une projection du BUCREP. L'afficher comme un recensement serait le
+    // mensonge exact que `Chiffre.nature` existe pour empêcher.
+    const resolu = resoudrePopulation(getPays("cameroun")?.population);
+    expect(resolu?.chiffre.nature).toBe("estimation");
+    expect(resolu?.libelleNature).toBe("Population estimée");
+  });
+
+  it("n'affiche rien pour un pays sans population publiable (Bénin)", () => {
+    expect(Population({ chiffre: getPays("benin")?.population })).toBeNull();
+    expect(resoudrePopulation(undefined)).toBeNull();
+  });
+
+  it("refuse d'afficher une population dont la source est inconnue", () => {
+    const bidon: Chiffre = {
+      valeur: 1_000_000,
+      annee: 2024,
+      source: "institut-fantome",
+      nature: "recensement",
+    };
+    expect(resoudrePopulation(bidon)).toBeNull();
+    expect(Population({ chiffre: bidon })).toBeNull();
+  });
+
+  it("refuse une nature qui ne qualifie pas une population", () => {
+    // "mesure" qualifie un relevé fait sur notre propre logiciel (cf.
+    // NATURES_DEMOGRAPHIQUES plus haut). Une population n'en est jamais une.
+    const bidon: Chiffre = {
+      valeur: 1_000_000,
+      annee: 2024,
+      source: "wapy-plateforme",
+      nature: "mesure",
+    };
+    expect(resoudrePopulation(bidon)).toBeNull();
   });
 });
 

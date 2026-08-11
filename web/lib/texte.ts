@@ -6,6 +6,8 @@
  * divergentes donneraient deux troncatures différentes pour la même donnée.
  */
 
+import type { Pays } from "@/content/types";
+
 /**
  * Tronque à `max` caractères sans couper un mot.
  *
@@ -27,32 +29,18 @@ export function capitale(texte: string): string {
 }
 
 /**
- * Noms de pays terminés par un « e » qui restent masculins, et prennent donc
- * « au » et non « en ».
- *
- * La règle générale du français (nom de pays en « e » = féminin) couvre les cinq
- * pays de la vague 1, mais elle a des exceptions connues. Les lister est un
- * geste conscient ; deviner le genre d'un pays n'en est pas un. Ce garde-fou
- * sert la vague 2, où d'autres pays entreront dans le silo.
- */
-const PAYS_MASCULINS_EN_E = new Set([
-  "Belize",
-  "Cambodge",
-  "Mexique",
-  "Mozambique",
-  "Suriname",
-  "Zimbabwe",
-]);
-
-/**
  * Préfixe un nom de pays de sa préposition de lieu.
  *
- * « Bénin » -> « au Bénin », « Côte d'Ivoire » -> « en Côte d'Ivoire ». Écrire
- * `au ${p.nom}` dans un gabarit produit « au Côte d'Ivoire » sur une page
+ * « Bénin » -> « au Bénin », « Côte d'Ivoire » -> « en Côte d'Ivoire ».
+ *
+ * Écrire `au ${p.nom}` dans un gabarit produit « au Côte d'Ivoire » sur une page
  * entière, faute qu'aucun test de données ne peut rattraper puisque la donnée,
- * elle, est juste.
+ * elle, est juste. La préposition est donc LUE dans `Pays.preposition`, jamais
+ * déduite du nom : une première version de cette fonction devinait le genre à
+ * la terminaison du nom, ce qui marchait pour les cinq pays de la vague 1 et
+ * se serait trompé sur Djibouti, Madagascar, Maurice, les Comores ou la RDC.
+ * Le choix appartient à la donnée, où le typage le rend obligatoire.
  */
-export function auPays(nom: string): string {
-  const feminin = nom.endsWith("e") && !PAYS_MASCULINS_EN_E.has(nom);
-  return `${feminin ? "en" : "au"} ${nom}`;
+export function auPays(pays: Pick<Pays, "nom" | "preposition">): string {
+  return `${pays.preposition} ${pays.nom}`;
 }
