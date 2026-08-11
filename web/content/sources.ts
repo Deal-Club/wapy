@@ -1,4 +1,5 @@
 import type { Source } from "./types";
+import { SITE_URL } from "@/lib/site";
 
 /**
  * Registre des sources citables.
@@ -93,6 +94,18 @@ export const SOURCES: Record<string, Source> = {
     label: "UIT, plan de numérotage du Togo (+228), communication de l'ARCEP du 11.I.2021",
     url: "https://www.itu.int/dms_pub/itu-t/oth/02/02/T02020000D10003PDFF.pdf",
     consulteLe: "2026-08-10",
+  },
+
+  // --- Mesures internes ----------------------------------------------------
+  // Le code de Wapy n'est pas publié : il n'existe aucune URL de dépôt public
+  // vers laquelle pointer, et fabriquer une adresse GitHub serait une source
+  // fausse. On pointe donc la page qui portera la méthode de mesure, à charge
+  // pour elle de publier la commande qui rejoue chaque chiffre.
+  "wapy-plateforme": {
+    id: "wapy-plateforme",
+    label: "Wapy, mesures relevées sur la plateforme et méthode publiée sur la page À propos",
+    url: `${SITE_URL}/a-propos`,
+    consulteLe: "2026-08-11",
   },
 };
 

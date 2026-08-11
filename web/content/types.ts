@@ -7,6 +7,20 @@ export type Source = {
   consulteLe: string;
 };
 
+/**
+ * Comment un chiffre a été produit.
+ *
+ * - `recensement` : dénombrement exhaustif conduit par un tiers (RGPH...).
+ * - `estimation` : projection ou modélisation, avec sa marge d'incertitude.
+ * - `mesure` : relevé direct et reproductible sur un artefact logiciel (nombre
+ *   d'entrées d'un fichier de contenu, nombre de tests collectés par la suite).
+ *   Ni un recensement de population ni une estimation : la valeur se rejoue en
+ *   lançant une commande, et c'est cette commande qui fait foi.
+ */
+export const NATURES_CHIFFRE = ["recensement", "estimation", "mesure"] as const;
+
+export type NatureChiffre = (typeof NATURES_CHIFFRE)[number];
+
 /** Une valeur numérique publiable. La source est obligatoire (garde-fou G1). */
 export type Chiffre = {
   valeur: number;
@@ -14,11 +28,12 @@ export type Chiffre = {
   /** id d'une entrée de SOURCES. */
   source: string;
   /**
-   * Comment le chiffre a été produit. Obligatoire : un dénombrement exhaustif et
-   * une estimation modélisée ne se citent pas de la même façon, et l'omission
-   * silencieuse de cette distinction est précisément ce qu'on veut empêcher.
+   * Comment le chiffre a été produit. Obligatoire : un dénombrement exhaustif,
+   * une estimation modélisée et une mesure logicielle ne se citent pas de la
+   * même façon, et l'omission silencieuse de cette distinction est précisément
+   * ce qu'on veut empêcher.
    */
-  nature: "recensement" | "estimation";
+  nature: NatureChiffre;
 };
 
 export type QuestionReponse = {

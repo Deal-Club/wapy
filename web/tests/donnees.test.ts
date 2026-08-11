@@ -4,7 +4,21 @@ import { PAYS, getPays, paysPublies } from "@/content/pays";
 import { SECTEURS, getSecteur, secteursPublies, REDIRECTIONS_SECTEURS } from "@/content/secteurs";
 import { VILLES, getVille, villesPubliees, villesDuPays } from "@/content/villes";
 import { POSTS } from "@/lib/blog";
-import type { Pays, Secteur, Ville } from "@/content/types";
+import { NATURES_CHIFFRE } from "@/content/types";
+import type { Pays, Preuve, Secteur, Ville } from "@/content/types";
+import { PREUVES, getPreuve } from "@/content/preuves";
+import BlocPreuve, { resoudrePreuve } from "@/components/seo/BlocPreuve";
+import { ID_FAQ } from "@/components/seo/FAQ";
+
+/**
+ * Natures admises pour un chiffre démographique. Sous-ensemble strict de
+ * NATURES_CHIFFRE : la valeur "mesure" qualifie un relevé fait sur notre propre
+ * logiciel et ne peut pas qualifier une population.
+ */
+const NATURES_DEMOGRAPHIQUES: ReadonlyArray<(typeof NATURES_CHIFFRE)[number]> = [
+  "recensement",
+  "estimation",
+];
 
 describe("registre des sources", () => {
   it("indexe chaque source sous son propre id", () => {
@@ -80,10 +94,13 @@ describe("données pays", () => {
   });
 
   // G1 : la nature du chiffre ne peut pas être omise silencieusement.
+  // Volontairement plus étroit que NATURES_CHIFFRE : une population vient d'un
+  // institut de statistique, jamais d'une mesure relevée sur notre code. La
+  // valeur "mesure" existe pour les preuves techniques et n'a rien à faire ici.
   it("qualifie chaque population de recensement ou d'estimation", () => {
     for (const p of PAYS) {
       if (p.population) {
-        expect(["recensement", "estimation"], `nature manquante ou invalide pour ${p.slug}`)
+        expect(NATURES_DEMOGRAPHIQUES, `nature manquante ou invalide pour ${p.slug}`)
           .toContain(p.population.nature);
       }
     }
@@ -470,11 +487,12 @@ describe("données villes", () => {
     }
   });
 
-  // G1 : recensement et estimation ne se citent pas de la même façon.
+  // G1 : recensement et estimation ne se citent pas de la même façon. Même
+  // restriction que pour les pays : "mesure" est réservée aux relevés logiciels.
   it("qualifie chaque population de ville de recensement ou d'estimation", () => {
     for (const v of VILLES) {
       if (v.population) {
-        expect(["recensement", "estimation"], `nature invalide pour ${v.slug}`)
+        expect(NATURES_DEMOGRAPHIQUES, `nature invalide pour ${v.slug}`)
           .toContain(v.population.nature);
       }
     }
@@ -633,5 +651,116 @@ describe("données villes", () => {
   it("expose getVille", () => {
     expect(getVille("cotonou")?.nom).toBe("Cotonou");
     expect(getVille("inconnu")).toBeUndefined();
+  });
+});
+
+describe("preuves publiables", () => {
+  it("référence une source existante pour chaque chiffre", () => {
+    for (const p of PREUVES) {
+      if (p.chiffre) {
+        expect(sourceExiste(p.chiffre.source), `source inconnue pour ${p.id}`).toBe(true);
+      }
+    }
+  });
+
+  // G1 appliqué aux preuves : la nature vaut pour une mesure logicielle comme
+  // pour un recensement. On refuse une valeur hors de l'union.
+  it("qualifie la nature de chaque chiffre de preuve", () => {
+    for (const p of PREUVES) {
+      if (p.chiffre) {
+        expect(NATURES_CHIFFRE, `nature invalide pour ${p.id}`).toContain(p.chiffre.nature);
+      }
+    }
+  });
+
+  // Un chiffre relevé sur le code n'est ni un recensement de population ni une
+  // estimation : le publier sous ces étiquettes serait mentir sur sa provenance.
+  it("étiquette « mesure » les chiffres relevés sur la plateforme", () => {
+    for (const p of PREUVES) {
+      if (p.chiffre?.source === "wapy-plateforme") {
+        expect(p.chiffre.nature, `provenance mal étiquetée pour ${p.id}`).toBe("mesure");
+      }
+    }
+  });
+
+  it("n'affirme aucun résultat client", () => {
+    const interdits = ["nos clients ont", "témoignage", "a augmenté son chiffre", "grâce à Wapy, il"];
+    for (const p of PREUVES) {
+      const texte = `${p.libelle} ${p.texte}`.toLowerCase();
+      for (const mot of interdits) {
+        expect(texte, `affirmation client interdite dans ${p.id}`).not.toContain(mot);
+      }
+    }
+  });
+
+  // Aucun client en production : toute formulation qui suppose une clientèle,
+  // un volume d'usage ou un résultat obtenu est une invention.
+  it("ne revendique ni clientèle ni volume d'usage", () => {
+    const motifs = [
+      /\b(nos|leurs|des) (clients|utilisateurs|abonn[ée]s)\b/i,
+      /\b(déjà|plus de) \d[\d\s]* (entreprises|commerces|clients|utilisateurs)\b/i,
+      /\bfont d[ée]j[àa] confiance\b/i,
+      /\b(adopt[ée]|utilis[ée]) par\b/i,
+    ];
+    for (const p of PREUVES) {
+      const texte = `${p.libelle} ${p.texte}`;
+      for (const motif of motifs) {
+        expect(texte, `revendication de clientèle dans ${p.id} (motif ${motif})`).not.toMatch(motif);
+      }
+    }
+  });
+
+  it("n'utilise aucun tiret long dans le texte publié", () => {
+    for (const p of PREUVES) {
+      expect(`${p.libelle} ${p.texte}`, `tiret long dans ${p.id}`).not.toMatch(/[—–]/);
+    }
+  });
+
+  it("expose getPreuve", () => {
+    expect(getPreuve(PREUVES[0].id)?.id).toBe(PREUVES[0].id);
+    expect(getPreuve("inconnu")).toBeUndefined();
+  });
+});
+
+describe("garde-fou G1 au rendu (BlocPreuve)", () => {
+  it("résout la source d'une preuve chiffrée valide", () => {
+    const preuve = getPreuve("tests-backend");
+    const resolu = resoudrePreuve(preuve);
+    expect(resolu).not.toBeNull();
+    expect(resolu?.source?.id).toBe("wapy-plateforme");
+  });
+
+  it("refuse d'afficher un chiffre dont la source est inconnue", () => {
+    const bidon: Preuve = {
+      id: "faux",
+      libelle: "Preuve non sourcée",
+      chiffre: { valeur: 42, annee: 2026, source: "source-fantome", nature: "mesure" },
+      texte: "Texte quelconque.",
+    };
+    expect(resoudrePreuve(bidon)).toBeNull();
+  });
+
+  it("affiche une preuve sans chiffre, qui n'a pas besoin de source", () => {
+    const sansChiffre: Preuve = {
+      id: "qualitatif",
+      libelle: "Preuve qualitative",
+      texte: "Texte quelconque.",
+    };
+    const resolu = resoudrePreuve(sansChiffre);
+    expect(resolu?.preuve.id).toBe("qualitatif");
+    expect(resolu?.source).toBeUndefined();
+  });
+
+  it("n'affiche rien pour un identifiant de preuve inconnu", () => {
+    expect(BlocPreuve({ id: "identifiant-inexistant" })).toBeNull();
+    expect(resoudrePreuve(undefined)).toBeNull();
+  });
+});
+
+describe("ancrages du sommaire", () => {
+  // Le Sommaire fabrique des href="#id" : si l'identifiant posé par la section
+  // FAQ changeait, le lien tomberait dans le vide sans qu'aucun test n'échoue.
+  it("expose l'identifiant que la section FAQ pose réellement", () => {
+    expect(ID_FAQ).toBe("faq");
   });
 });
