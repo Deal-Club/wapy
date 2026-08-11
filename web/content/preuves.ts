@@ -24,12 +24,15 @@ export const PREUVES: Preuve[] = [
   },
   {
     // Mesure : `python -m pytest tests/ -q` à la racine du dépôt.
-    // Relevé le 2026-08-11 : 134 tests collectés, 134 réussis.
+    // Relevé le 2026-08-11 : 138 tests collectés, 138 réussis. La valeur
+    // précédente (134) datait d'avant le commit 72e816f, qui a ajouté quatre
+    // tests au cerveau : la mesure ne donnait plus le même résultat, c'est donc
+    // le chiffre publié qui a été corrigé, conformément à la règle ci-dessus.
     id: "tests-backend",
     libelle: "Tests automatisés du backend",
-    chiffre: { valeur: 134, annee: 2026, source: "wapy-plateforme", nature: "mesure" },
+    chiffre: { valeur: 138, annee: 2026, source: "wapy-plateforme", nature: "mesure" },
     texte:
-      "Le backend est couvert par 134 tests automatisés, qui vérifient notamment la normalisation des numéros de téléphone, le choix de l'assistant entre répondre et passer la main à un humain, et l'enregistrement des demandes. La suite se rejoue en une commande.",
+      "Le backend est couvert par 138 tests automatisés, qui vérifient notamment la normalisation des numéros de téléphone, le choix de l'assistant entre répondre et passer la main à un humain, et l'enregistrement des demandes. La suite se rejoue en une commande.",
   },
   {
     // Pas de chiffre : la propriété décrite est qualitative. La décrire par un

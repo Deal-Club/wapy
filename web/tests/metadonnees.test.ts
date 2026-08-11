@@ -5,6 +5,11 @@ import { metadata as metaIndexPays } from "@/app/chatbot-whatsapp/page";
 import { generateMetadata as metaPays } from "@/app/chatbot-whatsapp/[pays]/page";
 import { metadata as metaIndexComparatif } from "@/app/comparatif/page";
 import { generateMetadata as metaComparatif } from "@/app/comparatif/[slug]/page";
+import { metadata as metaAccueil } from "@/app/page";
+import { metadata as metaAPropos } from "@/app/a-propos/page";
+import { metadata as metaTarifs } from "@/app/tarifs/page";
+import { metadata as metaFaq } from "@/app/faq/page";
+import { metadata as metaCommentCaMarche } from "@/app/comment-ca-marche/page";
 import { secteursPublies } from "@/content/secteurs";
 import { paysPublies } from "@/content/pays";
 import { COMPARATIFS_PUBLIES } from "@/content/comparatifs";
@@ -161,6 +166,57 @@ describe("métadonnées des pages comparatif", () => {
       const titre = typeof t === "string" ? t : "";
       expect(titre.length, `titre de ${c.slug} trop long : ${titre.length}`).toBeLessThanOrEqual(90);
       expect(titre, `titre de ${c.slug} sans suffixe de marque`).toContain("· Wapy");
+    }
+  });
+});
+
+/**
+ * Pages entité et accueil : chacune écrit sa description à la main, aucune ne
+ * passe par `resume`. Rien d'autre que ce bloc ne les surveille, et une
+ * description tronquée par Google est une description dont ce n'est plus nous
+ * qui choisissons la fin.
+ */
+const PAGES_ENTITE = [
+  { url: "/", meta: metaAccueil },
+  { url: "/a-propos", meta: metaAPropos },
+  { url: "/tarifs", meta: metaTarifs },
+  { url: "/faq", meta: metaFaq },
+  { url: "/comment-ca-marche", meta: metaCommentCaMarche },
+];
+
+describe("métadonnées des pages entité et de l'accueil", () => {
+  it("garde chaque description sous la limite d'affichage", () => {
+    for (const { url, meta } of PAGES_ENTITE) {
+      const d = meta.description ?? "";
+      expect(d.length, `description de ${url} trop longue : ${d.length}`).toBeLessThanOrEqual(
+        MAX_DESCRIPTION,
+      );
+      expect(d.length, `description de ${url} trop courte : ${d.length}`).toBeGreaterThan(80);
+    }
+  });
+
+  it("donne à chaque page une canonique absolue qui correspond à sa route", () => {
+    for (const { url, meta } of PAGES_ENTITE) {
+      const attendue = url === "/" ? SITE_URL : `${SITE_URL}${url}`;
+      expect(meta.alternates?.canonical, `canonique de ${url}`).toBe(attendue);
+      expect(meta.openGraph?.url, `og:url de ${url}`).toBe(attendue);
+    }
+  });
+
+  it("garde des titres lisibles, suffixés de la marque", () => {
+    for (const { url, meta } of PAGES_ENTITE) {
+      const t = typeof meta.title === "string" ? meta.title : "";
+      expect(t.length, `titre de ${url} trop long : ${t.length}`).toBeLessThanOrEqual(90);
+      expect(t, `titre de ${url} sans marque`).toContain("Wapy");
+    }
+  });
+
+  it("n'utilise aucun tiret long dans les titres et descriptions publiés", () => {
+    for (const { url, meta } of PAGES_ENTITE) {
+      const chaines = [meta.title, meta.description, meta.openGraph?.title];
+      for (const c of chaines) {
+        expect(typeof c === "string" ? c : "", `tiret long sur ${url}`).not.toMatch(/[—–]/);
+      }
     }
   });
 });

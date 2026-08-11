@@ -2,12 +2,18 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { MessageCircle, Sparkles, Table, Users, ShieldCheck, Globe, Check, type LucideIcon } from "lucide-react";
 import AuthNav from "@/components/AuthNav";
+import JsonLd from "@/components/seo/JsonLd";
+import PagesLiees from "@/components/seo/PagesLiees";
+import { liensSortants } from "@/lib/maillage";
+import { softwareApplicationLd } from "@/lib/schema";
 import { SITE_URL as SITE } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Wapy · Assistant WhatsApp IA pour répondre à vos clients 24h/24",
+  // 155 caractères maximum : au-delà, Google tronque et choisit lui-même où.
+  // `tests/metadonnees.test.ts` mesure la description réellement exportée.
   description:
-    "Wapy répond automatiquement à vos clients sur WhatsApp (questions, commandes, réservations), dans votre ton, avec vos informations. Pour tout secteur. Sans code. Essai gratuit.",
+    "Wapy répond à vos clients sur WhatsApp (questions, commandes, réservations) avec vos informations. Tout secteur, sans code, sept jours d'essai.",
   keywords: [
     "assistant WhatsApp",
     "chatbot WhatsApp",
@@ -36,6 +42,17 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
+/*
+  Chaque réponse ci-dessous correspond au comportement réel du produit :
+  configuration générée puis éditable (saas/ai_config.py), connexion par QR code
+  (saas/wa.py:73-79), réponses tirées de la seule fiche et information manquante
+  qui ne déclenche pas de transfert (brain/brain.py:53-55,134-138), reprise de
+  main par citation de l'alerte ou depuis le tableau de bord (saas/bot.py:55-100,
+  saas/app.py:786-799), cloisonnement par établissement et mots de passe hachés
+  (saas/auth.py:20-28), essai de 7 jours facturé ensuite en francs CFA
+  (saas/billing.py:14-15). Aucun quota de conversations n'est annoncé : celui de
+  billing.py n'est appliqué par aucun code.
+*/
 const FAQ = [
   {
     q: "Est-ce que Wapy fonctionne pour mon secteur d'activité ?",
@@ -47,68 +64,43 @@ const FAQ = [
   },
   {
     q: "Comment Wapy évite-t-il de dire n'importe quoi ?",
-    a: "Wapy répond uniquement à partir des informations que vous fournissez. Pour une réservation, une commande ou une demande sensible, il transmet automatiquement à un humain de votre équipe.",
+    a: "Wapy répond à partir des seules informations que vous fournissez, et ses consignes lui interdisent d'avancer un prix ou une disponibilité absents de votre fiche. Quand une information manque, il répond qu'il se renseigne plutôt que d'improviser.",
   },
   {
     q: "Puis-je reprendre la main sur une conversation ?",
-    a: "Oui. Le tableau de bord affiche toutes les conversations en direct. Vous pouvez répondre vous-même depuis le web ou WhatsApp, puis rendre la main au bot d'un clic.",
+    a: "Oui. Le tableau de bord affiche vos conversations et vous pouvez y répondre vous-même. Quand l'assistant vous passe la main, l'alerte arrive sur votre WhatsApp : vous citez ce message pour répondre, puis un mot convenu rend la conversation au bot.",
   },
   {
     q: "Mes données sont-elles en sécurité ?",
-    a: "Chaque entreprise est isolée : votre configuration, vos conversations et votre numéro WhatsApp ne sont accessibles qu'à vous. Les accès sont protégés par mot de passe chiffré.",
+    a: "Chaque entreprise est isolée : votre configuration, vos conversations et votre numéro WhatsApp ne sont accessibles qu'à vous. Les mots de passe sont stockés hachés, jamais en clair.",
   },
   {
     q: "Combien ça coûte ?",
-    a: "Vous pouvez commencer gratuitement et configurer votre assistant en quelques minutes. Des offres mensuelles sont proposées selon votre volume de messages.",
+    a: "Sept jours d'essai gratuit, sans moyen de paiement à fournir. Ensuite, l'abonnement est mensuel et facturé en francs CFA, réparti en trois plans qui se distinguent par les fonctions incluses.",
   },
 ];
-
-const jsonLd = {
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Organization",
-      name: "Wapy",
-      url: SITE,
-      description: "Assistant WhatsApp intelligent pour les entreprises, conçu pour l'Afrique.",
-      areaServed: "Afrique",
-      slogan: "Ne perdez plus jamais un client sur WhatsApp.",
-    },
-    {
-      "@type": "SoftwareApplication",
-      name: "Wapy",
-      applicationCategory: "BusinessApplication",
-      operatingSystem: "Web",
-      offers: { "@type": "Offer", price: "0", priceCurrency: "XOF", description: "Essai gratuit" },
-      description:
-        "Assistant WhatsApp IA qui répond automatiquement aux clients de toute entreprise, dans son ton, avec ses informations.",
-    },
-    {
-      "@type": "FAQPage",
-      mainEntity: FAQ.map((f) => ({
-        "@type": "Question",
-        name: f.q,
-        acceptedAnswer: { "@type": "Answer", text: f.a },
-      })),
-    },
-  ],
-};
 
 const SECTORS = ["Restaurant", "Maquis / Bar", "Salon de beauté", "Boutique", "Hôtel", "Pharmacie", "Clinique", "École", "Transport", "Immobilier", "Artisan", "E-commerce"];
 
 const FEATURES: { Icon: LucideIcon; title: string; text: string }[] = [
-  { Icon: MessageCircle, title: "Réponses instantanées 24h/24", text: "Vos clients obtiennent une réponse en quelques secondes, jour et nuit, même quand vous êtes occupé." },
+  { Icon: MessageCircle, title: "Une réponse à toute heure", text: "Vos clients obtiennent une réponse la nuit, le dimanche et pendant que vous servez, tant que la ligne est connectée." },
   { Icon: Sparkles, title: "Configuré par l'IA", text: "Décrivez votre activité : l'IA génère automatiquement horaires, catalogue, prix et FAQ. Vous éditez à volonté." },
   { Icon: Table, title: "Tout secteur, tout format", text: "Tableaux 100% personnalisables (menu, prestations, catalogue…). Ajoutez vos colonnes selon vos besoins." },
-  { Icon: Users, title: "Passage à l'humain", text: "Réservation, commande, réclamation : Wapy prévient votre équipe et vous reprenez la conversation en un clic." },
+  { Icon: Users, title: "Passage à l'humain", text: "Réclamation, sujet sensible ou client qui demande à vous parler : Wapy vous passe la main et vous répondez depuis WhatsApp." },
   { Icon: ShieldCheck, title: "Isolé et sécurisé", text: "Chaque entreprise a son espace privé. Vos données et conversations ne sont visibles que par vous." },
   { Icon: Globe, title: "Pensé pour l'Afrique", text: "Mobile Money, formats locaux, ton chaleureux, français : Wapy parle le langage de vos clients." },
 ];
 
 export default function Landing() {
+  // Liens contextuels vers les silos pays, secteur et comparatif. L'accueil est
+  // la page la plus forte du site : c'est d'ici que ces pages tirent l'essentiel
+  // de leurs liens entrants (cf. lib/maillage.ts et son audit des 3 entrants).
+  const liens = liensSortants("/");
+
   return (
     <div className="min-h-screen">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      {/* Organization et WebSite sont déclarés une fois pour toutes dans le layout. */}
+      <JsonLd data={softwareApplicationLd()} />
 
       {/* Nav */}
       <header className="sticky top-0 z-30 border-b border-line/70 bg-cream/80 backdrop-blur">
@@ -143,7 +135,7 @@ export default function Landing() {
               <a href="#etapes" className="btn-ghost text-base">Voir comment ça marche</a>
             </div>
             <div className="mt-6 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
-              {["Prêt en 5 minutes", "Sans carte bancaire", "Configuré par l'IA"].map((t) => (
+              {["Sur votre numéro actuel", "Sans carte bancaire", "Configuré par l'IA"].map((t) => (
                 <span key={t} className="inline-flex items-center gap-1.5">
                   <Check className="h-4 w-4 text-emerald" strokeWidth={2.5} /> {t}
                 </span>
@@ -167,7 +159,7 @@ export default function Landing() {
                 <Bubble side="left">C'est combien le poisson braisé ?</Bubble>
                 <Bubble side="right">Le poisson braisé est à 3 500 FCFA, tilapia grillé sauce piment. Un délice 😋</Bubble>
                 <Bubble side="left">Je veux réserver une table pour 4</Bubble>
-                <Bubble side="right">Avec plaisir ! Je transmets votre demande à notre équipe, on revient vers vous très vite 🙏</Bubble>
+                <Bubble side="right">Avec plaisir ! Pour ce soir à 20h, une table de 4. À quel nom je la note ?</Bubble>
               </div>
             </div>
           </div>
@@ -177,7 +169,13 @@ export default function Landing() {
       {/* Stats / trust */}
       <section className="border-y border-line bg-surface/60">
         <div className="mx-auto grid max-w-6xl grid-cols-2 gap-6 px-4 py-8 text-center md:grid-cols-4">
-          {[["24/7", "Toujours disponible"], ["< 10s", "Temps de réponse"], ["27+", "Secteurs couverts"], ["100%", "Piloté par vos infos"]].map(([n, l]) => (
+          {/*
+            Chaque tuile est vérifiable : réponse aux messages reçus tant que la
+            session est connectée, essai de 7 jours (saas/billing.py:14), 11 guides
+            métier publiés (content/secteurs.ts), connexion par QR code
+            (saas/wa.py:73-79). Ni délai de réponse mesuré, ni volume d'usage.
+          */}
+          {[["24h/24", "Répond aux messages reçus"], ["7 jours", "D'essai gratuit"], ["11", "Guides métier publiés"], ["QR code", "Sur votre numéro actuel"]].map(([n, l]) => (
             <div key={l}>
               <div className="font-display text-4xl text-brand">{n}</div>
               <div className="text-sm text-muted">{l}</div>
@@ -244,12 +242,12 @@ export default function Landing() {
           <div>
             <h2 className="font-display text-3xl font-semibold">Conçu au plus près du terrain</h2>
             <p className="mt-3 text-muted">
-              Wapy est né d'un constat simple : les entreprises perdent des ventes parce qu'elles ne répondent pas assez vite sur WhatsApp. Nous avons construit un assistant qui répond avec exactitude, jamais d'invention, et qui sait passer la main à un humain quand il le faut.
+              Wapy est né d'un constat simple : les entreprises perdent des ventes parce qu'elles ne répondent pas assez vite sur WhatsApp. Nous avons construit un assistant qui répond à partir de vos seules informations, qui dit se renseigner plutôt que d'inventer, et qui passe la main à un humain quand il le faut.
             </p>
             <ul className="mt-4 space-y-2 text-sm">
               {[
                 "Réponses fondées uniquement sur vos informations",
-                "Passage à l'humain pour tout ce qui compte",
+                "Passage à l'humain pour les réclamations et les cas sensibles",
                 "Données isolées par entreprise, accès sécurisés",
                 "Adapté aux usages locaux (Mobile Money, français, ton chaleureux)",
               ].map((t) => (
@@ -280,10 +278,25 @@ export default function Landing() {
             </details>
           ))}
         </div>
+        {/*
+          Le balisage FAQPage n'est émis que par /faq : deux FAQPage sur deux
+          URLs qui reprennent les mêmes questions se concurrencent au lieu de
+          s'additionner.
+        */}
+        <p className="mt-8 text-center text-sm text-muted">
+          <Link href="/faq" className="font-semibold text-brand hover:text-brand-dark">
+            Voir toutes les questions fréquentes
+          </Link>
+        </p>
+      </section>
+
+      {/* Maillage : pays, secteurs, comparatifs et pages entité */}
+      <section className="mx-auto max-w-6xl px-4 pb-4">
+        <PagesLiees liens={liens} titre="Explorer le site" />
       </section>
 
       {/* CTA */}
-      <section className="mx-auto max-w-6xl px-4 pb-24">
+      <section className="mx-auto max-w-6xl px-4 py-16">
         <div className="rounded-xl2 bg-ink px-6 py-14 text-center text-cream shadow-lift">
           <h2 className="font-display text-4xl font-semibold">Prêt à répondre à chaque client ?</h2>
           <p className="mx-auto mt-3 max-w-xl text-cream/70">Créez votre assistant WhatsApp en quelques minutes. Gratuitement.</p>
