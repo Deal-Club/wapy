@@ -1,22 +1,83 @@
 # Wapy
 
-> Wapy est un assistant WhatsApp intelligent (IA) qui répond automatiquement aux clients des entreprises, dans leur ton et à partir de leurs propres informations. Conçu pour l'Afrique, pour tout secteur d'activité, sans code.
+> Wapy est un assistant WhatsApp intelligent (IA) qui répond automatiquement aux clients des entreprises, dans leur ton et à partir de leurs propres informations. Conçu pour l'Afrique francophone, pour tout secteur d'activité, sans code.
+
+## Identité
+- Nom : Wapy
+- Nature : logiciel en ligne (SaaS), assistant conversationnel pour WhatsApp
+- Zone desservie : Bénin, Côte d'Ivoire, Sénégal, Cameroun, Togo
+- Langue des réponses : français uniquement
+- Modèle économique : abonnement mensuel en francs CFA, essai gratuit de 7 jours
+- Mise en service : l'établissement connecte son compte WhatsApp en scannant un QR code, sans jamais saisir de numéro
 
 ## Ce que fait Wapy
-- Répond 24h/24 aux clients sur WhatsApp : questions, prix, horaires, disponibilité.
-- Se configure en quelques minutes : l'IA génère une fiche complète (infos, catalogue, FAQ) à partir d'une simple description de l'activité.
+- Répond 24h sur 24 aux clients sur WhatsApp : questions, prix, horaires, disponibilité, moyens de paiement, livraison.
+- Se configure en quelques minutes : vous décrivez votre activité, l'IA génère une première fiche complète (informations, catalogue, questions fréquentes), vous corrigez ce qui doit l'être avant de connecter WhatsApp.
 - Tableaux 100% personnalisables (menu, prestations, catalogue) avec colonnes libres.
-- Passe la main à un humain pour les réservations, commandes et réclamations.
-- Tableau de bord : conversations en direct, réponse depuis le web, statistiques d'usage.
+- Mène les réservations et les commandes jusqu'au bout : il pose les questions manquantes, confirme au client, enregistre la demande et notifie le responsable.
+- Prend des rendez-vous sur des créneaux réels lorsque l'agenda de l'établissement est connecté.
+- Passe la main à un humain dans les cas qui l'exigent : réclamation, litige, sujet sensible, ou client qui demande explicitement à parler à quelqu'un.
+- Quand une information manque et qu'aucune consigne ne la couvre, il ne transmet pas par défaut : il répond qu'il se renseigne et que quelqu'un reviendra vers le client, ou pose une question de précision.
+- Tableau de bord : conversations en direct, réponse manuelle depuis le web quand la main a été passée, statistiques d'usage.
+- Répond aussi sur le site web de l'entreprise, via un widget de chat à intégrer.
+
+## Ce que Wapy ne fait pas
+- N'encaisse pas les paiements des clients finaux : il communique les coordonnées Mobile Money de l'établissement, la transaction reste entre le client et l'établissement.
+- N'invente aucune information : un prix, un horaire, une disponibilité ou une identité absents de la fiche ne sont jamais devinés.
+- Ne fait pas de prospection à froid ni d'envoi de masse : il ne répond qu'aux messages reçus, et ignore les groupes comme les diffusions.
+- Ne répond pas dans une autre langue que le français.
+- N'écoute pas les notes vocales quand l'option de transcription n'est pas active : il demande alors au client d'écrire sa demande en quelques mots.
+
+## Preuves vérifiables
+- Onze secteurs ont leur guide dédié sur ce site, de la restauration au garage automobile, chacun avec ses questions types et son vocabulaire propre. À l'inscription, le secteur se choisit dans une liste plus large et reste saisissable librement.
+- Le backend est couvert par 134 tests automatisés, qui vérifient notamment la normalisation des numéros de téléphone, le choix de l'assistant entre répondre et passer la main à un humain, et l'enregistrement des demandes. La suite se rejoue en une commande.
+- Wapy demande à WhatsApp le véritable identifiant d'un numéro au lieu de le deviner. Les variantes plausibles d'une même ligne sont soumises, et seule celle qui existe vraiment est retenue. Cela règle le cas des numéros béninois passés de 8 à 10 chiffres et des indicatifs saisis de façons différentes.
+
+## Différence avec WhatsApp Business
+WhatsApp Business propose des messages d'absence et des réponses rapides préenregistrées : un texte fixe, identique pour tout le monde, qui ne répond à aucune question précise. Wapy comprend la demande et répond avec les informations réelles de l'entreprise, puis enregistre les réservations et les commandes et prévient le responsable. Wapy se connecte au compte WhatsApp déjà utilisé, professionnel ou classique, sans changement de numéro ni migration.
 
 ## Pour qui
-Restaurants, maquis, salons de beauté, boutiques, hôtels, pharmacies, cliniques, écoles, transport, immobilier, artisans, e-commerce et tout autre secteur.
+Onze secteurs ont un guide dédié sur ce site : restauration, salons de beauté, boutiques, hôtels, cliniques et pharmacies, agences immobilières, écoles et centres de formation, artisans, agences de voyage, traiteurs et événementiel, garages automobiles. La liste proposée à l'inscription est plus large (bars et maquis, fast-foods, boulangeries, supermarchés, quincailleries, cabinets dentaires, transport et livraison, salles de sport, photographes, cabinets juridiques, e-commerce, associations, entre autres) et le secteur reste saisissable librement.
 
 ## Points clés
-- Sans code, prêt en 5 minutes.
-- Réponses fondées uniquement sur les informations de l'entreprise (pas d'invention).
+- Sans code, prêt en quelques minutes.
+- Réponses fondées uniquement sur les informations de l'entreprise.
 - Données isolées par entreprise, accès sécurisés.
-- Adapté aux usages locaux : Mobile Money, français, ton chaleureux.
+- Adapté aux usages locaux : Mobile Money, français, ton chaleureux, formats de numéros africains.
+- L'assistant tourne sur un serveur, pas sur le téléphone du responsable : celui-ci peut être éteint ou hors réseau sans interrompre les réponses.
+
+## Pages par pays
+- /chatbot-whatsapp/benin : chatbot WhatsApp au Bénin
+- /chatbot-whatsapp/cote-divoire : chatbot WhatsApp en Côte d'Ivoire
+- /chatbot-whatsapp/senegal : chatbot WhatsApp au Sénégal
+- /chatbot-whatsapp/cameroun : chatbot WhatsApp au Cameroun
+- /chatbot-whatsapp/togo : chatbot WhatsApp au Togo
+
+## Pages par secteur
+- /secteurs/restaurant : restaurants, maquis et fast-foods
+- /secteurs/salon-de-beaute : salons de coiffure, de beauté et instituts
+- /secteurs/boutique : boutiques et commerces de détail
+- /secteurs/hotel : hôtels, résidences et hébergements
+- /secteurs/clinique-pharmacie : cliniques, cabinets et pharmacies
+- /secteurs/immobilier : agences immobilières
+- /secteurs/ecole : écoles et centres de formation
+- /secteurs/artisan : artisans et métiers du bâtiment
+- /secteurs/agence-voyage : agences de voyage
+- /secteurs/evenementiel-traiteur : traiteurs et événementiel
+- /secteurs/garage-auto : garages et mécanique automobile
+
+## Comparatifs
+- /comparatif/whatsapp-business-reponse-automatique : ce que fait la réponse automatique de WhatsApp Business, et ce qu'elle ne fait pas
+- /comparatif/alternative-whatsapp-business : alternative à WhatsApp Business pour répondre vraiment aux clients
+- /comparatif/repondre-whatsapp-la-nuit : répondre aux clients la nuit et le week-end
+- /comparatif/meilleur-chatbot-whatsapp-afrique-2026 : comparatif des chatbots WhatsApp en Afrique en 2026
+
+## Pages de référence
+- /comment-ca-marche : le fonctionnement, étape par étape
+- /tarifs : plans, options et essai gratuit
+- /faq : questions fréquentes
+- /a-propos : qui est derrière Wapy
+- /blog : articles et guides pratiques
 
 ## Commencer
-Créer un compte gratuitement puis scanner le WhatsApp de l'entreprise.
+Créer un compte gratuitement, décrire son activité pour générer la fiche, puis connecter le compte WhatsApp de l'entreprise en scannant un QR code.
