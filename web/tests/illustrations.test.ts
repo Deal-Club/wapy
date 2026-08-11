@@ -107,10 +107,39 @@ describe("une illustration n'est jamais une capture du produit", () => {
   });
 
   /**
-   * Le texte de remplacement est écrit une fois, dans le catalogue. Une page qui
-   * poserait son propre `<Image>` sur un fichier d'illustration pourrait le
-   * décrire autrement, capture comprise : c'est exactement le contournement que
-   * ce test ferme.
+   * Aucune page ne dit « capture », quelle que soit l'image.
+   *
+   * Ce test relit tous les attributs `alt` littéraux de `app/` et
+   * `components/`, sans se soucier de la façon dont la source de l'image est
+   * écrite. La version précédente ne regardait que les lignes contenant le
+   * chemin `images/illustrations` : un `<img src={SILOS_DU_SITE.src}
+   * alt="Capture d'ecran du tableau de bord Wapy">` passait sans bruit,
+   * puisque la ligne ne portait pas le chemin.
+   *
+   * Reste hors de portée : un `alt` calculé, dont la valeur ne se lit pas dans
+   * la source. C'est le prix d'un contrôle statique, et la raison d'être du
+   * test suivant, qui pousse tout le monde vers le catalogue.
+   */
+  it("n'écrit nulle part un texte de remplacement qui annonce une capture", () => {
+    // La chaîne court jusqu'au guillemet de MÊME nature, sinon une apostrophe
+    // interne (« vue d'écran ») couperait la valeur avant le mot recherché.
+    const alts = [...sourcesDesPages().matchAll(/alt=\{?(["'])([\s\S]*?)\1/g)].map((m) => m[2]);
+    expect(alts.length, "aucun attribut alt trouvé : le test ne mesure plus rien").toBeGreaterThan(
+      0,
+    );
+    for (const a of alts) {
+      expect(a.toLowerCase(), `texte de remplacement trompeur : « ${a} »`).not.toMatch(
+        /capture|copie d'écran|copie d'ecran|screenshot/,
+      );
+    }
+  });
+
+  /**
+   * Le texte de remplacement d'un schéma est écrit une fois, dans le catalogue.
+   * Une page qui poserait son propre `<Image>` sur un fichier d'illustration
+   * pourrait le décrire autrement. Ce test interdit d'écrire le chemin d'une
+   * illustration ailleurs que dans `content/illustrations.ts` : tout affichage
+   * passe donc par `Figure`, donc par le texte du catalogue.
    */
   it("n'est affichée que par le composant Figure", () => {
     const sources = sourcesDesPages();

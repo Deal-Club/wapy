@@ -8,12 +8,16 @@
     "start": "next start -p 3001",
     "test": "vitest run"
   },
+  "engines": {
+    "node": ">=22"
+  },
   "dependencies": {
     "@vercel/og": "^1.0.1",
     "lucide-react": "^0.454.0",
     "next": "^14.2.35",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@types/node": "20.14.0",
@@ -21,7 +25,6 @@
     "@types/react-dom": "18.3.3",
     "autoprefixer": "10.4.19",
     "postcss": "8.4.39",
-    "sharp": "^0.35.3",
     "tailwindcss": "3.4.6",
     "typescript": "5.5.3",
     "vitest": "^2.1.9"

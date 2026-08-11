@@ -1,3 +1,5 @@
+import { readFileSync, readdirSync } from "node:fs";
+import path from "node:path";
 import { describe, it, expect } from "vitest";
 
 import ImageAccueil, { size as tailleAccueil, contentType as typeAccueil } from "@/app/opengraph-image";
@@ -20,10 +22,12 @@ import { metadata as metaTarifs } from "@/app/tarifs/page";
 import { metadata as metaFaq } from "@/app/faq/page";
 import { metadata as metaCommentCaMarche } from "@/app/comment-ca-marche/page";
 import { metadata as metaBlog } from "@/app/blog/page";
+import { generateMetadata as metaArticle } from "@/app/blog/[slug]/page";
 import { metadata as metaIndexPays } from "@/app/chatbot-whatsapp/page";
 import { metadata as metaIndexSecteurs } from "@/app/secteurs/page";
 import { metadata as metaIndexComparatif } from "@/app/comparatif/page";
 
+import { POSTS } from "@/content/articles";
 import { paysPublies } from "@/content/pays";
 import { secteursPublies } from "@/content/secteurs";
 import { COMPARATIFS_PUBLIES } from "@/content/comparatifs";
@@ -206,6 +210,11 @@ describe("texte affiché dans les images OpenGraph", () => {
  *
  * Ces pages n'ont pas d'image colocalisée : leur `images` doit être écrit à la
  * main. Les pays, secteurs et comparatifs, eux, ont la leur dans leur segment.
+ *
+ * Les articles de blog sont ÉVALUÉS, pas seulement listés : leur objet naît
+ * d'un `generateMetadata`, pas d'un `metadata` statique. Une première version
+ * de ce fichier les avait oubliés pour cette raison, et retirer la ligne
+ * `images` de `app/blog/[slug]/page.tsx` laissait la suite entièrement verte.
  */
 const PAGES_SANS_IMAGE_COLOCALISEE = [
   { url: "/a-propos", meta: metaAPropos },
@@ -216,6 +225,10 @@ const PAGES_SANS_IMAGE_COLOCALISEE = [
   { url: "/chatbot-whatsapp", meta: metaIndexPays },
   { url: "/secteurs", meta: metaIndexSecteurs },
   { url: "/comparatif", meta: metaIndexComparatif },
+  ...POSTS.map((p) => ({
+    url: `/blog/${p.slug}`,
+    meta: metaArticle({ params: { slug: p.slug } }),
+  })),
 ];
 
 describe("déclaration de l'image OpenGraph dans les métadonnées", () => {
@@ -234,6 +247,37 @@ describe("déclaration de l'image OpenGraph dans les métadonnées", () => {
    */
   it("laisse l'accueil hériter de l'image de son propre segment", () => {
     expect(metaAccueil.openGraph?.images).toBeUndefined();
+  });
+
+  /**
+   * La liste ci-dessus est écrite à la main : une page ajoutée demain pourrait
+   * ne pas y figurer, et repartir sans aperçu sans que rien ne le dise. Ce test
+   * relit donc l'arborescence : toute page qui exporte un `openGraph` sans
+   * `opengraph-image.tsx` dans SON segment doit nommer `IMAGE_OG_PAR_DEFAUT`.
+   */
+  it("ne laisse aucune page exporter un openGraph sans image", () => {
+    const app = path.join(__dirname, "..", "app");
+    const oubliees: string[] = [];
+    const parcourir = (dossier: string): void => {
+      const entrees = readdirSync(dossier, { withFileTypes: true });
+      const aSonImage = entrees.some((e) => e.name === "opengraph-image.tsx");
+      for (const e of entrees) {
+        const chemin = path.join(dossier, e.name);
+        if (e.isDirectory()) {
+          parcourir(chemin);
+          continue;
+        }
+        if (e.name !== "page.tsx") continue;
+        const source = readFileSync(chemin, "utf8");
+        if (!source.includes("openGraph:")) continue;
+        // La déclaration, pas le simple import : retirer la ligne `images` en
+        // laissant l'import en place ne doit pas passer inaperçu.
+        if (aSonImage || source.includes("images: [IMAGE_OG_PAR_DEFAUT]")) continue;
+        oubliees.push(path.relative(app, chemin).split(path.sep).join("/"));
+      }
+    };
+    parcourir(app);
+    expect(oubliees, "pages qui repartiraient sans og:image").toEqual([]);
   });
 
   it("pointe vers une URL relative, résolue contre metadataBase", () => {
