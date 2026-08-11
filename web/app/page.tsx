@@ -85,7 +85,7 @@ const SECTORS = ["Restaurant", "Maquis / Bar", "Salon de beauté", "Boutique", "
 const FEATURES: { Icon: LucideIcon; title: string; text: string }[] = [
   { Icon: MessageCircle, title: "Une réponse à toute heure", text: "Vos clients obtiennent une réponse la nuit, le dimanche et pendant que vous servez, tant que la ligne est connectée." },
   { Icon: Sparkles, title: "Configuré par l'IA", text: "Décrivez votre activité : l'IA génère automatiquement horaires, catalogue, prix et FAQ. Vous éditez à volonté." },
-  { Icon: Table, title: "Tout secteur, tout format", text: "Tableaux 100% personnalisables (menu, prestations, catalogue…). Ajoutez vos colonnes selon vos besoins." },
+  { Icon: Table, title: "Tout secteur, tout format", text: "Tableaux entièrement personnalisables (menu, prestations, catalogue…). Ajoutez vos colonnes selon vos besoins." },
   { Icon: Users, title: "Passage à l'humain", text: "Réclamation, sujet sensible ou client qui demande à vous parler : Wapy vous passe la main et vous répondez depuis WhatsApp." },
   { Icon: ShieldCheck, title: "Isolé et sécurisé", text: "Chaque entreprise a son espace privé. Vos données et conversations ne sont visibles que par vous." },
   { Icon: Globe, title: "Pensé pour l'Afrique", text: "Mobile Money, formats locaux, ton chaleureux, français : Wapy parle le langage de vos clients." },
@@ -145,7 +145,13 @@ export default function Landing() {
 
           {/* Chat mockup */}
           <div className="rise" style={{ animationDelay: "0.1s" }}>
-            <div className="mx-auto max-w-sm rounded-xl2 border border-line bg-[#efe7dd] p-4 shadow-lift">
+            {/*
+              Maquette de conversation : établissement, plats et prix sont fictifs
+              et illustrent ce que dirait l'assistant d'un CLIENT, jamais une offre
+              de Wapy. L'identifiant permet aux tests d'exclure ce bloc du contrôle
+              « aucun montant publié », qui s'applique au discours du site.
+            */}
+            <div id="maquette-conversation" className="mx-auto max-w-sm rounded-xl2 border border-line bg-[#efe7dd] p-4 shadow-lift">
               <div className="mb-3 flex items-center gap-2 border-b border-line/70 pb-3">
                 <div className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald text-white">W</div>
                 <div>
@@ -299,7 +305,9 @@ export default function Landing() {
       <section className="mx-auto max-w-6xl px-4 py-16">
         <div className="rounded-xl2 bg-ink px-6 py-14 text-center text-cream shadow-lift">
           <h2 className="font-display text-4xl font-semibold">Prêt à répondre à chaque client ?</h2>
-          <p className="mx-auto mt-3 max-w-xl text-cream/70">Créez votre assistant WhatsApp en quelques minutes. Gratuitement.</p>
+          {/* Pas de durée annoncée : rien ne la mesure, et « en quelques minutes »
+              tombait sous la même règle que « Prêt en 5 minutes », retiré du hero. */}
+          <p className="mx-auto mt-3 max-w-xl text-cream/70">Créez votre assistant WhatsApp et jugez-le sur vos vraies conversations. Sept jours d&apos;essai gratuit.</p>
           <div className="mt-8 flex justify-center">
             <Link href="/signup" className="btn text-base">Commencer maintenant</Link>
           </div>

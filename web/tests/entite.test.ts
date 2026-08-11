@@ -19,7 +19,7 @@ import PageCommentCaMarche from "@/app/comment-ca-marche/page";
 import Accueil from "@/app/page";
 import { auditMaillage, liensSortants, type Lien } from "@/lib/maillage";
 import { COMPARATIFS_PUBLIES } from "@/content/comparatifs";
-import { hrefs, parcourir, textes } from "./arbre-react";
+import { hrefs, parcourir, section, textes } from "./arbre-react";
 
 /**
  * Valeur d'une prop transmise par la page, où qu'elle se trouve dans l'arbre.
@@ -384,9 +384,21 @@ describe("accueil", () => {
     expect(liens, "lien vers la FAQ complète absent").toContain("/faq");
   });
 
-  it("ne publie ni montant ni quota de conversations", () => {
-    const texte = textePage(Accueil());
-    expect(texte).not.toMatch(QUOTA_CONVERSATIONS);
+  /**
+   * La maquette de conversation du hero est le seul endroit du site où un
+   * montant paraît : « 3 500 FCFA » y est le prix d'un plat d'un restaurant
+   * fictif, ce que dirait l'assistant d'un CLIENT. Il est exclu par son
+   * identifiant plutôt que par une exception dans le motif, pour que le reste
+   * de la page reste sous la même garde que les 4 pages entité.
+   */
+  it("ne publie ni montant ni quota de conversations, maquette de démonstration exclue", () => {
+    const maquette = new Set(textes(section(Accueil(), "maquette-conversation")));
+    expect(maquette.size, "maquette de conversation introuvable").toBeGreaterThan(0);
+    const texte = textes(Accueil())
+      .filter((t) => !maquette.has(t))
+      .join(" ");
+    expect(texte, "montant publié sur l'accueil").not.toMatch(MONTANT);
+    expect(texte, "quota de conversations sur l'accueil").not.toMatch(QUOTA_CONVERSATIONS);
   });
 
   it("n'invoque aucune clientèle ni aucun résultat client", () => {
