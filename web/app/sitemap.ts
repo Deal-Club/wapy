@@ -26,11 +26,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
 
   return [
     ...pages,
-    // Les 11 pages `/secteurs/<slug>` viennent du maillage ci-dessus ; leur page
-    // d'index, elle, n'y figure pas (elle ne reçoit pas de lien contextuel et
-    // ferait échouer l'audit des 3 entrants). Elle est pourtant servie et doit
-    // être explorée : on la déclare ici.
+    // Les 11 pages `/secteurs/<slug>` et les 5 pages `/chatbot-whatsapp/<pays>`
+    // viennent du maillage ci-dessus ; leurs pages d'index, elles, n'y figurent
+    // pas (elles ne reçoivent aucun lien contextuel et feraient échouer l'audit
+    // des 3 entrants). Elles sont pourtant servies et doivent être explorées :
+    // on les déclare ici.
     { url: `${base}/secteurs`, changeFrequency: "weekly" as const, priority: 0.8 },
+    { url: `${base}/chatbot-whatsapp`, changeFrequency: "weekly" as const, priority: 0.9 },
     { url: `${base}/blog`, changeFrequency: "weekly" as const, priority: 0.7 },
     ...POSTS.map((p) => ({
       url: `${base}/blog/${p.slug}`,

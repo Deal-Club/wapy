@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { capitale, resume } from "@/lib/texte";
+import { auPays, capitale, resume } from "@/lib/texte";
 import { SECTEURS } from "@/content/secteurs";
+import { PAYS } from "@/content/pays";
 
 describe("resume", () => {
   it("laisse un texte court intact", () => {
@@ -47,5 +48,42 @@ describe("capitale", () => {
 
   it("supporte la chaîne vide", () => {
     expect(capitale("")).toBe("");
+  });
+});
+
+describe("auPays", () => {
+  it("emploie « en » devant un nom de pays féminin", () => {
+    expect(auPays("Côte d'Ivoire")).toBe("en Côte d'Ivoire");
+    expect(auPays("Guinée")).toBe("en Guinée");
+  });
+
+  it("emploie « au » devant un nom de pays masculin", () => {
+    expect(auPays("Bénin")).toBe("au Bénin");
+    expect(auPays("Sénégal")).toBe("au Sénégal");
+    expect(auPays("Togo")).toBe("au Togo");
+  });
+
+  it("respecte les exceptions masculines terminées par un « e »", () => {
+    expect(auPays("Mozambique")).toBe("au Mozambique");
+    expect(auPays("Zimbabwe")).toBe("au Zimbabwe");
+  });
+
+  /**
+   * Le tableau attendu est écrit à la main, pas dérivé de la fonction : c'est
+   * la seule façon de tester une règle grammaticale, dont aucune donnée du
+   * dépôt ne porte la vérité (`Pays` n'a pas de champ de genre).
+   */
+  it("donne la bonne préposition pour chacun des pays du silo", () => {
+    const attendu: Record<string, string> = {
+      benin: "au Bénin",
+      "cote-divoire": "en Côte d'Ivoire",
+      senegal: "au Sénégal",
+      cameroun: "au Cameroun",
+      togo: "au Togo",
+    };
+    for (const p of PAYS) {
+      expect(attendu[p.slug], `pays non couvert par le test : ${p.slug}`).toBeTypeOf("string");
+      expect(auPays(p.nom), `préposition de ${p.slug}`).toBe(attendu[p.slug]);
+    }
   });
 });

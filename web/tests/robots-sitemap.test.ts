@@ -118,15 +118,30 @@ describe("sitemap.xml", () => {
   });
 
   /**
-   * `/secteurs` est le seul chemin du sitemap qu'aucune source ne produit
-   * automatiquement. Elle n'est pas dans `pagesPubliees()` : elle ne reçoit
-   * aucun lien contextuel et ferait échouer l'audit des 3 entrants du maillage.
-   * Elle est donc déclarée à la main dans `app/sitemap.ts`, et sa suppression
-   * accidentelle ne casserait rien sans ce test, alors qu'elle sortirait la
-   * page d'index du silo métier de l'exploration.
+   * `/secteurs` et `/chatbot-whatsapp` sont les deux chemins du sitemap
+   * qu'aucune source ne produit automatiquement. Ces pages d'index ne sont pas
+   * dans `pagesPubliees()` : elles ne reçoivent aucun lien contextuel et
+   * feraient échouer l'audit des 3 entrants du maillage. Elles sont donc
+   * déclarées à la main dans `app/sitemap.ts`, et leur suppression accidentelle
+   * ne casserait rien sans ce test, alors qu'elle sortirait la tête de chaque
+   * silo de l'exploration.
    */
   it("liste la page d'index des secteurs, absente du maillage", () => {
     expect(urls).toContain(`${SITE_URL}/secteurs`);
+  });
+
+  it("liste la page d'index des pays, absente du maillage", () => {
+    expect(urls).toContain(`${SITE_URL}/chatbot-whatsapp`);
+  });
+
+  /**
+   * Les deux index sont déclarés en dur : rien ne garantit qu'ils ne finissent
+   * pas doublonnés par une future entrée du maillage, ni qu'un pays publié soit
+   * confondu avec l'index. Ce test fige la frontière.
+   */
+  it("distingue l'index des pays des pages pays elles-mêmes", () => {
+    const sousPages = urls.filter((u) => u.startsWith(`${SITE_URL}/chatbot-whatsapp/`));
+    expect(sousPages.length, "aucune page pays dans le sitemap").toBeGreaterThanOrEqual(5);
   });
 
   it("liste le blog et chacun de ses articles", () => {
