@@ -14,6 +14,15 @@
  * factuelles, opposables au site de l'éditeur (une devise, une langue, un
  * supplément facturé), jamais des jugements de valeur.
  *
+ * Ce fichier décrit les concurrents, PAS la comparaison avec Wapy. Aucune
+ * incise du type « ce que Wapy ne fait pas » n'y a sa place : le schéma ne
+ * porte aucun champ pour la contrepartie Wapy, donc une telle incise n'est
+ * relue par personne et vieillit en silence. C'est exactement ainsi que la
+ * seule erreur factuelle de la première version s'est glissée ici, en
+ * affirmant que Wapy ne traitait que WhatsApp alors qu'il expose aussi un chat
+ * web (`saas/webchat.py:127`, `brain/brain.py:44`). La comparaison est le
+ * travail de la tâche 14, qui a les deux côtés sous les yeux.
+ *
  * Le relevé complet, avec l'URL consultée et la citation qui soutient chaque
  * champ, est consigné dans
  * `.superpowers/sdd/2026-08-10-seo-vague1/task-13-report.md`.
@@ -32,6 +41,29 @@ export type Concurrent = {
 
 export const CONCURRENTS: Concurrent[] = [
   {
+    slug: "neobot",
+    nom: "NéoBot",
+    url: "https://neobot-ai.com",
+    positionnement:
+      "Assistant IA WhatsApp développé au Cameroun. L'éditeur le présente comme « l'assistant IA WhatsApp conçu pour les entreprises africaines », « conçu pour les PME africaines », et situe son équipe à « Yaoundé, Cameroun ».",
+    pointsForts: [
+      "Éditeur africain : « NéoBot est développé à Yaoundé », et le pied de page de sa page comparative porte la mention « Made in Cameroon »",
+      "Tarif publié directement en francs CFA, sans conversion : 20 000 FCFA par mois",
+      "Paiement annoncé par Orange Money, MTN, Wave et Stripe",
+      "Assistant annoncé en français et en anglais, et qui « comprend le pidgin camerounais »",
+      "Essai de 14 jours annoncé sans carte bancaire, avec inscription en libre-service depuis le site",
+    ],
+    pointsFaibles: [
+      "Une seule formule publiée, plafonnée à 3 000 messages WhatsApp par mois et 1 agent IA actif",
+      "Base de connaissance bornée à 3 fichiers PDF dans la formule publiée",
+      "Support annoncé « par email » dans la formule publiée",
+      "Le tarif d'appel de 10 000 FCFA par mois est présenté comme une « offre fondateur » réservée à 10 places",
+    ],
+    tarifIndicatif:
+      "20 000 FCFA par mois (formule Essential), après 14 jours d'essai gratuit sans carte ; offre fondateur affichée à 10 000 FCFA par mois pour 10 places (relevé 2026-08-11)",
+    sourceVerif: "2026-08-11",
+  },
+  {
     slug: "botnation-ai",
     nom: "Botnation AI",
     url: "https://botnation.ai",
@@ -40,7 +72,7 @@ export const CONCURRENTS: Concurrent[] = [
       "Éditeur français de chatbots no-code. Sa page WhatsApp s'intitule « Chatbot WhatsApp IA : automatisez vos conversations 24h/24 » et annonce une solution reposant « sur l'API officielle WhatsApp Business ».",
     pointsForts: [
       "Éditeur établi en France : adresse à Paris et ligne de support français publiées sur le site",
-      "Repose sur l'API officielle WhatsApp Business, ce que Wapy ne fait pas (connexion par QR code)",
+      "Repose sur l'API officielle WhatsApp Business, selon la FAQ de l'éditeur",
       "Annonce des données « hébergées sur notre plateforme, sous juridiction française et européenne » et une conformité RGPD",
       "Formule d'entrée gratuite pour créer et tester avant tout abonnement",
       "Chatbot déployable au-delà de WhatsApp (Messenger, Instagram, site web)",
@@ -63,7 +95,7 @@ export const CONCURRENTS: Concurrent[] = [
     pointsForts: [
       "Site, offre et tarifs entièrement disponibles en français",
       "Éditeur qui se déclare « une entreprise SaaS fondée à Paris en 2019 »",
-      "Centralise plusieurs messageries dans une même boîte de réception, là où Wapy ne traite que WhatsApp",
+      "Centralise WhatsApp Business, Messenger, Instagram Direct et Telegram dans une même boîte de réception",
       "Pensé pour le travail à plusieurs agents sur les mêmes conversations",
       "Compte gratuit pour démarrer, annoncé à 0 EUR par mois",
     ],
@@ -75,28 +107,6 @@ export const CONCURRENTS: Concurrent[] = [
     ],
     tarifIndicatif:
       "14 EUR par mois et par utilisateur (offre Gestion de chat), 18 EUR pour Gestion de chat Plus, canal WhatsApp 50 EUR par mois en sus (relevé 2026-08-11)",
-    sourceVerif: "2026-08-11",
-  },
-  {
-    slug: "respond-io",
-    nom: "respond.io",
-    url: "https://respond.io",
-    positionnement:
-      "Plateforme de gestion des conversations clients. Version française du site : « Respond.io unifie tous les points de contact clients et les CRM dans une boîte de réception d'équipe avec des agents d'IA et une gestion des leads native ».",
-    pointsForts: [
-      "Site traduit en français et dans une douzaine d'autres langues (hreflang ar, de, en, es, fr, id, it, pt, ru, th, vi, zh-Hans, zh-Hant)",
-      "Couvre WhatsApp mais aussi TikTok, Instagram et Facebook, ainsi que les appels et les campagnes",
-      "Tarification annoncée « ne paye que pour les contacts avec lesquels tu parles »",
-      "Essai gratuit de 7 jours, comme Wapy",
-      "Se connecte aux CRM, ce que Wapy ne propose pas",
-    ],
-    pointsFaibles: [
-      "Tarifs affichés en dollars américains, à partir de 79 dollars par mois",
-      "Aucune facturation en francs CFA publiée",
-      "Des passages de la page de tarifs en français restent rédigés en anglais",
-    ],
-    tarifIndicatif:
-      "Starter 79 USD par mois, Growth 159 USD par mois, Advanced 279 USD par mois, offre Enterprise sur devis (relevé 2026-08-11)",
     sourceVerif: "2026-08-11",
   },
   {

@@ -8,6 +8,56 @@ import { CONCURRENTS } from "@/content/concurrents";
  * mais elle peut refuser les formes qui rendent l'erreur probable ou
  * invérifiable, et c'est ce qu'elle fait ci-dessous.
  */
+
+/** Comparaison insensible à la casse ET aux accents : « inadapté » et « inadapte » sont le même mot. */
+function normalise(texte: string): string {
+  return texte
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
+
+/**
+ * Le garde-fou vise des TOURNURES, pas une liste d'adjectifs.
+ *
+ * Une liste de mots ne tient pas : la première version de ce test interdisait
+ * « inadapté » et laissait passer « moins adapté aux petites structures », qui
+ * dit exactement la même chose sans être opposable au site de l'éditeur. Ce
+ * qui distingue une limite factuelle d'un jugement n'est pas le vocabulaire,
+ * c'est la forme : un comparatif sans terme de comparaison (« moins X »), une
+ * modalisation (« pourrait », « semble »), un manque (« manque de »), ou une
+ * appréciation nue (« cher », « médiocre »). Une borne chiffrée, elle, passe :
+ * « plafonnée à 3 000 messages par mois » se vérifie sur la page tarifs.
+ *
+ * `tournureInterdite` est éprouvée par son propre test plus bas, sur les
+ * contre-exemples qui avaient franchi la version précédente.
+ */
+const TOURNURES: { nom: string; motif: RegExp }[] = [
+  // « moins adapté », « peu clair », « trop rigide », « assez limité » : un
+  // comparatif dont le second terme n'est jamais donné.
+  { nom: "comparatif sans terme de comparaison", motif: /\b(moins|peu|trop|assez|plutot)\s+\p{L}/u },
+  // « pourrait convenir », « semble limité », « risque de »  : une conjecture.
+  {
+    nom: "conjecture",
+    motif: /\b(pourrait|pourraient|semble|semblent|parait|paraissent|risque de|risquent de|probablement|sans doute|il est courant|on peut penser|vraisemblablement)\b/u,
+  },
+  // « manque de souplesse » : un défaut posé sans référence mesurable.
+  { nom: "manque non chiffré", motif: /\bmanque(nt)? de\b/u },
+  // Appréciations nues, invérifiables par construction.
+  {
+    nom: "appreciation",
+    motif: /\b(mauvais|mauvaise|mediocre|depasse|depassee|obsolete|decevant|decevante|inadapte|inadaptee|usine a gaz|cher|chere|couteux|couteuse|lourd a utiliser|complique)\b/u,
+  },
+];
+
+function tournureInterdite(texte: string): string | null {
+  const t = normalise(texte);
+  for (const { nom, motif } of TOURNURES) {
+    if (motif.test(t)) return nom;
+  }
+  return null;
+}
+
 describe("fiches concurrents", () => {
   it("retient exactement 4 concurrents", () => {
     expect(CONCURRENTS).toHaveLength(4);
@@ -66,35 +116,70 @@ describe("fiches concurrents", () => {
     }
   });
 
-  /**
-   * Les limites annoncées doivent rester opposables au site de l'éditeur. On
-   * ne peut pas tester la véracité d'une phrase, mais on peut interdire le
-   * vocabulaire du jugement de valeur et celui de la supposition, qui sont
-   * précisément la façon dont une fiche dérape vers l'affirmation invérifiable.
-   */
-  it("n'énonce que des limites factuelles, sans jugement ni supposition", () => {
-    const interdits = [
-      "probablement",
-      "sans doute",
-      "il est courant",
-      "on peut penser",
-      "sans intérêt",
-      "mauvais",
-      "médiocre",
-      "dépassé",
-      "inadapté",
-      "compliqué à utiliser",
-    ];
+  it("n'énonce que des limites factuelles, sans jugement ni conjecture", () => {
     for (const c of CONCURRENTS) {
       expect(c.pointsFaibles.length, `aucune limite relevée pour ${c.slug}`).toBeGreaterThanOrEqual(
         1,
       );
       for (const limite of c.pointsFaibles) {
-        const bas = limite.toLowerCase();
-        for (const mot of interdits) {
-          expect(bas, `jugement ou supposition dans les limites de ${c.slug} : « ${limite} »`)
-            .not.toContain(mot);
-        }
+        expect(
+          tournureInterdite(limite),
+          `tournure non opposable dans les limites de ${c.slug} : « ${limite} »`,
+        ).toBeNull();
+      }
+    }
+  });
+
+  /**
+   * Le test précédent ne vaut que ce que vaut son détecteur. Celui-ci le met à
+   * l'épreuve, à commencer par le contre-exemple qui avait franchi la version
+   * à liste de mots interdits, et vérifie symétriquement qu'une borne chiffrée
+   * n'est pas prise pour un jugement.
+   */
+  it("attrape les tournures visées, et laisse passer les bornes chiffrées", () => {
+    const aRejeter = [
+      "moins adapté aux petites structures",
+      "peu adapté à une PME",
+      "trop rigide pour un petit commerce",
+      "manque de souplesse",
+      "pourrait ne pas convenir",
+      "semble limité",
+      "probablement plus lent",
+      "solution chère pour le marché visé",
+    ];
+    for (const exemple of aRejeter) {
+      expect(tournureInterdite(exemple), `tournure non détectée : « ${exemple} »`).not.toBeNull();
+    }
+
+    const aAccepter = [
+      "Tarifs publiés en euros uniquement, aucun montant en francs CFA",
+      "Une seule formule publiée, plafonnée à 3 000 messages WhatsApp par mois",
+      "Engagement minimum de 3 mois annoncé sur la page tarifs",
+      "Le canal WhatsApp est facturé 50 EUR par mois en supplément",
+      "Aucun tarif publié : la page « Pricing » est un formulaire « Demandez un devis »",
+    ];
+    for (const exemple of aAccepter) {
+      expect(tournureInterdite(exemple), `faux positif sur : « ${exemple} »`).toBeNull();
+    }
+  });
+
+  /**
+   * Le schéma décrit le concurrent, pas la comparaison. Une incise sur Wapy
+   * glissée dans un `pointsForts` n'a aucune contrepartie dans le type, donc
+   * personne ne la relit quand Wapy évolue : c'est ainsi qu'une fiche s'est
+   * mise à affirmer que Wapy ne traitait que WhatsApp, alors qu'il expose
+   * aussi un chat web. La comparaison appartient à la tâche 14.
+   */
+  it("décrit le concurrent sans y mêler d'incise sur Wapy", () => {
+    for (const c of CONCURRENTS) {
+      const champs = [
+        c.positionnement,
+        c.tarifIndicatif,
+        ...c.pointsForts,
+        ...c.pointsFaibles,
+      ];
+      for (const champ of champs) {
+        expect(champ, `incise comparative sur Wapy dans la fiche ${c.slug}`).not.toMatch(/wapy/i);
       }
     }
   });
