@@ -45,6 +45,74 @@ class Decision:
     lookup_query: str = ""
 
 
+# Exemples résolus, placés dans le préfixe mis en cache. Deux rôles :
+#
+# 1. PÉDAGOGIQUE. Ils couvrent les cas que les RÈGLES ci-dessous répètent le plus
+#    (« transmettre » n'est pas une escalade, ne pas escalader une info manquante,
+#    horodatage exact d'un créneau, ne jamais déclarer un paiement validé) : ce qu'un
+#    prompt martèle est ce que les modèles ratent. Un exemple résolu vaut mieux qu'une
+#    consigne répétée, et l'écart se voit surtout sur Haiku.
+#
+# 2. SEUIL DE CACHE. Haiku 4.5 n'amorce son cache qu'à partir de 4 096 tokens de
+#    préfixe, contre 1 024 pour Sonnet et Opus. Sans ces exemples, un petit tenant
+#    (salon, boutique : fiche ~550 tokens) plafonnait à ~3 500 tokens et n'était
+#    JAMAIS mis en cache, en silence et sans erreur. C'est le plan Starter, celui à la
+#    marge la plus fine. Les grossir fait franchir le seuil ; les réduire ferait
+#    l'inverse. Une fois le cache amorcé ils sont relus à 0,1x : ils ne coûtent presque
+#    rien et débloquent tout le reste du préfixe.
+#    Ne pas raccourcir ce bloc : un test verrouille sa taille.
+EXEMPLES = (
+    "EXEMPLES RÉSOLUS (le format attendu, sur les cas les plus souvent ratés) :\n\n"
+    "1) La fiche dit « Pour toute demande de devis, transmets au responsable ».\n"
+    "   Client : « Bonjour, je voudrais un devis pour repeindre 3 chambres. »\n"
+    "   -> C'est une consigne de transmission, PAS une escalade. Tu fais la démarche\n"
+    "   toi-même : tu récoltes ce qui manque, puis tu enregistres.\n"
+    "   action='reply', message='Bien sûr. Pour préparer le devis : quelle surface\n"
+    "   environ, et souhaitez-vous aussi le plafond ?', reason='récolte avant record'\n"
+    "   Puis, une fois les infos obtenues : action='record', record_type='Lead',\n"
+    "   record='Devis peinture, 3 chambres ~45 m2, plafonds inclus, client Awa Diop'.\n\n"
+    "2) La fiche contient une section Rendez-vous avec « [2026-08-13T10:00] Tresses ».\n"
+    "   Client : « Parfait, je prends jeudi 10h. »\n"
+    "   -> action='book', book_datetime='2026-08-13T10:00', book_service='Tresses',\n"
+    "   message='C'est noté pour jeudi 13 août à 10h, en tresses. À très vite !'\n"
+    "   L'horodatage est recopié EXACTEMENT comme entre crochets, jamais reformulé.\n\n"
+    "3) Le client demande une information absente de la fiche, aucune consigne ne la\n"
+    "   couvre. Client : « Vous faites aussi les mariages en extérieur ? »\n"
+    "   -> On n'escalade PAS pour une info manquante.\n"
+    "   action='reply', message='Je me renseigne et je reviens vers vous très vite.\n"
+    "   Vous aviez une date en tête ?', reason='info absente, pas de consigne'\n\n"
+    "4) Client : « Vous êtes nuls, ça fait deux jours que j'attends. »\n"
+    "   -> Mécontentement réel sur une demande en cours : c'est le cas 3b.\n"
+    "   action='escalate', message='Je comprends votre agacement et je transmets tout\n"
+    "   de suite à un responsable qui vous répond.', reason='réclamation'\n"
+    "   Mais une simple grossièreté sans grief (« c'est nul votre truc ») ne\n"
+    "   s'escalade pas : on recadre poliment et on reste en action='reply'.\n\n"
+    "5) La fiche contient une section Données en direct. Client : « Il vous reste des\n"
+    "   pointes de 8 mm ? »\n"
+    "   -> Le stock n'est pas dans la fiche : on ne l'invente pas, on le cherche.\n"
+    "   action='lookup', lookup_query='pointes 8 mm', reason='stock non listé'\n\n"
+    "6) Tu as déjà enregistré : record_type='Commande', record='2 poulets braisés,\n"
+    "   livraison Fidjrossè, 7 000 FCFA, payé MoMo'.\n"
+    "   Client : « Ajoutez une bouteille d'eau et je paierai à la livraison. »\n"
+    "   -> On ne crée PAS une deuxième entrée. On ré-enregistre le MÊME record_type\n"
+    "   avec le récapitulatif complet à jour, qui remplace le précédent.\n"
+    "   action='record', record_type='Commande', record='2 poulets braisés + 1 eau,\n"
+    "   livraison Fidjrossè, 7 500 FCFA, paiement à la livraison (MoMo annulé)',\n"
+    "   message='C'est ajouté ! Total 7 500 FCFA à régler à la livraison.'\n"
+    "   Le récapitulatif est COMPLET : il doit se suffire à lui-même, le responsable\n"
+    "   ne voit que la dernière version.\n\n"
+    "7) Message : « [Le client a envoyé une pièce jointe : capture de paiement.] »\n"
+    "   -> Tu ne peux pas vérifier un paiement. Tu accuses réception, tu transmets\n"
+    "   pour validation, et tu ne déclares JAMAIS le paiement confirmé.\n"
+    "   action='record', record_type='Paiement',\n"
+    "   record='justificatif reçu, à vérifier - commande 2 poulets braisés, 7 000 FCFA',\n"
+    "   message='Bien reçu, merci ! Je transmets votre justificatif pour validation et\n"
+    "   je reviens vers vous dès que c'est confirmé.'\n"
+    "   À ne pas écrire : « paiement bien reçu, c'est validé ». Tant que personne n'a\n"
+    "   vérifié, la commande n'est pas payée.\n\n"
+)
+
+
 def build_system_prompt(fiche_text: str, channel: str = "whatsapp") -> str:
     canal = "WhatsApp" if channel == "whatsapp" else "le site web de l'établissement (chat)"
     return (
@@ -163,7 +231,8 @@ def build_system_prompt(fiche_text: str, channel: str = "whatsapp") -> str:
             "Pas de mise en forme spéciale.\n"
         )
         + "- Écris les nombres/prix normalement (3 500 FCFA), sans caractères d'échappement.\n\n"
-        "=== FICHE ÉTABLISSEMENT ===\n"
+        + EXEMPLES
+        + "=== FICHE ÉTABLISSEMENT ===\n"
         f"{fiche_text}\n"
         "=== FIN FICHE ==="
     )
@@ -202,6 +271,56 @@ def build_system_blocks(fiche_text: str, channel: str = "whatsapp", extra: str =
     return blocks
 
 
+# Second point de rupture du cache, sur l'historique de conversation.
+#
+# Le premier ne couvre que le prompt système et la fiche. L'historique vit dans
+# `messages`, donc APRÈS : il était repayé plein tarif à chaque appel, et il grossit à
+# chaque tour. Sur un tenant sans rendez-vous ni connecteur, c'est le premier poste du
+# coût d'entrée, devant la fiche mise en cache.
+#
+# Le cache est un PRÉFIXE : il ne tient que si tout ce qui précède est identique octet
+# pour octet. D'où les deux gardes ci-dessous, sans lesquelles ce point de rupture
+# coûterait PLUS cher que de ne rien cacher (une écriture vaut 2x une lecture pleine) :
+#
+#  - `extra` doit être vide. Le bloc volatil (créneaux du moment, résultat de recherche)
+#    est placé avant l'historique et change à chaque message : poser un point de rupture
+#    derrière lui, c'est acheter une écriture qui ne sera jamais relue.
+#  - la fenêtre ne doit pas encore glisser. L'appelant garde les HISTORY_LIMIT derniers
+#    messages : une fois pleine, elle jette le plus ancien à chaque tour, donc le préfixe
+#    change à chaque tour.
+#
+# HISTORY_CACHE_MAX doit rester égal à `bot.HISTORY_LIMIT` et `webchat.HISTORY_LIMIT`
+# (un test verrouille l'égalité) : c'est la fenêtre au-delà de laquelle ça glisse.
+HISTORY_CACHE_MAX = 20
+# En dessous, l'historique ne pèse pas assez pour amortir l'écriture.
+HISTORY_CACHE_MIN = 2
+
+
+def _avec_cache(message: dict) -> dict | None:
+    """Copie du message avec `cache_control` sur son dernier bloc, None s'il est vide."""
+    contenu = message.get("content")
+    if isinstance(contenu, str):
+        if not contenu.strip():
+            return None
+        blocs = [{"type": "text", "text": contenu}]
+    elif contenu:
+        blocs = [dict(b) for b in contenu]
+    else:
+        return None
+    blocs[-1] = {**blocs[-1], "cache_control": {"type": "ephemeral", "ttl": CACHE_TTL}}
+    return {**message, "content": blocs}
+
+
+def build_messages(history: list[dict], incoming_text: str, extra: str = "") -> list[dict]:
+    """`messages` de l'appel, avec le point de rupture sur l'historique s'il tient."""
+    messages = [dict(m) for m in history]
+    if not extra and HISTORY_CACHE_MIN <= len(messages) < HISTORY_CACHE_MAX:
+        marque = _avec_cache(messages[-1])
+        if marque is not None:
+            messages[-1] = marque
+    return messages + [{"role": "user", "content": incoming_text}]
+
+
 class Brain:
     def __init__(self, client, model: str):
         self._client = client
@@ -209,7 +328,7 @@ class Brain:
 
     def decide(self, fiche_text: str, history: list[dict], incoming_text: str,
                channel: str = "whatsapp", extra: str = "") -> Decision:
-        messages = list(history) + [{"role": "user", "content": incoming_text}]
+        messages = build_messages(history, incoming_text, extra)
         resp = self._client.messages.create(
             model=self._model,
             max_tokens=1024,

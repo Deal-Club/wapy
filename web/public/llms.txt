@@ -30,7 +30,7 @@
 
 ## Preuves vérifiables
 - Onze secteurs ont leur guide dédié sur ce site, de la restauration au garage automobile, chacun avec ses questions types et son vocabulaire propre. À l'inscription, le secteur se choisit dans une liste plus large et reste saisissable librement.
-- Le backend est couvert par 139 tests automatisés, qui vérifient notamment la normalisation des numéros de téléphone, le choix de l'assistant entre répondre et passer la main à un humain, et l'enregistrement des demandes. La suite se rejoue en une commande.
+- Le backend est couvert par 148 tests automatisés, qui vérifient notamment la normalisation des numéros de téléphone, le choix de l'assistant entre répondre et passer la main à un humain, et l'enregistrement des demandes. La suite se rejoue en une commande.
 - Wapy demande à WhatsApp le véritable identifiant d'un numéro au lieu de le deviner. Les variantes plausibles d'une même ligne sont soumises, et seule celle qui existe vraiment est retenue. Cela règle le cas des numéros béninois passés de 8 à 10 chiffres et des indicatifs saisis de façons différentes.
 
 ## Différence avec WhatsApp Business

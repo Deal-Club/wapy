@@ -38,12 +38,12 @@ PLANS = {
         "limits": {"conversations": 500, "agents": 1, "documents": 3},
     },
     "pro": {
-        "label": "Pro", "price": 25000, "model": "claude-sonnet-4-6",
+        "label": "Pro", "price": 25000, "model": "claude-sonnet-5",
         "features": ["handoff", "records", "knowledge", "vision", "voice", "suggestions", "booking", "webchat", "priority_support"],
         "limits": {"conversations": 2500, "agents": 3, "documents": 10},
     },
     "business": {
-        "label": "Business", "price": 40000, "model": "claude-opus-4-8",
+        "label": "Business", "price": 40000, "model": "claude-opus-5",
         "features": ["handoff", "records", "knowledge", "vision", "voice", "suggestions", "booking", "webchat", "data_connector", "priority_support"],
         "limits": {"conversations": 0, "agents": 0, "documents": 0},
     },
@@ -66,7 +66,7 @@ ADDONS = {
 _ALL_FEATURES = set(FEATURES.keys())
 _UNLIMITED = {"conversations": 0, "agents": 0, "documents": 0}
 # Essai et tenants d'avant la facturation : tout inclus.
-TRIAL_ENT = {"features": _ALL_FEATURES, "limits": dict(_UNLIMITED), "model": "claude-sonnet-4-6"}
+TRIAL_ENT = {"features": _ALL_FEATURES, "limits": dict(_UNLIMITED), "model": "claude-sonnet-5"}
 GRANDFATHER_ENT = {"features": _ALL_FEATURES, "limits": dict(_UNLIMITED), "model": ""}
 EXPIRED_ENT = {"features": set(), "limits": {"conversations": 1, "agents": 1, "documents": 0}, "model": "claude-haiku-4-5-20251001"}
 
