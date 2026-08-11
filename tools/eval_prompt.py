@@ -107,10 +107,24 @@ SCENARIOS = [
         "piege": "reply : là il FAUT passer la main",
     },
     {
-        "nom": "justificatif de paiement",
+        # Le cas dur, et le plus frequent en production : le client a commande par
+        # telephone puis envoie sa capture. Sans 'record', le justificatif n'arrive
+        # a personne et le message « je transmets » est un mensonge.
+        "nom": "justificatif de paiement, aucune commande connue",
         "message": "[Le client a envoyé une pièce jointe : capture de paiement.]",
         "attendu": ("record",),
-        "piege": "déclarer le paiement validé alors que personne ne l'a vérifié",
+        "piege": "reply : le responsable ne verra jamais le justificatif",
+    },
+    {
+        "nom": "justificatif de paiement, commande en cours",
+        "message": "[Le client a envoyé une pièce jointe : capture de paiement.]",
+        "attendu": ("record",),
+        "historique": [
+            {"role": "user", "content": "Je voudrais un défrisage et un soin profond."},
+            {"role": "assistant", "content": "Parfait : défrisage 12 000 et soin 8 000, "
+             "soit 20 000 FCFA. Vous pouvez régler au MoMo 97 00 00 00."},
+        ],
+        "piege": "declarer le paiement valide, ou perdre le detail de la commande",
     },
     {
         "nom": "prix listé, réponse directe",
