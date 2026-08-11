@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { SITE_URL } from "@/lib/site";
 import { POSTS, tagFor } from "@/lib/blog";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
   title: "Blog Wapy · Réussir la relation client sur WhatsApp",
@@ -28,15 +30,7 @@ export default function BlogIndex() {
 
   return (
     <div className="min-h-screen bg-cream">
-      <header className="sticky top-0 z-30 border-b border-line/70 bg-cream/85 backdrop-blur">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <Link href="/" className="font-display text-2xl font-bold text-brand">Wapy</Link>
-          <div className="flex items-center gap-4 text-sm">
-            <Link href="/" className="text-muted hover:text-ink">Accueil</Link>
-            <Link href="/signup" className="btn text-sm">Commencer</Link>
-          </div>
-        </nav>
-      </header>
+      <SiteHeader />
 
       {/* Hero du blog */}
       <section className="border-b border-line bg-surface/50">
@@ -95,16 +89,7 @@ export default function BlogIndex() {
         </div>
       </main>
 
-      <footer className="border-t border-line bg-surface/60">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted md:flex-row">
-          <div className="font-display text-lg font-bold text-brand">Wapy</div>
-          <p>Assistant WhatsApp intelligent pour les entreprises · Conçu pour l&apos;Afrique</p>
-          <div className="flex gap-4">
-            <Link href="/" className="hover:text-ink">Accueil</Link>
-            <Link href="/signup" className="hover:text-ink">Commencer</Link>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

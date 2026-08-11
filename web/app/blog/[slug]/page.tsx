@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SITE_URL } from "@/lib/site";
 import { POSTS, getPost, tagFor, related } from "@/lib/blog";
+import SiteHeader from "@/components/SiteHeader";
+import SiteFooter from "@/components/SiteFooter";
 
 export function generateStaticParams() {
   return POSTS.map((p) => ({ slug: p.slug }));
@@ -71,15 +73,7 @@ export default function Article({ params }: { params: { slug: string } }) {
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
-      <header className="sticky top-0 z-30 border-b border-line/70 bg-cream/85 backdrop-blur">
-        <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <Link href="/" className="font-display text-2xl font-bold text-brand">Wapy</Link>
-          <div className="flex items-center gap-4 text-sm">
-            <Link href="/blog" className="text-muted hover:text-ink">Blog</Link>
-            <Link href="/signup" className="btn text-sm">Commencer</Link>
-          </div>
-        </nav>
-      </header>
+      <SiteHeader lienSecondaire={{ href: "/blog", libelle: "Blog" }} />
 
       <main className="mx-auto max-w-3xl px-4 py-10">
         {/* Fil d'Ariane */}
@@ -125,16 +119,7 @@ export default function Article({ params }: { params: { slug: string } }) {
         )}
       </main>
 
-      <footer className="border-t border-line bg-surface/60">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted md:flex-row">
-          <div className="font-display text-lg font-bold text-brand">Wapy</div>
-          <p>Assistant WhatsApp intelligent pour les entreprises · Conçu pour l&apos;Afrique</p>
-          <div className="flex gap-4">
-            <Link href="/blog" className="hover:text-ink">Blog</Link>
-            <Link href="/signup" className="hover:text-ink">Commencer</Link>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
