@@ -5,14 +5,22 @@ const CTX = "https://schema.org";
 type Context = { "@context": typeof CTX };
 
 /**
- * Types de retour precis pour chaque schema JSON-LD produit. Une fonction qui
+ * Types de retour précis pour chaque schéma JSON-LD produit. Une fonction qui
  * renverrait `Record<string, unknown>` obligerait les appelants (tests inclus)
- * a indexer un `unknown` pour lire un champ imbrique, ce qui echoue en
- * TypeScript strict sans cast. Chaque schema a donc sa propre forme.
+ * à indexer un `unknown` pour lire un champ imbriqué, ce qui échoue en
+ * TypeScript strict sans cast. Chaque schéma a donc sa propre forme.
  */
+
+/**
+ * Identifiant stable du nœud Organization, référencé depuis les autres
+ * schémas (publisher, provider) pour consolider l'entité Wapy à travers le
+ * site plutôt que de dupliquer une copie inline sur chaque page.
+ */
+export const ORGANIZATION_ID = `${SITE_URL}#organization`;
 
 export type OrganizationLd = Context & {
   "@type": "Organization";
+  "@id": string;
   name: string;
   url: string;
   logo: string;
@@ -21,7 +29,8 @@ export type OrganizationLd = Context & {
   sameAs: string[];
 };
 
-export type OrganizationRefLd = { "@type": "Organization"; name: string; url: string };
+/** Référence vers le nœud Organization consolidé (voir ORGANIZATION_ID). */
+export type OrganizationRefLd = { "@id": string };
 
 export type WebSiteLd = Context & {
   "@type": "WebSite";
@@ -50,7 +59,12 @@ export type ServiceLd = Context & {
   serviceType: string;
   provider: OrganizationRefLd;
   areaServed: AreaServedLd;
-  inLanguage: string;
+  /**
+   * `Service` est un `Intangible`, pas un `CreativeWork` : `inLanguage` n'y
+   * est pas défini par schema.org, `availableLanguage` est la propriété
+   * correcte pour ce type.
+   */
+  availableLanguage: string;
 };
 
 export type QuestionLd = {
@@ -135,11 +149,12 @@ export function organizationLd(): OrganizationLd {
   return {
     "@context": CTX,
     "@type": "Organization",
+    "@id": ORGANIZATION_ID,
     name: "Wapy",
     url: SITE_URL,
     logo: `${SITE_URL}/icons/icon-512.png`,
     description:
-      "Wapy est un assistant WhatsApp pour les entreprises, concu pour l'Afrique francophone. Il repond aux messages recus sur WhatsApp a partir des informations fournies par l'entreprise.",
+      "Wapy est un assistant WhatsApp pour les entreprises, conçu pour l'Afrique francophone. Il répond aux messages reçus sur WhatsApp à partir des informations fournies par l'entreprise.",
     areaServed: ["BJ", "CI", "SN", "CM", "TG"],
     sameAs: [],
   };
@@ -152,7 +167,7 @@ export function websiteLd(): WebSiteLd {
     name: "Wapy",
     url: SITE_URL,
     inLanguage: "fr",
-    publisher: { "@type": "Organization", name: "Wapy", url: SITE_URL },
+    publisher: { "@id": ORGANIZATION_ID },
   };
 }
 
@@ -180,10 +195,10 @@ export function serviceLd(a: {
     name: a.nom,
     description: a.description,
     url: a.url,
-    serviceType: "Assistant WhatsApp automatise",
-    provider: { "@type": "Organization", name: "Wapy", url: SITE_URL },
+    serviceType: "Assistant WhatsApp automatisé",
+    provider: { "@id": ORGANIZATION_ID },
     areaServed: { "@type": a.areaServed.type, name: a.areaServed.nom },
-    inLanguage: "fr",
+    availableLanguage: "fr",
   };
 }
 
@@ -258,17 +273,35 @@ export function articleLd(a: {
     datePublished: a.publieLe,
     dateModified: a.modifieLe,
     author: { "@type": "Person", name: a.auteur },
-    publisher: { "@type": "Organization", name: "Wapy", url: SITE_URL },
+    publisher: { "@id": ORGANIZATION_ID },
     ...(a.section ? { articleSection: a.section } : {}),
     inLanguage: "fr",
   };
 }
 
 export function offerLd(offres: { nom: string; prix: number; devise: string }[]): OfferLd {
+  if (offres.length === 0) {
+    // Math.min()/Math.max() sur un tableau vide renvoient ±Infinity, que
+    // JSON.stringify transforme en null : un AggregateOffer avec des prix
+    // null est syntaxiquement valide mais rejete par le test des resultats
+    // enrichis de Google. Echec explicite plutot que JSON silencieusement
+    // invalide.
+    throw new Error("offerLd nécessite au moins une offre.");
+  }
+  const devises = new Set(offres.map((o) => o.devise));
+  if (devises.size > 1) {
+    // Le projet manipule XOF et XAF (content/types.ts) : des devises
+    // melangees produiraient un lowPrice/highPrice incoherent avec la seule
+    // priceCurrency annoncee au niveau de l'AggregateOffer. Comportement
+    // explicite : on refuse plutot que de choisir silencieusement une devise.
+    throw new Error(
+      `offerLd nécessite une devise unique pour toutes les offres (reçues : ${[...devises].join(", ")}).`,
+    );
+  }
   return {
     "@context": CTX,
     "@type": "AggregateOffer",
-    priceCurrency: offres[0]?.devise ?? "XOF",
+    priceCurrency: offres[0].devise,
     lowPrice: Math.min(...offres.map((o) => o.prix)),
     highPrice: Math.max(...offres.map((o) => o.prix)),
     offerCount: offres.length,

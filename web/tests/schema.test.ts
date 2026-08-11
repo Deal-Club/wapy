@@ -12,6 +12,7 @@ import {
   howToLd,
   articleLd,
   offerLd,
+  ORGANIZATION_ID,
 } from "@/lib/schema";
 import { SITE_URL } from "@/lib/site";
 import JsonLd from "@/components/seo/JsonLd";
@@ -27,6 +28,8 @@ describe("organizationLd", () => {
     expect(Array.isArray(ld.sameAs)).toBe(true);
     expect(ld.sameAs).toHaveLength(0);
     expect(ld.areaServed).toEqual(["BJ", "CI", "SN", "CM", "TG"]);
+    expect(ORGANIZATION_ID).toBe(`${SITE_URL}#organization`);
+    expect(ld["@id"]).toBe(ORGANIZATION_ID);
 
     const descriptionEnMinuscule = ld.description.toLowerCase();
     const motsInterdits = [
@@ -45,6 +48,10 @@ describe("organizationLd", () => {
     // Aucun tiret long dans les chaines produites.
     expect(ld.description).not.toContain("\u2014");
     expect(ld.description).not.toContain("\u2013");
+    // Regression : le texte francais doit rester accentue (ronde de
+    // correction 1, defaut IMPORTANT 2 : le texte etait entierement
+    // desaccentue alors qu'il part dans le JSON-LD lu par Google/LLM).
+    expect(ld.description).toMatch(/[\u00e9\u00e8\u00e0\u00e7\u00f4\u00ee\u00ef\u00e2\u00ea\u00fb\u00fc]/i);
   });
 });
 
@@ -56,7 +63,7 @@ describe("websiteLd", () => {
     expect(ld.name).toBe("Wapy");
     expect(ld.url).toBe(SITE_URL);
     expect(ld.inLanguage).toBe("fr");
-    expect(ld.publisher).toEqual({ "@type": "Organization", name: "Wapy", url: SITE_URL });
+    expect(ld.publisher).toEqual({ "@id": ORGANIZATION_ID });
   });
 });
 
@@ -73,7 +80,7 @@ describe("softwareApplicationLd", () => {
 });
 
 describe("serviceLd", () => {
-  it("produit un Service avec areaServed Country et un provider Organization", () => {
+  it("produit un Service avec areaServed Country, un provider reference et availableLanguage", () => {
     const ld = serviceLd({
       nom: "Chatbot WhatsApp Benin",
       description: "Assistant WhatsApp pour les entreprises beninoises.",
@@ -83,8 +90,12 @@ describe("serviceLd", () => {
     expect(ld["@type"]).toBe("Service");
     expect(ld.name).toBe("Chatbot WhatsApp Benin");
     expect(ld.url).toBe(`${SITE_URL}/chatbot-whatsapp/benin`);
-    expect(ld.provider).toEqual({ "@type": "Organization", name: "Wapy", url: SITE_URL });
+    expect(ld.provider).toEqual({ "@id": ORGANIZATION_ID });
     expect(ld.areaServed).toEqual({ "@type": "Country", name: "Benin" });
+    expect(ld.availableLanguage).toBe("fr");
+    // "Service" est un Intangible : "inLanguage" n'existe pas sur ce type
+    // (ronde de correction 1, defaut IMPORTANT 3).
+    expect("inLanguage" in ld).toBe(false);
   });
 
   it("produit un Service avec areaServed City", () => {
@@ -185,7 +196,7 @@ describe("articleLd", () => {
     expect(sansSection["@type"]).toBe("Article");
     expect(sansSection.mainEntityOfPage).toBe(`${SITE_URL}/blog/article`);
     expect(sansSection.author).toEqual({ "@type": "Person", name: "Wapy" });
-    expect(sansSection.publisher).toEqual({ "@type": "Organization", name: "Wapy", url: SITE_URL });
+    expect(sansSection.publisher).toEqual({ "@id": ORGANIZATION_ID });
     expect("articleSection" in sansSection).toBe(false);
 
     const avecSection = articleLd({
@@ -217,6 +228,53 @@ describe("offerLd", () => {
       { "@type": "Offer", name: "Pro", price: 35000, priceCurrency: "XOF" },
     ]);
   });
+
+  it("leve une erreur explicite plutot que de produire des prix null pour une liste vide", () => {
+    // Math.min()/Math.max() sur [] renvoient +/-Infinity, que JSON.stringify
+    // transforme en null : JSON syntaxiquement valide mais rejete par le
+    // test des resultats enrichis de Google (ronde de correction 1, defaut
+    // IMPORTANT 1).
+    expect(() => offerLd([])).toThrow(/au moins une offre/i);
+  });
+
+  it("leve une erreur explicite si les offres melangent des devises differentes", () => {
+    // Le projet manipule XOF et XAF (content/types.ts) : sans ce garde-fou,
+    // priceCurrency prendrait silencieusement la devise de la seule
+    // premiere offre, incoherente avec lowPrice/highPrice calcules sur des
+    // devises melangees (ronde de correction 1, defaut voisin de IMPORTANT 1).
+    expect(() =>
+      offerLd([
+        { nom: "Starter", prix: 15000, devise: "XOF" },
+        { nom: "Pro", prix: 35000, devise: "XAF" },
+      ]),
+    ).toThrow(/devise/i);
+  });
+});
+
+describe("coherence de l'entite Organization consolidee", () => {
+  it("le meme @id relie organizationLd, websiteLd.publisher, serviceLd.provider et articleLd.publisher", () => {
+    const orgId = organizationLd()["@id"];
+
+    expect(websiteLd().publisher).toEqual({ "@id": orgId });
+
+    const service = serviceLd({
+      nom: "Service test",
+      description: "Description de test.",
+      url: `${SITE_URL}/test`,
+      areaServed: { type: "Country", nom: "Benin" },
+    });
+    expect(service.provider).toEqual({ "@id": orgId });
+
+    const article = articleLd({
+      titre: "Titre",
+      description: "Description.",
+      url: `${SITE_URL}/blog/article`,
+      publieLe: "2026-01-01",
+      modifieLe: "2026-02-01",
+      auteur: "Wapy",
+    });
+    expect(article.publisher).toEqual({ "@id": orgId });
+  });
 });
 
 describe("composant JsonLd", () => {
@@ -237,5 +295,21 @@ describe("composant JsonLd", () => {
     expect(html).toContain('type="application/ld+json"');
     expect(html).toContain('"@type":"WebSite"');
     expect(html).toContain(`"url":"${SITE_URL}"`);
+  });
+
+  it("accepte un objet JSON-LD ad hoc non defini dans schema.ts (prop elargi, defaut 4)", () => {
+    // Ronde de correction 1, point 4 : le prop "data" ne doit plus etre
+    // limite a l'union fermee des 10 schemas de schema.ts, pour qu'une
+    // tache future (LocalBusiness, Person, Review, @graph...) n'ait pas a
+    // modifier ce composant.
+    const donneesLocalBusiness = {
+      "@context": "https://schema.org",
+      "@type": "LocalBusiness",
+      name: "Exemple non defini dans schema.ts",
+    };
+    const html = renderToStaticMarkup(createElement(JsonLd, { data: donneesLocalBusiness }));
+
+    expect(html).toContain('"@type":"LocalBusiness"');
+    expect(html).toContain('"name":"Exemple non defini dans schema.ts"');
   });
 });
