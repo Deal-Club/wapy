@@ -4,6 +4,7 @@ import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import JsonLd from "@/components/seo/JsonLd";
 import { secteursPublies } from "@/content/secteurs";
+import { IMAGE_OG_PAR_DEFAUT } from "@/lib/og";
 import { breadcrumbLd, itemListLd } from "@/lib/schema";
 import { SITE_URL } from "@/lib/site";
 import { resume } from "@/lib/texte";
@@ -21,6 +22,7 @@ export const metadata: Metadata = {
   keywords: ["assistant WhatsApp", "chatbot WhatsApp", "WhatsApp par métier"],
   alternates: { canonical: URL_PAGE },
   openGraph: {
+    images: [IMAGE_OG_PAR_DEFAUT],
     type: "website",
     url: URL_PAGE,
     siteName: "Wapy",

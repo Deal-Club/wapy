@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { IMAGE_OG_PAR_DEFAUT } from "@/lib/og";
 import { SITE_URL } from "@/lib/site";
 import { POSTS, tagFor } from "@/lib/blog";
 import SiteHeader from "@/components/SiteHeader";
@@ -11,6 +12,7 @@ export const metadata: Metadata = {
     "Conseils concrets pour répondre à vos clients sur WhatsApp, automatiser sans se tromper et vendre plus, secteur par secteur.",
   alternates: { canonical: `${SITE_URL}/blog` },
   openGraph: {
+    images: [IMAGE_OG_PAR_DEFAUT],
     type: "website",
     url: `${SITE_URL}/blog`,
     siteName: "Wapy",

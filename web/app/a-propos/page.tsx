@@ -9,7 +9,10 @@ import BlocPreuve from "@/components/seo/BlocPreuve";
 import PagesLiees from "@/components/seo/PagesLiees";
 import Auteur, { AUTEUR } from "@/components/seo/Auteur";
 import Dates from "@/components/seo/Dates";
+import Figure from "@/components/seo/Figure";
+import { SILOS_DU_SITE } from "@/content/illustrations";
 import { liensSortants } from "@/lib/maillage";
+import { IMAGE_OG_PAR_DEFAUT } from "@/lib/og";
 import { breadcrumbLd } from "@/lib/schema";
 import { SITE_URL } from "@/lib/site";
 
@@ -34,6 +37,7 @@ export const metadata: Metadata = {
   keywords: ["à propos Wapy", "éditeur Wapy", "assistant WhatsApp Afrique francophone"],
   alternates: { canonical: URL_PAGE },
   openGraph: {
+    images: [IMAGE_OG_PAR_DEFAUT],
     type: "website",
     url: URL_PAGE,
     siteName: "Wapy",
@@ -179,6 +183,7 @@ export default function PageAPropos() {
             plusieurs formulations flatteuses ont été retirées parce que le logiciel ne les tenait
             pas.
           </p>
+          <Figure illustration={SILOS_DU_SITE} />
         </section>
 
         <section id={ID_LIMITES} className="mt-12 scroll-mt-24">

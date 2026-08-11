@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { IMAGE_OG_PAR_DEFAUT } from "@/lib/og";
 import { SITE_URL } from "@/lib/site";
 import { POSTS, getPost, tagFor, related } from "@/lib/blog";
 import SiteHeader from "@/components/SiteHeader";
@@ -20,6 +21,7 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
     keywords: post.keywords,
     alternates: { canonical: url },
     openGraph: {
+      images: [IMAGE_OG_PAR_DEFAUT],
       type: "article",
       url,
       siteName: "Wapy",

@@ -13,6 +13,8 @@ import Population from "@/components/seo/Population";
 import PagesLiees from "@/components/seo/PagesLiees";
 import Auteur from "@/components/seo/Auteur";
 import Dates from "@/components/seo/Dates";
+import Figure from "@/components/seo/Figure";
+import { PARCOURS_MESSAGE } from "@/content/illustrations";
 import { getPays, paysPublies } from "@/content/pays";
 import { villesDuPays } from "@/content/villes";
 import { getSecteur } from "@/content/secteurs";
@@ -186,6 +188,7 @@ export default function PagePays({ params }: { params: { pays: string } }) {
             qu&apos;il n&apos;a pas. Ses réponses sont en français, la seule langue prévue à
             ce jour.
           </p>
+          <Figure illustration={PARCOURS_MESSAGE} />
           <BlocPreuve id="formats-numeros" />
         </section>
 

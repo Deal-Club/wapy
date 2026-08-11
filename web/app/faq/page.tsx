@@ -10,6 +10,7 @@ import Auteur from "@/components/seo/Auteur";
 import Dates from "@/components/seo/Dates";
 import { FAQ_GLOBALE } from "@/content/faq-globale";
 import { liensSortants } from "@/lib/maillage";
+import { IMAGE_OG_PAR_DEFAUT } from "@/lib/og";
 import { faqLd, breadcrumbLd } from "@/lib/schema";
 import { SITE_URL } from "@/lib/site";
 
@@ -28,6 +29,7 @@ export const metadata: Metadata = {
   keywords: ["FAQ Wapy", "questions assistant WhatsApp", "chatbot WhatsApp questions"],
   alternates: { canonical: URL_PAGE },
   openGraph: {
+    images: [IMAGE_OG_PAR_DEFAUT],
     type: "website",
     url: URL_PAGE,
     siteName: "Wapy",

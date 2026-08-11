@@ -24,6 +24,14 @@ const REDIRECTIONS_SECTEURS = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  experimental: {
+    // `@vercel/og` (images OpenGraph, cf. lib/og.tsx) lit ses moteurs .wasm et
+    // sa police avec `new URL("./resvg.wasm", import.meta.url)`. Bundlé par
+    // webpack, `import.meta.url` désignerait le chunk de sortie et les
+    // fichiers seraient introuvables. Externalisé, le paquet est requis depuis
+    // node_modules et se retrouve lui-même.
+    serverComponentsExternalPackages: ["@vercel/og"],
+  },
   async redirects() {
     return REDIRECTIONS_SECTEURS.map(([ancien, secteur]) => ({
       source: `/blog/${ancien}`,

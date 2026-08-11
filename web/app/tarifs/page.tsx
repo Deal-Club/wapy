@@ -19,6 +19,7 @@ import {
   offresPubliables,
 } from "@/content/plans";
 import { liensSortants } from "@/lib/maillage";
+import { IMAGE_OG_PAR_DEFAUT } from "@/lib/og";
 import { breadcrumbLd, offerLd } from "@/lib/schema";
 import { SITE_URL } from "@/lib/site";
 
@@ -44,6 +45,7 @@ export const metadata: Metadata = {
   keywords: ["tarifs Wapy", "prix assistant WhatsApp", "abonnement chatbot WhatsApp"],
   alternates: { canonical: URL_PAGE },
   openGraph: {
+    images: [IMAGE_OG_PAR_DEFAUT],
     type: "website",
     url: URL_PAGE,
     siteName: "Wapy",

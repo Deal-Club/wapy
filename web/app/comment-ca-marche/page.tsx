@@ -8,9 +8,12 @@ import Sommaire from "@/components/seo/Sommaire";
 import PagesLiees from "@/components/seo/PagesLiees";
 import Auteur from "@/components/seo/Auteur";
 import Dates from "@/components/seo/Dates";
+import Figure from "@/components/seo/Figure";
 import { ETAPES } from "@/content/etapes";
+import { PARCOURS_MESSAGE } from "@/content/illustrations";
 import { JOURS_ESSAI } from "@/content/plans";
 import { liensSortants } from "@/lib/maillage";
+import { IMAGE_OG_PAR_DEFAUT } from "@/lib/og";
 import { howToLd, breadcrumbLd } from "@/lib/schema";
 import { SITE_URL } from "@/lib/site";
 
@@ -41,6 +44,7 @@ export const metadata: Metadata = {
   ],
   alternates: { canonical: URL_PAGE },
   openGraph: {
+    images: [IMAGE_OG_PAR_DEFAUT],
     type: "website",
     url: URL_PAGE,
     siteName: "Wapy",
@@ -123,6 +127,7 @@ export default function PageCommentCaMarche() {
 
         <section id={ID_ENSUITE} className="mt-12 scroll-mt-24">
           <h2 className="font-display text-2xl font-bold">Ce qui se passe une fois en ligne</h2>
+          <Figure illustration={PARCOURS_MESSAGE} />
           <p className="mt-4 text-muted">
             {/* brain/brain.py:56-70 (conduite de la demande jusqu'à son
                 enregistrement) et brain.py:119-138 (escalade rare, information
