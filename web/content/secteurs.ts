@@ -70,7 +70,7 @@ export const SECTEURS: Secteur[] = [
     ancienSlugBlog: "assistant-whatsapp-salon-de-beaute",
     motCle: "assistant WhatsApp salon de beauté",
     enBref:
-      "Un assistant WhatsApp pour salon de beauté annonce vos prestations, leurs durées et leurs prix, et, avec l'option rendez-vous, propose vos créneaux réellement libres puis enregistre la réservation. Il envoie ensuite un rappel avant l'heure.",
+      "Un assistant WhatsApp pour salon de beauté annonce vos prestations, leurs durées et leurs prix, et, avec l'option rendez-vous, propose vos créneaux libres puis enregistre la réservation. Il envoie ensuite un rappel avant l'heure.",
     angle:
       "Dans un salon, les deux mains sont prises. Pendant une pose de tresses ou un défrisage, le téléphone accumule des questions de tarif et des demandes de créneau, et on ne le regarde qu'une heure plus tard. La cliente, elle, a écrit à deux salons du quartier et réserve chez celui qui a répondu. Le créneau perdu ne se rattrape pas le lendemain.",
     douleurs: [

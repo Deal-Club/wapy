@@ -12,10 +12,10 @@
 
 ## Ce que fait Wapy
 - Répond 24h sur 24 aux clients sur WhatsApp : questions, prix, horaires, disponibilité, moyens de paiement, livraison.
-- Se configure en quelques minutes : vous décrivez votre activité, l'IA génère une première fiche complète (informations, catalogue, questions fréquentes), vous corrigez ce qui doit l'être avant de connecter WhatsApp.
+- Se configure sans code : vous décrivez votre activité, l'IA génère une première fiche complète (informations, catalogue, questions fréquentes), vous corrigez ce qui doit l'être avant de connecter WhatsApp.
 - Tableaux 100% personnalisables (menu, prestations, catalogue) avec colonnes libres.
 - Mène les réservations et les commandes jusqu'au bout : il pose les questions manquantes, confirme au client, enregistre la demande et notifie le responsable.
-- Prend des rendez-vous sur des créneaux réels lorsque l'agenda de l'établissement est connecté.
+- Prend des rendez-vous sur des créneaux calculés depuis les horaires d'ouverture et la durée de créneau configurés par l'établissement.
 - Passe la main à un humain dans les cas qui l'exigent : réclamation, litige, sujet sensible, ou client qui demande explicitement à parler à quelqu'un.
 - Quand une information manque et qu'aucune consigne ne la couvre, il ne transmet pas par défaut : il répond qu'il se renseigne et que quelqu'un reviendra vers le client, ou pose une question de précision.
 - Tableau de bord : conversations en direct, réponse manuelle depuis le web quand la main a été passée, statistiques d'usage.
@@ -30,7 +30,7 @@
 
 ## Preuves vérifiables
 - Onze secteurs ont leur guide dédié sur ce site, de la restauration au garage automobile, chacun avec ses questions types et son vocabulaire propre. À l'inscription, le secteur se choisit dans une liste plus large et reste saisissable librement.
-- Le backend est couvert par 138 tests automatisés, qui vérifient notamment la normalisation des numéros de téléphone, le choix de l'assistant entre répondre et passer la main à un humain, et l'enregistrement des demandes. La suite se rejoue en une commande.
+- Le backend est couvert par 139 tests automatisés, qui vérifient notamment la normalisation des numéros de téléphone, le choix de l'assistant entre répondre et passer la main à un humain, et l'enregistrement des demandes. La suite se rejoue en une commande.
 - Wapy demande à WhatsApp le véritable identifiant d'un numéro au lieu de le deviner. Les variantes plausibles d'une même ligne sont soumises, et seule celle qui existe vraiment est retenue. Cela règle le cas des numéros béninois passés de 8 à 10 chiffres et des indicatifs saisis de façons différentes.
 
 ## Différence avec WhatsApp Business
@@ -40,7 +40,7 @@ WhatsApp Business propose des messages d'absence et des réponses rapides préen
 Onze secteurs ont un guide dédié sur ce site : restauration, salons de beauté, boutiques, hôtels, cliniques et pharmacies, agences immobilières, écoles et centres de formation, artisans, agences de voyage, traiteurs et événementiel, garages automobiles. La liste proposée à l'inscription est plus large (bars et maquis, fast-foods, boulangeries, supermarchés, quincailleries, cabinets dentaires, transport et livraison, salles de sport, photographes, cabinets juridiques, e-commerce, associations, entre autres) et le secteur reste saisissable librement.
 
 ## Points clés
-- Sans code, prêt en quelques minutes.
+- Sans code.
 - Réponses fondées uniquement sur les informations de l'entreprise.
 - Données isolées par entreprise, accès sécurisés.
 - Adapté aux usages locaux : Mobile Money, français, ton chaleureux, formats de numéros africains.

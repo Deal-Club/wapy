@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { MessageCircle, Sparkles, Table, Users, ShieldCheck, Globe, Check, type LucideIcon } from "lucide-react";
 import AuthNav from "@/components/AuthNav";
+import SiteFooter from "@/components/SiteFooter";
 import JsonLd from "@/components/seo/JsonLd";
 import PagesLiees from "@/components/seo/PagesLiees";
 import { liensSortants } from "@/lib/maillage";
@@ -314,18 +315,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-line bg-surface/60">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted md:flex-row">
-          <div className="font-display text-lg text-brand">Wapy</div>
-          <p>Assistant WhatsApp intelligent pour les entreprises · Conçu pour l'Afrique</p>
-          <div className="flex gap-4">
-            <Link href="/blog" className="hover:text-ink">Blog</Link>
-            <Link href="/login" className="hover:text-ink">Connexion</Link>
-            <Link href="/signup" className="hover:text-ink">Commencer</Link>
-          </div>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

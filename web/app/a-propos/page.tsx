@@ -150,9 +150,8 @@ export default function PageAPropos() {
               <dd className="mt-1.5 text-muted">
                 C&apos;est le nombre de tests que la suite du serveur collecte et exécute, relevé
                 en lançant pytest sur le dossier de tests du dépôt. Ce chiffre dit combien de
-                comportements sont vérifiés à chaque modification, pas que le logiciel est sans
-                défaut. Il bouge à chaque test ajouté, et la valeur publiée porte sa date de
-                relevé.
+                comportements sont vérifiés, pas que le logiciel est sans défaut. Il bouge à
+                chaque test ajouté, et la valeur publiée porte sa date de relevé.
               </dd>
             </div>
           </dl>

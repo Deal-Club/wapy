@@ -5,7 +5,7 @@ export const post: Post = {
     slug: "repondre-automatiquement-clients-whatsapp",
     title: "Répondre automatiquement aux clients sur WhatsApp : le guide complet",
     description:
-      "Comment répondre automatiquement à vos clients sur WhatsApp sans rater une vente : méthodes, pièges à éviter et mise en place en quelques minutes.",
+      "Comment répondre automatiquement à vos clients sur WhatsApp sans rater une vente : méthodes, pièges à éviter, mise en place sans code.",
     keywords: [
       "répondre automatiquement aux clients sur WhatsApp",
       "réponse automatique WhatsApp",

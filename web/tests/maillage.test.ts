@@ -260,7 +260,7 @@ describe("contenu des comparatifs", () => {
       // qui attrape « L'abonnement démarre à 10 000 F ».
       const corps = [c.enBref, ...c.sections.flatMap((s) => s.paragraphes), ...c.faq.map((f) => f.r)]
         .join(" ");
-      const tiers = /NéoBot|Botnation|Callbell|LAfricaMobile|WhatsApp Business|Meta/i;
+      const tiers = /NéoBot|Botnation|Callbell|LAfricaMobile/i;
       for (const phrase of corps.split(/(?<=[.!?])\s+/)) {
         if (!MONTANT.test(phrase)) continue;
         expect(

@@ -11,11 +11,13 @@ import { PREUVES } from "@/content/preuves";
 
 /**
  * Chemins fermés aux robots. La liste correspond exactement aux routes de
- * `web/app/` qui ne sont pas des pages publiques : dashboard, onboarding,
- * admin, login, widget. Relevé le 2026-08-11 ; si une route privée est ajoutée
- * à l'app sans être ajoutée ici, elle finira indexée.
+ * `web/app/` qui ne sont pas des pages publiques (dashboard, onboarding,
+ * admin, login, widget) et aux zones privées servies sur la même origine par
+ * le reverse-proxy (/api, /auth, /webhook, /media : cf. `deploy/Caddyfile`).
+ * Relevé le 2026-08-11 ; si une route ou zone privée est ajoutée sans être
+ * ajoutée ici, elle finira indexée.
  */
-const PRIVE = ["/dashboard", "/onboarding", "/admin", "/login", "/widget"];
+const PRIVE = ["/dashboard", "/onboarding", "/admin", "/login", "/widget", "/api", "/auth", "/webhook", "/media"];
 
 /**
  * Agents à autoriser explicitement. Chaque nom est repris de la documentation
@@ -44,6 +46,8 @@ const CRAWLERS_IA = [
   "Applebot-Extended",
   // Common Crawl (commoncrawl.org/ccbot)
   "CCBot",
+  // Meta (developers.facebook.com/docs/sharing/webmasters/web-crawlers)
+  "Meta-ExternalAgent",
 ];
 
 type Regle = {

@@ -49,7 +49,7 @@ export const VILLES: Ville[] = [
     secteursDominants: ["boutique", "restaurant", "salon-de-beaute"],
     tier: 1,
     enBref:
-      "À Cotonou, un assistant WhatsApp répond aux clients à toute heure avec les informations de votre fiche : horaires, adresse, prix, disponibilité. Wapy se configure en quelques minutes, sans code, et conclut lui-même commandes et réservations en vous notifiant.",
+      "À Cotonou, un assistant WhatsApp répond aux clients à toute heure avec les informations de votre fiche : horaires, adresse, prix, disponibilité. Wapy se configure sans code, et conclut lui-même commandes et réservations en vous notifiant.",
     angle:
       "Cotonou concentre l'essentiel du commerce béninois, et ce commerce passe par WhatsApp. Autour de Dantokpa comme à Ganhi, un client écrit à plusieurs vendeurs en même temps et achète chez le premier qui répond. Aux heures de pointe, entre les clients au comptoir et les messages qui s'accumulent, répondre à tout devient matériellement impossible.",
     faq: [

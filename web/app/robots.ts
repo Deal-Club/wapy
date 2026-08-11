@@ -3,10 +3,12 @@ import { SITE_URL } from "@/lib/site";
 
 /**
  * Zones fermées aux robots. Correspond exactement aux routes non publiques de
- * `web/app/` : /admin, /dashboard, /login, /onboarding, /widget. Toute nouvelle
- * route privée doit être ajoutée ici, sinon elle finit indexée.
+ * `web/app/` (/admin, /dashboard, /login, /onboarding, /widget) et aux zones
+ * privées servies sur la même origine par le reverse-proxy (/api, /auth,
+ * /webhook, /media : cf. `deploy/Caddyfile`). Toute nouvelle route ou zone
+ * privée doit être ajoutée ici, sinon elle finit indexée.
  */
-const PRIVE = ["/dashboard", "/onboarding", "/admin", "/login", "/widget"];
+const PRIVE = ["/dashboard", "/onboarding", "/admin", "/login", "/widget", "/api", "/auth", "/webhook", "/media"];
 
 /**
  * Crawlers d'IA autorisés nommément : sans eux, aucune citation possible dans
@@ -49,6 +51,9 @@ const CRAWLERS_IA = [
   // Common Crawl : corpus repris par de nombreux modèles.
   // https://commoncrawl.org/ccbot
   "CCBot",
+  // Meta : Meta AI est embarqué dans WhatsApp, le canal même du produit.
+  // https://developers.facebook.com/docs/sharing/webmasters/web-crawlers/
+  "Meta-ExternalAgent",
 ];
 
 export default function robots(): MetadataRoute.Robots {

@@ -85,7 +85,7 @@ const THEMATIQUES: Comparatif[] = [
         paragraphes: [
           "L'application WhatsApp Business réunit sous le nom de réponse automatique trois fonctions qu'on confond souvent. Le message d'absence part en dehors des horaires que vous définissez. Le message d'accueil part au premier contact. Les réponses rapides sont des textes enregistrés que vous rappelez par un raccourci pendant la conversation : elles vous font gagner du temps, mais c'est vous qui les déclenchez.",
           "S'y ajoute le catalogue, où vous publiez vos articles avec leur prix et leur photo. Le client peut le parcourir et vous envoyer un article dans le fil. Là encore, c'est lui qui cherche, et c'est vous qui répondez ensuite.",
-          "Ces fonctions ont un mérite que rien ne remplace : l'application est gratuite, elles s'activent en quelques minutes, et le texte part exactement comme vous l'avez écrit, dans la langue que vous voulez. Pour une entreprise qui reçoit trois messages par jour et les traite le soir, c'est suffisant, et il n'y a aucune raison de payer davantage.",
+          "Ces fonctions ont un mérite que rien ne remplace : l'application est gratuite, elles s'activent depuis les réglages du compte, et le texte part exactement comme vous l'avez écrit, dans la langue que vous voulez. Pour une entreprise qui reçoit trois messages par jour et les traite le soir, c'est suffisant, et il n'y a aucune raison de payer davantage.",
         ],
       },
       {
@@ -291,7 +291,7 @@ const THEMATIQUES: Comparatif[] = [
         id: "options",
         titre: "Trois façons de couvrir la nuit",
         paragraphes: [
-          "Le message d'absence de WhatsApp Business est gratuit et se règle en quelques minutes. Il annonce que vous répondrez demain, dans la langue que vous avez choisie. C'est mieux que le silence, mais le même texte part à tout le monde, et il ferme la conversation au lieu de l'ouvrir.",
+          "Le message d'absence de WhatsApp Business est gratuit et se règle depuis les réglages de l'application. Il annonce que vous répondrez demain, dans la langue que vous avez choisie. C'est mieux que le silence, mais le même texte part à tout le monde, et il ferme la conversation au lieu de l'ouvrir.",
           "L'astreinte humaine reste la solution la plus fine : quelqu'un lit et répond pour de vrai. Elle a un coût, et il ne baisse pas. L'outil qui l'accompagne peut lui aussi se facturer à la personne : Callbell, pensé pour le travail à plusieurs agents sur les mêmes conversations, facture 14 EUR par mois et par utilisateur pour son offre Gestion de chat, avec le canal WhatsApp à 50 EUR par mois en supplément.",
           "L'assistant qui répond seul est la troisième voie. Il ne dort pas, il ne coûte pas plus cher la nuit que le jour, et il travaille sur un serveur : le téléphone du responsable peut être éteint. En contrepartie, il ne sait que ce que contient sa fiche, et il ne remplace personne quand la conversation devient difficile.",
         ],
@@ -300,7 +300,7 @@ const THEMATIQUES: Comparatif[] = [
         id: "conclure",
         titre: "Ce qu'un assistant conclut à 23h, et ce qu'il laisse au matin",
         paragraphes: [
-          "À 23h, Wapy répond sur ce que votre fiche contient : la carte et les prix, les types de chambres, les prestations et leurs durées, les délais de livraison, les moyens de paiement acceptés. Il ne s'arrête pas à l'information : il prend la commande ou la demande de réservation, pose les questions qui manquent, confirme au client, enregistre la demande et vous envoie le récapitulatif. Avec l'option rendez-vous et un agenda connecté, il propose des créneaux réellement libres.",
+          "À 23h, Wapy répond sur ce que votre fiche contient : la carte et les prix, les types de chambres, les prestations et leurs durées, les délais de livraison, les moyens de paiement acceptés. Il ne s'arrête pas à l'information : il prend la commande ou la demande de réservation, pose les questions qui manquent, confirme au client, enregistre la demande et vous envoie le récapitulatif. Avec l'option rendez-vous, il propose des créneaux calculés depuis vos horaires d'ouverture et la durée de créneau que vous fixez.",
           "Ce qu'il laisse au matin est tout aussi net. Une réclamation, un litige ou un client qui demande explicitement à parler à quelqu'un déclenchent un passage de main : la conversation vous attend, et personne n'y répondra avant l'ouverture. Une information absente de la fiche ne le fait pas sonner chez vous non plus : il dit qu'il se renseigne et que quelqu'un reviendra vers le client, plutôt que d'inventer une disponibilité.",
           "Deux autres limites méritent d'être connues avant la première nuit. Ses réponses sont en français, la seule langue prévue à ce jour, y compris face à un message écrit dans une autre langue. Et sans l'option de transcription, il n'écoute pas les notes vocales : il remercie le client et lui demande d'écrire sa demande en quelques mots.",
         ],

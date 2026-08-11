@@ -99,7 +99,7 @@ export default function Article({ params }: { params: { slug: string } }) {
         {/* CTA */}
         <div className="mt-12 rounded-xl2 bg-ink px-6 py-10 text-center text-cream">
           <h2 className="font-display text-2xl font-bold">Prêt à ne plus rater un client ?</h2>
-          <p className="mx-auto mt-2 max-w-md text-cream/70">Créez votre assistant WhatsApp en quelques minutes, gratuitement.</p>
+          <p className="mx-auto mt-2 max-w-md text-cream/70">Créez votre assistant WhatsApp sans code, gratuitement.</p>
           <div className="mt-6 flex justify-center">
             <Link href="/signup" className="btn">Commencer maintenant</Link>
           </div>

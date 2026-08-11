@@ -29,7 +29,7 @@ export const PAYS: Pays[] = [
     // Le RGPH5 n'a pas encore livré de résultat national. On préfère l'omission
     // à un chiffre exact mais trompeur.
     enBref:
-      "Au Bénin, un assistant WhatsApp répond aux clients 24h/24 avec les informations de l'entreprise : horaires, prix, disponibilité. Wapy se configure en quelques minutes, sans code, et transmet au responsable ce qui mérite un humain.",
+      "Au Bénin, un assistant WhatsApp répond aux clients 24h/24 avec les informations de l'entreprise : horaires, prix, disponibilité. Wapy se configure sans code et transmet au responsable ce qui mérite un humain.",
     angle:
       "Au Bénin, le commerce se joue sur WhatsApp avant de se jouer en boutique. Un client de Cotonou écrit à trois vendeurs le même soir et achète chez celui qui répond en premier. La difficulté n'est pas le manque de demandes, c'est de répondre à toutes, y compris après la fermeture et pendant les heures de forte affluence.",
     faq: [
@@ -151,7 +151,7 @@ export const PAYS: Pays[] = [
       },
       {
         q: "Beaucoup de mes clients envoient des notes vocales, comment cela se passe ?",
-        r: "Les notes vocales sont transcrites, puis l'assistant répond au contenu comme si le client avait écrit. C'est une option facturée en plus du forfait de base. Si la transcription échoue, l'assistant remercie le client et lui demande d'écrire sa demande en quelques mots.",
+        r: "Les notes vocales sont transcrites, puis l'assistant répond au contenu comme si le client avait écrit, avec l'option notes vocales. Si la transcription échoue, l'assistant remercie le client et lui demande d'écrire sa demande en quelques mots.",
       },
       {
         q: "Puis-je indiquer que je suis payé par Wave ou par Orange Money ?",

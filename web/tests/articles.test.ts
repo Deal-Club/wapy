@@ -7,14 +7,15 @@ import { REDIRECTIONS_SECTEURS } from "@/content/secteurs";
 // Un changement de longueur passerait les autres tests ; une altération d'un
 // seul caractère (accent, apostrophe, balise) fait échouer celui-ci.
 //
-// La valeur a changé une fois, à la migration des 11 articles sectoriels vers
-// `/secteurs/*` : POSTS est passé de 12 entrées à 1, donc la chaîne empreintée
-// n'est plus la même. C'est le seul motif légitime de mise à jour de cette
-// constante — sinon, c'est le contenu d'un article restant qui a bougé, et
-// c'est lui qu'il faut regarder, pas l'empreinte.
-// Empreinte précédente (12 articles), gardée pour trace :
+// La valeur change quand le contenu d'un article change légitimement (ronde de
+// correction, migration de silo…) : dans ce cas, c'est l'empreinte qu'il faut
+// recalculer, pas le contenu qu'il faut suspecter. Un changement inattendu de
+// cette valeur, lui, signale une altération non voulue d'un article.
+// Empreinte précédente (12 articles, avant migration vers /secteurs/*) :
 // 94e6e3b5aa06dbd15a1413fd23e8dcb054d302e2c13d646988164ff3b6f05600
-const POSTS_SHA256 = "98d0e51b08a04ab3ca50da07f63e40966bbad9a9bd2d378fb1b8f3c1e590b56c";
+// Empreinte précédente (description sans « en quelques minutes ») :
+// 98d0e51b08a04ab3ca50da07f63e40966bbad9a9bd2d378fb1b8f3c1e590b56c
+const POSTS_SHA256 = "981069d7900f24b61d86d49d70cd336a6aa7ac457626f5c62ad811cabb689b1c";
 
 // Les 11 articles sectoriels ne sont plus des articles : ils sont devenus les
 // pages `/secteurs/<slug>` et leurs anciennes URL sont redirigées
