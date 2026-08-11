@@ -3,8 +3,11 @@ import { metadata as metaIndex } from "@/app/secteurs/page";
 import { generateMetadata as metaSecteur } from "@/app/secteurs/[secteur]/page";
 import { metadata as metaIndexPays } from "@/app/chatbot-whatsapp/page";
 import { generateMetadata as metaPays } from "@/app/chatbot-whatsapp/[pays]/page";
+import { metadata as metaIndexComparatif } from "@/app/comparatif/page";
+import { generateMetadata as metaComparatif } from "@/app/comparatif/[slug]/page";
 import { secteursPublies } from "@/content/secteurs";
 import { paysPublies } from "@/content/pays";
+import { COMPARATIFS_PUBLIES } from "@/content/comparatifs";
 import { SITE_URL } from "@/lib/site";
 
 /**
@@ -95,6 +98,69 @@ describe("métadonnées des pages pays", () => {
     ];
     for (const c of chaines) {
       expect(typeof c === "string" ? c : "", `tiret long : ${String(c)}`).not.toMatch(/[—–]/);
+    }
+  });
+});
+
+describe("métadonnées des pages comparatif", () => {
+  it("garde la description de l'index sous la limite d'affichage", () => {
+    const d = metaIndexComparatif.description ?? "";
+    expect(d.length, `description de /comparatif trop longue : ${d.length}`).toBeLessThanOrEqual(
+      MAX_DESCRIPTION,
+    );
+    expect(d.length).toBeGreaterThan(80);
+  });
+
+  it("garde les 8 descriptions de comparatif sous la limite d'affichage", () => {
+    for (const c of COMPARATIFS_PUBLIES) {
+      const d = metaComparatif({ params: { slug: c.slug } }).description ?? "";
+      expect(d.length, `description de /comparatif/${c.slug} trop longue : ${d.length}`)
+        .toBeLessThanOrEqual(MAX_DESCRIPTION);
+      expect(d.length, `description de /comparatif/${c.slug} trop courte`).toBeGreaterThan(80);
+    }
+  });
+
+  it("donne à chaque page une canonique absolue qui correspond à sa route", () => {
+    expect(metaIndexComparatif.alternates?.canonical).toBe(`${SITE_URL}/comparatif`);
+    for (const c of COMPARATIFS_PUBLIES) {
+      const m = metaComparatif({ params: { slug: c.slug } });
+      expect(m.alternates?.canonical, `canonique de ${c.slug}`).toBe(
+        `${SITE_URL}/comparatif/${c.slug}`,
+      );
+      expect(m.openGraph?.url, `og:url de ${c.slug}`).toBe(`${SITE_URL}/comparatif/${c.slug}`);
+    }
+  });
+
+  it("ne rend aucune métadonnée pour un comparatif inconnu", () => {
+    expect(metaComparatif({ params: { slug: "wapy-vs-personne" } })).toEqual({});
+  });
+
+  it("n'utilise aucun tiret long dans les titres et descriptions publiés", () => {
+    const chaines = [
+      metaIndexComparatif.title,
+      metaIndexComparatif.description,
+      ...COMPARATIFS_PUBLIES.flatMap((c) => {
+        const m = metaComparatif({ params: { slug: c.slug } });
+        return [m.title, m.description];
+      }),
+    ];
+    for (const c of chaines) {
+      expect(typeof c === "string" ? c : "", `tiret long : ${String(c)}`).not.toMatch(/[—–]/);
+    }
+  });
+
+  /**
+   * Le titre affiché en résultat de recherche est tronqué au-delà d'une
+   * soixantaine de caractères. Les titres de ce silo portent un nom d'éditeur
+   * tiers : sans garde-fou, un slug de concurrent plus long les ferait couper
+   * au milieu du nom comparé.
+   */
+  it("garde des titres lisibles", () => {
+    for (const c of COMPARATIFS_PUBLIES) {
+      const t = metaComparatif({ params: { slug: c.slug } }).title ?? "";
+      const titre = typeof t === "string" ? t : "";
+      expect(titre.length, `titre de ${c.slug} trop long : ${titre.length}`).toBeLessThanOrEqual(90);
+      expect(titre, `titre de ${c.slug} sans suffixe de marque`).toContain("· Wapy");
     }
   });
 });

@@ -134,6 +134,10 @@ describe("sitemap.xml", () => {
     expect(urls).toContain(`${SITE_URL}/chatbot-whatsapp`);
   });
 
+  it("liste la page d'index des comparatifs, absente du maillage", () => {
+    expect(urls).toContain(`${SITE_URL}/comparatif`);
+  });
+
   /**
    * Les deux index sont déclarés en dur : rien ne garantit qu'ils ne finissent
    * pas doublonnés par une future entrée du maillage, ni qu'un pays publié soit

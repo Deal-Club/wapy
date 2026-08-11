@@ -71,6 +71,10 @@ Onze secteurs ont un guide dédié sur ce site : restauration, salons de beauté
 - /comparatif/alternative-whatsapp-business : alternative à WhatsApp Business pour répondre vraiment aux clients
 - /comparatif/repondre-whatsapp-la-nuit : répondre aux clients la nuit et le week-end
 - /comparatif/meilleur-chatbot-whatsapp-afrique-2026 : comparatif des chatbots WhatsApp en Afrique en 2026
+- /comparatif/wapy-vs-neobot : Wapy comparé à NéoBot, assistant IA WhatsApp développé à Yaoundé
+- /comparatif/wapy-vs-botnation-ai : Wapy comparé à Botnation AI, éditeur français de chatbots no-code
+- /comparatif/wapy-vs-callbell : Wapy comparé à Callbell, boîte de réception partagée multi-agents
+- /comparatif/wapy-vs-lafricamobile : Wapy comparé à LAfricaMobile, opérateur de messagerie basé à Dakar
 
 ## Pages de référence
 - /comment-ca-marche : le fonctionnement, étape par étape
