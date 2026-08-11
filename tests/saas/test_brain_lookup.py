@@ -2,13 +2,15 @@ from brain.brain import Decision, decide_with_lookup
 
 
 class _SeqBrain:
-    """Renvoie une suite de décisions et enregistre les fiches reçues."""
+    """Renvoie une suite de décisions et enregistre les fiches/extras reçus."""
     def __init__(self, decisions):
         self.decisions = list(decisions)
         self.fiches = []
+        self.extras = []
 
-    def decide(self, fiche, history, text, channel="whatsapp"):
+    def decide(self, fiche, history, text, channel="whatsapp", extra=""):
         self.fiches.append(fiche)
+        self.extras.append(extra)
         return self.decisions.pop(0)
 
 
@@ -26,8 +28,12 @@ def test_lookup_loop_feeds_result_then_replies():
     d = decide_with_lookup(br, "FICHE", [], "avez-vous des perceuses ?", lookup)
     assert d.action == "reply" and "5" in d.message
     assert seen["q"] == "perceuse"
-    # le 2e appel au cerveau contient le résultat injecté
-    assert "Résultat de la recherche" in br.fiches[1]
+    # le 2e appel au cerveau contient le résultat injecté...
+    assert "Résultat de la recherche" in br.extras[1]
+    # ...hors de la fiche : le préfixe mis en cache reste identique octet pour
+    # octet entre les deux appels (sinon le 2e appel repaie tout plein tarif).
+    assert br.fiches[0] == br.fiches[1] == "FICHE"
+    assert br.extras[0] == ""
 
 
 def test_lookup_without_connector_is_noop():

@@ -3,6 +3,11 @@
 Sortie structurée (json_schema) pour une décision fiable et parsable.
 Code agnostique au modèle : pas de `thinking`/`effort`/`temperature`
 (effort 400 sur Haiku ; sampling 400 sur Opus 4.8). Le modèle est configurable.
+
+CACHE DE PROMPT : le prompt système + la fiche sont identiques d'un message à
+l'autre pour un même établissement -> ils forment le préfixe stable et portent le
+`cache_control`. Tout ce qui varie (résultat de recherche `lookup`, historique,
+message entrant) arrive APRÈS ce point de rupture, sinon le cache est invalidé.
 """
 import json
 from dataclasses import dataclass
@@ -164,17 +169,42 @@ def build_system_prompt(fiche_text: str, channel: str = "whatsapp") -> str:
     )
 
 
+# TTL du cache de prompt. "1h" (écriture 2x) plutôt que "5m" (écriture 1,25x) :
+# un client WhatsApp répond souvent 10-20 min après le bot, ce qui ferait expirer
+# un cache de 5 min EN PLEIN milieu d'une conversation. Rentable dès ~3 messages
+# par heure et par établissement (2 + 0,1xN contre N sans cache).
+CACHE_TTL = "1h"
+
+
+def build_system_blocks(fiche_text: str, channel: str = "whatsapp", extra: str = "") -> list[dict]:
+    """Blocs `system` : préfixe stable (mis en cache) puis contexte volatil.
+
+    Bloc 0 = prompt système + fiche : identique d'un message à l'autre -> porte le
+    `cache_control` (point de rupture). Bloc 1 = `extra` (résultat d'un `lookup`,
+    propre à un message) : APRÈS le point de rupture, donc n'invalide rien.
+    """
+    blocks = [{
+        "type": "text",
+        "text": build_system_prompt(fiche_text, channel),
+        "cache_control": {"type": "ephemeral", "ttl": CACHE_TTL},
+    }]
+    if extra:
+        blocks.append({"type": "text", "text": extra})
+    return blocks
+
+
 class Brain:
     def __init__(self, client, model: str):
         self._client = client
         self._model = model
 
-    def decide(self, fiche_text: str, history: list[dict], incoming_text: str, channel: str = "whatsapp") -> Decision:
+    def decide(self, fiche_text: str, history: list[dict], incoming_text: str,
+               channel: str = "whatsapp", extra: str = "") -> Decision:
         messages = list(history) + [{"role": "user", "content": incoming_text}]
         resp = self._client.messages.create(
             model=self._model,
             max_tokens=1024,
-            system=build_system_prompt(fiche_text, channel),
+            system=build_system_blocks(fiche_text, channel, extra),
             messages=messages,
             output_config={"format": {"type": "json_schema", "schema": DECISION_SCHEMA}},
         )
@@ -199,6 +229,10 @@ def decide_with_lookup(brain, fiche_text, history, incoming_text, lookup_fn=None
     """Boucle de « function-calling » légère : si le cerveau demande une recherche
     (action='lookup') dans la base de l'établissement, on l'exécute et on lui repasse
     le résultat pour qu'il formule sa réponse finale. Sans connecteur, transparent.
+
+    Le résultat passe par `extra` (et non concaténé à la fiche) : la fiche reste
+    identique octet pour octet entre les deux appels, donc le 2e appel relit le
+    cache écrit par le 1er au lieu de tout repayer plein tarif.
     """
     decision = brain.decide(fiche_text, history, incoming_text, channel)
     extra, loops = "", 0
@@ -212,7 +246,7 @@ def decide_with_lookup(brain, fiche_text, history, incoming_text, lookup_fn=None
             f"\n\n## Résultat de la recherche pour « {decision.lookup_query} »\n"
             f"{result}\n(Utilise ce résultat pour répondre ; ne relance pas la même recherche.)"
         )
-        decision = brain.decide(fiche_text + extra, history, incoming_text, channel)
+        decision = brain.decide(fiche_text, history, incoming_text, channel, extra=extra)
     if decision.action == "lookup":
         # Plus de budget de recherche : répondre avec ce qu'on a plutôt que boucler.
         decision.action = "reply"
