@@ -5,6 +5,7 @@ import { api, getToken } from "@/lib/api";
 import ConfigEditor, { Config, emptyConfig } from "@/components/ConfigEditor";
 import SectorPicker from "@/components/SectorPicker";
 import WhatsAppConnect from "@/components/WhatsAppConnect";
+import WapyMarque from "@/components/WapyMarque";
 
 const STEPS = ["Activité", "Configuration", "WhatsApp"];
 
@@ -37,7 +38,10 @@ export default function Onboarding() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-10">
       <header className="mb-8 text-center rise">
-        <div className="mb-1 font-display text-3xl font-semibold text-brand">Wapy</div>
+        <div className="mb-1 inline-flex items-center gap-2 font-display text-3xl font-semibold text-brand">
+          <WapyMarque className="h-8 w-8" />
+          Wapy
+        </div>
         <p className="text-muted">Mettons votre assistant en route</p>
       </header>
 

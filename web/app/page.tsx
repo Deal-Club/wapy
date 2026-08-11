@@ -8,6 +8,7 @@ import PagesLiees from "@/components/seo/PagesLiees";
 import { liensSortants } from "@/lib/maillage";
 import { softwareApplicationLd } from "@/lib/schema";
 import { SITE_URL as SITE } from "@/lib/site";
+import WapyMarque from "@/components/WapyMarque";
 
 export const metadata: Metadata = {
   title: "Wapy · Assistant WhatsApp IA pour répondre à vos clients 24h/24",
@@ -106,7 +107,10 @@ export default function Landing() {
       {/* Nav */}
       <header className="sticky top-0 z-30 border-b border-line/70 bg-cream/80 backdrop-blur">
         <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <Link href="/" className="font-display text-2xl font-semibold text-brand">Wapy</Link>
+          <Link href="/" className="flex items-center gap-2 font-display text-2xl font-semibold text-brand">
+            <WapyMarque className="h-7 w-7" />
+            Wapy
+          </Link>
           <div className="hidden items-center gap-6 text-sm text-muted md:flex">
             <a href="#fonctionnalites" className="hover:text-ink">Fonctionnalités</a>
             <a href="#etapes" className="hover:text-ink">Comment ça marche</a>

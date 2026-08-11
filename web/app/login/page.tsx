@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, setToken, getToken } from "@/lib/api";
 import InstallPrompt from "@/components/InstallPrompt";
+import WapyMarque from "@/components/WapyMarque";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -37,7 +38,10 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <InstallPrompt />
         <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold text-brand">Wapy</h1>
+          <h1 className="flex items-center justify-center gap-2 text-3xl font-bold text-brand">
+            <WapyMarque className="h-8 w-8" />
+            Wapy
+          </h1>
           <p className="mt-1 text-gray-600">Connexion</p>
         </div>
         <form onSubmit={submit} className="card space-y-4">

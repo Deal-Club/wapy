@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { api, setToken, getToken } from "@/lib/api";
+import WapyMarque from "@/components/WapyMarque";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -35,7 +36,10 @@ export default function SignupPage() {
     <main className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold text-brand">Wapy</h1>
+          <h1 className="flex items-center justify-center gap-2 text-3xl font-bold text-brand">
+            <WapyMarque className="h-8 w-8" />
+            Wapy
+          </h1>
           <p className="mt-1 text-gray-600">Créez le compte de votre restaurant</p>
         </div>
         <form onSubmit={submit} className="card space-y-4">

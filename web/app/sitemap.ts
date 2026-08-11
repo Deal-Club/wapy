@@ -45,5 +45,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // /login sort du sitemap : elle est interdite aux robots dans robots.ts,
     // une page fermée n'a rien à faire dans un sitemap.
     { url: `${base}/signup`, changeFrequency: "monthly" as const, priority: 0.7 },
+    // Pages légales : publiques, indexables, référencées par Google (écran OAuth).
+    { url: `${base}/confidentialite`, changeFrequency: "yearly" as const, priority: 0.3 },
+    { url: `${base}/conditions`, changeFrequency: "yearly" as const, priority: 0.3 },
   ];
 }

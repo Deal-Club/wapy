@@ -1,10 +1,15 @@
 import Link from "next/link";
 
+import WapyMarque from "@/components/WapyMarque";
+
 export default function SiteFooter() {
   return (
     <footer className="border-t border-line bg-surface/60">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 py-8 text-sm text-muted md:flex-row">
-        <div className="font-display text-lg font-bold text-brand">Wapy</div>
+        <div className="flex items-center gap-2 font-display text-lg font-bold text-brand">
+          <WapyMarque className="h-6 w-6" couleurLettre="#FFFFFF" />
+          Wapy
+        </div>
         <p>Assistant WhatsApp intelligent pour les entreprises · Conçu pour l&apos;Afrique</p>
         <div className="flex flex-wrap justify-center gap-4">
           {/* Les 4 pages entité, au complet : en omettre une la privait du seul
@@ -15,6 +20,8 @@ export default function SiteFooter() {
           <Link href="/faq" className="hover:text-ink">FAQ</Link>
           <Link href="/blog" className="hover:text-ink">Blog</Link>
           <Link href="/signup" className="hover:text-ink">Commencer</Link>
+          <Link href="/confidentialite" className="hover:text-ink">Confidentialité</Link>
+          <Link href="/conditions" className="hover:text-ink">Conditions</Link>
         </div>
       </div>
     </footer>

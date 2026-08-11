@@ -12,6 +12,7 @@ import WhatsAppConnect from "@/components/WhatsAppConnect";
 import StaffAlertVerify from "@/components/StaffAlertVerify";
 import Suggestions from "@/components/Suggestions";
 import InstallPrompt from "@/components/InstallPrompt";
+import WapyMarque from "@/components/WapyMarque";
 
 type Tab = "conversations" | "records" | "rdv" | "usage";
 const ALL_TABS: { id: Tab; label: string }[] = [
@@ -117,7 +118,10 @@ export default function Dashboard() {
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
       <div className="mb-6 flex items-center justify-between">
-        <button className="font-display text-2xl font-semibold text-brand" onClick={() => setSettings(null)}>Wapy</button>
+        <button className="flex items-center gap-2 font-display text-2xl font-semibold text-brand" onClick={() => setSettings(null)}>
+          <WapyMarque className="h-7 w-7" />
+          Wapy
+        </button>
         <div className="flex items-center gap-2">
           {me?.is_admin && (
             <a className="btn-ghost text-sm" href="/admin">Admin</a>

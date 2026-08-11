@@ -17,3 +17,8 @@ web/tsconfig.tsbuildinfo
 *.tsbuildinfo
 
 deploy/.uptime_env
+
+# Livrables d audit (docx/pdf) : regenerables, hors depot. Les sources de marque
+# (audits/logos/) restent suivies : lib/og-image.tsx y renvoie.
+audits/*.pdf
+audits/*.docx

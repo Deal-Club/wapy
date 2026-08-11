@@ -41,6 +41,23 @@ const COULEURS = {
   brand: "#C2502F",
 };
 
+/**
+ * La marque, en SVG inline encodé en data URI.
+ *
+ * Satori ne rend pas les balises `<svg>` enfants, mais rasterise les `<img>` :
+ * on passe donc par une data URI. Couleurs à plat et aucun masque — le tracé
+ * doit rester lisible par resvg, qui ne gère pas tout SVG. Le SVG maître (et
+ * ses variantes) vit dans `audits/logos/livraison/`.
+ */
+const MARQUE_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
+  '<path d="M24 10 H76 A16 16 0 0 1 92 26 V56 A16 16 0 0 1 76 72 H46 L26 90 V72 H24 ' +
+  'A16 16 0 0 1 8 56 V26 A16 16 0 0 1 24 10 Z" fill="' + COULEURS.cream + '"/>' +
+  '<path d="M28 28 L37 55 L50 37 L63 55 L72 28" fill="none" stroke="' + COULEURS.brand + '" ' +
+  'stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+const MARQUE = `data:image/svg+xml;base64,${Buffer.from(MARQUE_SVG).toString("base64")}`;
+
 /** Rend un contenu en image PNG 1200x630. */
 export function imageOG(contenu: ContenuOG): ImageResponse {
   return new ImageResponse(
@@ -67,11 +84,10 @@ export function imageOG(contenu: ContenuOG): ImageResponse {
               height: 64,
               borderRadius: 20,
               background: COULEURS.brand,
-              color: COULEURS.cream,
-              fontSize: 36,
             }}
           >
-            W
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={MARQUE} width={42} height={42} alt="" />
           </div>
           <div style={{ marginLeft: 20, fontSize: 38, letterSpacing: -0.5 }}>Wapy</div>
         </div>

@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wapy — cinq pistes de logo</title>
+<style>
+  :root{
+    --ground:#F7F4EF; --panel:#FFFFFF; --ink:#211C18; --muted:#6E655B; --line:#E4DCD0;
+    --brand:#C2502F; --brand-deep:#A63F22; --brand-soft:#F4E5DC; --leaf:#1FA463;
+    --tile-shadow:0 1px 2px rgba(33,28,24,.05), 0 10px 26px rgba(33,28,24,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#17120E; --panel:#211B16; --ink:#F2EAE1; --muted:#A29586; --line:#342A21;
+      --brand:#E3744F; --brand-deep:#C2502F; --brand-soft:#3A241B; --leaf:#3ECB86;
+      --tile-shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#17120E; --panel:#211B16; --ink:#F2EAE1; --muted:#A29586; --line:#342A21;
+    --brand:#E3744F; --brand-deep:#C2502F; --brand-soft:#3A241B; --leaf:#3ECB86;
+    --tile-shadow:0 1px 2px rgba(0,0,0,.4), 0 12px 30px rgba(0,0,0,.35);
+  }
+
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--ground); color:var(--ink);
+    font:400 17px/1.6 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:56px 24px 96px}
+  .mono{font:500 12px/1.5 ui-monospace,SFMono-Regular,"Cascadia Mono",Consolas,monospace;
+        letter-spacing:.09em; text-transform:uppercase; color:var(--muted)}
+
+  header{display:flex; flex-direction:column; gap:18px; padding-bottom:40px; border-bottom:2px solid var(--ink)}
+  h1{margin:0; font-size:clamp(34px,5.2vw,54px); font-weight:800; letter-spacing:-.035em; line-height:1.02; text-wrap:balance}
+  h1 em{font-style:normal; color:var(--brand)}
+  .lede{margin:0; max-width:62ch; color:var(--muted); font-size:19px}
+
+  .baseline{display:flex; gap:20px; align-items:center; flex-wrap:wrap; margin:28px 0 0;
+            padding:16px 20px; border:1px solid var(--line); border-radius:14px; background:var(--panel)}
+  .baseline p{margin:0; max-width:52ch; font-size:15px; color:var(--muted)}
+
+  .piste{padding:52px 0; border-bottom:1px solid var(--line); display:grid;
+         grid-template-columns:minmax(0,368px) minmax(0,1fr); gap:44px; align-items:start}
+  .piste-visuel{display:flex; flex-direction:column; gap:18px}
+  .grounds{display:flex; gap:14px; align-items:center; flex-wrap:wrap}
+
+  .tile{width:98px; height:98px; border-radius:23px; display:grid; place-items:center;
+        background:var(--panel); box-shadow:var(--tile-shadow); flex:none}
+  .tile.brand{background:var(--brand-deep)}
+  .tile.ink{background:#17120E}
+  .tile svg{width:62px; height:62px; display:block}
+  .tile.sm{width:52px; height:52px; border-radius:13px}
+  .tile.sm svg{width:33px; height:33px}
+  .tile.xs{width:26px; height:26px; border-radius:7px}
+  .tile.xs svg{width:17px; height:17px}
+
+  .lockup{display:flex; align-items:center; gap:12px; padding:14px 18px; border:1px solid var(--line);
+          border-radius:12px; background:var(--panel); width:fit-content}
+  .lockup svg{width:34px; height:34px; display:block}
+  .lockup span{font-size:27px; font-weight:800; letter-spacing:-.03em}
+
+  h2{margin:0 0 6px; font-size:27px; font-weight:800; letter-spacing:-.025em}
+  .tag{display:inline-block; margin-bottom:14px; padding:3px 9px; border-radius:999px;
+       background:var(--brand-soft); color:var(--brand-deep); font:600 12px/1.4 ui-monospace,Consolas,monospace;
+       letter-spacing:.06em; text-transform:uppercase}
+  .piste p{margin:0 0 14px; max-width:60ch}
+  .verdict{display:grid; gap:8px; margin-top:20px; padding-top:18px; border-top:1px dashed var(--line)}
+  .verdict div{display:grid; grid-template-columns:132px 1fr; gap:14px; align-items:baseline; font-size:15px}
+  .verdict b{font:500 11px/1.7 ui-monospace,Consolas,monospace; letter-spacing:.09em;
+             text-transform:uppercase; color:var(--muted); font-weight:500}
+
+  .home{display:flex; gap:9px; padding:12px; border-radius:16px; width:fit-content;
+        background:linear-gradient(160deg,#3C3128,#1D1712)}
+  .home .slot{width:38px; height:38px; border-radius:10px; background:rgba(255,255,255,.13); flex:none}
+  .home .tile{width:38px; height:38px; border-radius:10px; box-shadow:none}
+  .home .tile svg{width:24px; height:24px}
+
+  .fin{padding-top:48px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:40px}
+  .fin h3{margin:0 0 10px; font-size:20px; font-weight:800; letter-spacing:-.02em}
+  .fin p, .fin li{color:var(--muted); font-size:16px}
+  .fin ul{margin:0; padding-left:1.1em}
+  .fin li{margin-bottom:7px}
+  .fin strong{color:var(--ink); font-weight:600}
+
+  @media (max-width:820px){
+    .piste{grid-template-columns:1fr; gap:26px}
+    .fin{grid-template-columns:1fr; gap:28px}
+  }
+</style>
+
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="actuel" viewBox="0 0 100 100">
+    <path d="M24 18 H76 A16 16 0 0 1 92 34 V60 A16 16 0 0 1 76 76 H46 L28 92 V76 H24 A16 16 0 0 1 8 60 V34 A16 16 0 0 1 24 18 Z" fill="var(--c1,#C2502F)"/>
+    <g fill="var(--bgdot,#F7F4EF)"><circle cx="34" cy="47" r="6"/><circle cx="50" cy="47" r="6"/><circle cx="66" cy="47" r="6"/></g>
+    <circle cx="82" cy="22" r="14" fill="var(--c2,#1FA463)" stroke="var(--bg,#fff)" stroke-width="6" paint-order="stroke"/>
+  </symbol>
+
+  <symbol id="m1" viewBox="0 0 100 100">
+    <path d="M10 54 L28 73 L56 25" fill="none" stroke="var(--c1,#C2502F)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M44 54 L62 73 L90 25" fill="none" stroke="var(--c2,#1FA463)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="m2" viewBox="0 0 100 100">
+    <path d="M24 10 H76 A16 16 0 0 1 92 26 V56 A16 16 0 0 1 76 72 H46 L26 90 V72 H24 A16 16 0 0 1 8 56 V26 A16 16 0 0 1 24 10 Z" fill="var(--c1,#C2502F)"/>
+    <path d="M28 28 L37 55 L50 37 L63 55 L72 28" fill="none" stroke="var(--c2,#F7F4EF)" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+
+  <symbol id="m3" viewBox="0 0 100 100">
+    <path d="M20 10 H62 A12 12 0 0 1 74 22 V44 A12 12 0 0 1 62 56 H40 L22 72 V56 H20 A12 12 0 0 1 8 44 V22 A12 12 0 0 1 20 10 Z" fill="var(--c1,#C2502F)"/>
+    <path d="M80 90 H38 A12 12 0 0 1 26 78 V56 A12 12 0 0 1 38 44 H60 L78 28 V44 H80 A12 12 0 0 1 92 56 V78 A12 12 0 0 1 80 90 Z"
+          fill="var(--c2,#1FA463)" stroke="var(--bg,#fff)" stroke-width="7" stroke-linejoin="round" paint-order="stroke"/>
+  </symbol>
+
+  <symbol id="m4" viewBox="0 0 100 100">
+    <g fill="var(--c1,#C2502F)">
+      <path d="M50 6 Q70 30 50 46 Q30 30 50 6 Z"/><path d="M94 50 Q70 70 54 50 Q70 30 94 50 Z"/>
+      <path d="M50 94 Q30 70 50 54 Q70 70 50 94 Z"/><path d="M6 50 Q30 30 46 50 Q30 70 6 50 Z"/>
+    </g>
+    <circle cx="50" cy="50" r="7" fill="var(--c2,#1FA463)"/>
+  </symbol>
+
+  <symbol id="m5" viewBox="0 0 100 100">
+    <circle cx="16" cy="58" r="9" fill="var(--c1,#C2502F)"/>
+    <circle cx="42" cy="58" r="9" fill="var(--c1,#C2502F)"/>
+    <path d="M62 60 L76 74 L96 32" fill="none" stroke="var(--c2,#1FA463)" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+  </symbol>
+</defs></svg>
+
+<div class="wrap">
+  <header>
+    <div class="mono">Wapy · identité · planche 01 · août 2026</div>
+    <h1>Cinq pistes de logo,<br>et celle que <em>je garderais</em>.</h1>
+    <p class="lede">Toutes utilisent la palette déjà en place dans le produit (terracotta, vert, encre, crème) et sont
+      dessinées en vectoriel pur : elles tiennent à 16 px dans un onglet comme à 512 px sur un écran d'accueil.
+      Aucune ne dépend d'une typo achetée.</p>
+  </header>
+
+  <div class="baseline">
+    <div class="tile sm" style="--c1:var(--brand);--c2:var(--leaf);--bg:var(--panel);--bgdot:#fff"><svg><use href="#actuel"/></svg></div>
+    <p><b style="color:var(--ink)">Aujourd'hui :</b> bulle + trois points + pastille verte. Ça marche, mais c'est
+      l'icône générique de n'importe quelle app de messagerie — et les trois points disparaissent en favicon.
+      C'est le point de comparaison, pas un repoussoir.</p>
+  </div>
+
+  <!-- A -->
+  <section class="piste">
+    <div class="piste-visuel">
+      <div class="grounds">
+        <div class="tile" style="--c1:var(--brand);--c2:var(--leaf)"><svg><use href="#m1"/></svg></div>
+        <div class="tile brand" style="--c1:#fff;--c2:#F7DFD5"><svg><use href="#m1"/></svg></div>
+        <div class="tile ink" style="--c1:#F2EAE1;--c2:var(--leaf)"><svg><use href="#m1"/></svg></div>
+        <div class="tile xs" style="--c1:var(--brand);--c2:var(--leaf)"><svg><use href="#m1"/></svg></div>
+      </div>
+      <div class="lockup"><svg style="--c1:var(--brand);--c2:var(--leaf)"><use href="#m1"/></svg><span>Wapy</span></div>
+      <div class="home">
+        <div class="tile" style="--c1:#fff;--c2:#F7DFD5;background:var(--brand-deep)"><svg><use href="#m1"/></svg></div>
+        <div class="slot"></div><div class="slot"></div><div class="slot"></div>
+      </div>
+      <div class="mono">fond neutre · fond marque · fond encre · 26 px · verrou · écran d'accueil</div>
+    </div>
+    <div>
+      <span class="tag">Piste A</span>
+      <h2>La double coche</h2>
+      <p>Les deux coches de WhatsApp — « envoyé, lu » — se chevauchent et dessinent un <b>W</b>. Le geste est celui que
+        vos clients voient cent fois par jour ; la deuxième coche passe au vert, c'est la réponse partie toute seule.
+        Signe le canal et l'initiale d'un seul trait.</p>
+      <p>C'est la piste la plus <b>immédiate</b> : personne n'a besoin qu'on lui explique. Revers de la médaille,
+        elle emprunte un signe qui appartient à l'écosystème WhatsApp — assumable pour un outil qui vit dessus,
+        à surveiller si Wapy s'ouvre un jour à d'autres canaux (le webchat existe déjà).</p>
+      <div class="verdict">
+        <div><b>Dit quoi</b><span>« votre message est traité, et déjà répondu »</span></div>
+        <div><b>À 16 px</b><span>excellent : deux chevrons, rien à perdre</span></div>
+        <div><b>Risque</b><span>proche du symbole natif WhatsApp</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- B -->
+  <section class="piste">
+    <div class="piste-visuel">
+      <div class="grounds">
+        <div class="tile" style="--c1:var(--brand);--c2:#FFF"><svg><use href="#m2"/></svg></div>
+        <div class="tile brand" style="--c1:#fff;--c2:var(--brand-deep)"><svg><use href="#m2"/></svg></div>
+        <div class="tile ink" style="--c1:#F2EAE1;--c2:#17120E"><svg><use href="#m2"/></svg></div>
+        <div class="tile xs" style="--c1:var(--brand);--c2:#FFF"><svg><use href="#m2"/></svg></div>
+      </div>
+      <div class="lockup"><svg style="--c1:var(--brand);--c2:#FFF"><use href="#m2"/></svg><span>Wapy</span></div>
+      <div class="home">
+        <div class="tile" style="--c1:#fff;--c2:var(--brand-deep);background:var(--brand-deep)"><svg><use href="#m2"/></svg></div>
+        <div class="slot"></div><div class="slot"></div><div class="slot"></div>
+      </div>
+      <div class="mono">fond neutre · fond marque · fond encre · 26 px · verrou · écran d'accueil</div>
+    </div>
+    <div>
+      <span class="tag">Piste B</span>
+      <h2>Le monogramme</h2>
+      <p>Une bulle pleine, un W blanc dedans. Zéro métaphore : c'est la marque qui parle, littéralement. La bulle reste
+        la silhouette la plus lisible du lot une fois réduite — même quand le W devient une tache, on sait que c'est Wapy
+        parce que la forme extérieure est constante.</p>
+      <p>C'est la piste <b>sans risque</b> : elle vieillit bien, se décline sur un tampon, une facture, un t-shirt de
+        livreur, et ne se périme pas si le produit ajoute des canaux. Elle est aussi la moins surprenante — elle ne
+        raconte rien de ce que Wapy fait, elle se contente de le nommer.</p>
+      <div class="verdict">
+        <div><b>Dit quoi</b><span>« Wapy, et ça se passe dans la conversation »</span></div>
+        <div><b>À 16 px</b><span>très bon : la silhouette porte, le W s'épaissit</span></div>
+        <div><b>Risque</b><span>sage ; se distingue peu des autres bulles du marché</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- C -->
+  <section class="piste">
+    <div class="piste-visuel">
+      <div class="grounds">
+        <div class="tile" style="--c1:var(--brand);--c2:var(--leaf);--bg:var(--panel)"><svg><use href="#m3"/></svg></div>
+        <div class="tile brand" style="--c1:#fff;--c2:#F7DFD5;--bg:var(--brand-deep)"><svg><use href="#m3"/></svg></div>
+        <div class="tile ink" style="--c1:#F2EAE1;--c2:var(--leaf);--bg:#17120E"><svg><use href="#m3"/></svg></div>
+        <div class="tile xs" style="--c1:var(--brand);--c2:var(--leaf);--bg:var(--panel)"><svg><use href="#m3"/></svg></div>
+      </div>
+      <div class="lockup"><svg style="--c1:var(--brand);--c2:var(--leaf);--bg:var(--panel)"><use href="#m3"/></svg><span>Wapy</span></div>
+      <div class="home">
+        <div class="tile" style="--c1:#fff;--c2:#F7DFD5;--bg:var(--brand-deep);background:var(--brand-deep)"><svg><use href="#m3"/></svg></div>
+        <div class="slot"></div><div class="slot"></div><div class="slot"></div>
+      </div>
+      <div class="mono">fond neutre · fond marque · fond encre · 26 px · verrou · écran d'accueil</div>
+    </div>
+    <div>
+      <span class="tag">Piste C</span>
+      <h2>Les deux bulles</h2>
+      <p>La question et la réponse, emboîtées en symétrie de rotation : la bulle terracotta parle vers le bas, la verte
+        répond vers le haut. C'est le seul concept qui montre un <b>échange</b> plutôt qu'un message — exactement ce que
+        vend Wapy : le client n'attend plus.</p>
+      <p>Le vert n'est pas décoratif, c'est le bot ; le terracotta, c'est le client. La contrepartie : deux formes qui se
+        chevauchent, donc la piste la plus fragile en tout petit, et sur fond terracotta la seconde bulle doit passer en
+        crème avec un liseré de séparation (visible sur la tuile du milieu).</p>
+      <div class="verdict">
+        <div><b>Dit quoi</b><span>« on vous répond, pas on vous notifie »</span></div>
+        <div><b>À 16 px</b><span>correct, mais c'est la plus chargée des cinq</span></div>
+        <div><b>Risque</b><span>demande un liseré sur fonds colorés</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- D -->
+  <section class="piste">
+    <div class="piste-visuel">
+      <div class="grounds">
+        <div class="tile" style="--c1:var(--brand);--c2:var(--leaf)"><svg><use href="#m4"/></svg></div>
+        <div class="tile brand" style="--c1:#fff;--c2:#F7DFD5"><svg><use href="#m4"/></svg></div>
+        <div class="tile ink" style="--c1:#F2EAE1;--c2:var(--leaf)"><svg><use href="#m4"/></svg></div>
+        <div class="tile xs" style="--c1:var(--brand);--c2:var(--leaf)"><svg><use href="#m4"/></svg></div>
+      </div>
+      <div class="lockup"><svg style="--c1:var(--brand);--c2:var(--leaf)"><use href="#m4"/></svg><span>Wapy</span></div>
+      <div class="home">
+        <div class="tile" style="--c1:#fff;--c2:#F7DFD5;background:var(--brand-deep)"><svg><use href="#m4"/></svg></div>
+        <div class="slot"></div><div class="slot"></div><div class="slot"></div>
+      </div>
+      <div class="mono">fond neutre · fond marque · fond encre · 26 px · verrou · écran d'accueil</div>
+    </div>
+    <div>
+      <span class="tag">Piste D</span>
+      <h2>Le losange</h2>
+      <p>Quatre queues de bulle qui partent d'un même point vert : un établissement au centre, qui répond dans les quatre
+        directions à la fois. La géométrie emprunte au vocabulaire des motifs ouest-africains (wax, adinkra) plutôt qu'à
+        celui des apps de la Silicon Valley — un signe qui <b>ressemble au marché</b> qu'on adresse.</p>
+      <p>C'est la piste qui se décline le mieux au-delà de l'icône : en trame de fond, en filigrane sur un devis, en
+        motif de packaging. Il faut la vouloir : elle ne dit ni « message » ni « WhatsApp », et selon les yeux elle peut
+        d'abord évoquer une fleur — donc une marque plus lifestyle que technique.</p>
+      <div class="verdict">
+        <div><b>Dit quoi</b><span>« un commerce d'ici, qui répond partout »</span></div>
+        <div><b>À 16 px</b><span>bon : quatre pétales, silhouette nette</span></div>
+        <div><b>Risque</b><span>lecture florale ; ne signale pas la messagerie</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- E -->
+  <section class="piste">
+    <div class="piste-visuel">
+      <div class="grounds">
+        <div class="tile" style="--c1:var(--brand);--c2:var(--leaf)"><svg><use href="#m5"/></svg></div>
+        <div class="tile brand" style="--c1:#fff;--c2:#F7DFD5"><svg><use href="#m5"/></svg></div>
+        <div class="tile ink" style="--c1:#F2EAE1;--c2:var(--leaf)"><svg><use href="#m5"/></svg></div>
+        <div class="tile xs" style="--c1:var(--brand);--c2:var(--leaf)"><svg><use href="#m5"/></svg></div>
+      </div>
+      <div class="lockup"><svg style="--c1:var(--brand);--c2:var(--leaf)"><use href="#m5"/></svg><span>Wapy</span></div>
+      <div class="home">
+        <div class="tile" style="--c1:#fff;--c2:#F7DFD5;background:var(--brand-deep)"><svg><use href="#m5"/></svg></div>
+        <div class="slot"></div><div class="slot"></div><div class="slot"></div>
+      </div>
+      <div class="mono">fond neutre · fond marque · fond encre · 26 px · verrou · écran d'accueil</div>
+    </div>
+    <div>
+      <span class="tag">Piste E</span>
+      <h2>Il tape… c'est répondu</h2>
+      <p>Les deux points de l'indicateur de saisie, puis une coche verte à la place du troisième. Le logo raconte une
+        <b>séquence en un seul coup d'œil</b> : la question arrive, la réponse est déjà partie. C'est la promesse
+        commerciale de Wapy réduite à trois formes.</p>
+      <p>Très lisible, très léger, et c'est le seul du lot qui a du <b>rythme</b> — il s'anime tout seul (les points
+        pulsent, la coche se trace) pour un écran de chargement ou une bannière. En contrepartie il est horizontal :
+        parfait en en-tête et en favicon, moins évident à centrer dans une tuile carrée.</p>
+      <div class="verdict">
+        <div><b>Dit quoi</b><span>« pas d'attente : c'est déjà traité »</span></div>
+        <div><b>À 16 px</b><span>excellent, y compris en monochrome</span></div>
+        <div><b>Risque</b><span>format horizontal, à recadrer pour l'icône carrée</span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="fin">
+    <div>
+      <h3>Ce que je garderais</h3>
+      <p><strong>A (la double coche)</strong> si le pari est WhatsApp et rien d'autre : c'est la seule qui se comprend
+        sans légende, dans un marché où l'on installe l'app depuis un téléphone d'entrée de gamme.</p>
+      <p><strong>E</strong> si vous voulez raconter la promesse plutôt que le canal, et <strong>B</strong> si la priorité
+        est de ne jamais avoir à y revenir. <strong>D</strong> est le choix de marque le plus ambitieux, mais il demande
+        un vrai système graphique derrière pour ne pas flotter.</p>
+    </div>
+    <div>
+      <h3>Si une piste vous plaît</h3>
+      <ul>
+        <li>Je livre le SVG maître, plus les PNG que le produit attend déjà : <strong>64, 192, 512 et maskable 512</strong>
+          (<code>web/public/icons/</code>), le favicon et l'image OpenGraph.</li>
+        <li>Je cale le verrou horizontal et vertical, les versions monochrome et une couleur, et les marges de sécurité.</li>
+        <li>Le <code>theme_color</code> du manifeste reste <code>#C2502F</code> — aucune des cinq pistes n'oblige à
+          toucher la palette du site.</li>
+        <li>Dites-moi laquelle, ou dites-moi ce qui cloche dans celle qui s'en approche le plus : ces marques sont
+          faites pour être retouchées, pas pour être adoptées telles quelles.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

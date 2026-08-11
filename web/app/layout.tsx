@@ -27,8 +27,16 @@ export const metadata: Metadata = {
   manifest: "/manifest.webmanifest",
   applicationName: "Wapy",
   appleWebApp: { capable: true, statusBarStyle: "default", title: "Wapy" },
+  // Le favicon 32 px vient en premier : sans lui, l'onglet tirait l'icône 192,
+  // soit ~9 Ko redimensionnés par le navigateur pour afficher 16 px.
+  // Le .ico multi-tailles (16/32/48) couvre les vieux navigateurs et le raccourci
+  // bureau, qui demandent /favicon.ico sans regarder les balises.
   icons: {
-    icon: "/icons/icon-192.png",
+    icon: [
+      { url: "/icons/favicon-32.png", type: "image/png", sizes: "32x32" },
+      { url: "/icons/icon-192.png", type: "image/png", sizes: "192x192" },
+    ],
+    shortcut: "/favicon.ico",
     apple: "/icons/apple-touch-icon.png",
   },
   // Canonique et OpenGraph de repli. Chaque page publique exporte les siens et

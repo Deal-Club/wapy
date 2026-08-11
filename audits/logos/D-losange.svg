@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512" role="img" aria-label="Wapy — piste D">
+  <g fill="#C2502F">
+    <path d="M50 6 Q70 30 50 46 Q30 30 50 6 Z"/><path d="M94 50 Q70 70 54 50 Q70 30 94 50 Z"/>
+    <path d="M50 94 Q30 70 50 54 Q70 70 50 94 Z"/><path d="M6 50 Q30 30 46 50 Q30 70 6 50 Z"/>
+  </g>
+  <circle cx="50" cy="50" r="7" fill="#1FA463"/>
+</svg>

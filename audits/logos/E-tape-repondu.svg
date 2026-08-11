@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="512" height="512" role="img" aria-label="Wapy — piste E">
+  <circle cx="16" cy="58" r="9" fill="#C2502F"/>
+  <circle cx="42" cy="58" r="9" fill="#C2502F"/>
+  <path d="M62 60 L76 74 L96 32" fill="none" stroke="#1FA463" stroke-width="11" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
