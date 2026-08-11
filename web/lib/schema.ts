@@ -29,8 +29,28 @@ export type OrganizationLd = Context & {
   sameAs: string[];
 };
 
-/** Référence vers le nœud Organization consolidé (voir ORGANIZATION_ID). */
-export type OrganizationRefLd = { "@id": string };
+/**
+ * Référence vers le nœud Organization consolidé (voir ORGANIZATION_ID),
+ * augmentée des données minimales inline (@type, name, url). Le site
+ * injecte les blocs JSON-LD indépendamment page par page, sans @graph
+ * consolidé, et les validateurs évaluent une URL à la fois : un @id seul,
+ * sans données inline, laisserait le nœud non résolu sur toute page qui
+ * référence publisher/provider sans émettre aussi organizationLd() (ce
+ * qui restait vrai avant ce correctif, voir ronde de correction 2, défaut
+ * IMPORTANT 1). Le @id partagé permet la consolidation d'entité entre
+ * pages ; les données inline gardent chaque page valide isolément.
+ */
+export type OrganizationRefLd = {
+  "@id": string;
+  "@type": "Organization";
+  name: string;
+  url: string;
+};
+
+/** Référence complète (@id + données inline) vers l'entité Organization. */
+function organizationRef(): OrganizationRefLd {
+  return { "@id": ORGANIZATION_ID, "@type": "Organization", name: "Wapy", url: SITE_URL };
+}
 
 export type WebSiteLd = Context & {
   "@type": "WebSite";
@@ -167,7 +187,7 @@ export function websiteLd(): WebSiteLd {
     name: "Wapy",
     url: SITE_URL,
     inLanguage: "fr",
-    publisher: { "@id": ORGANIZATION_ID },
+    publisher: organizationRef(),
   };
 }
 
@@ -196,7 +216,7 @@ export function serviceLd(a: {
     description: a.description,
     url: a.url,
     serviceType: "Assistant WhatsApp automatisé",
-    provider: { "@id": ORGANIZATION_ID },
+    provider: organizationRef(),
     areaServed: { "@type": a.areaServed.type, name: a.areaServed.nom },
     availableLanguage: "fr",
   };
@@ -273,7 +293,7 @@ export function articleLd(a: {
     datePublished: a.publieLe,
     dateModified: a.modifieLe,
     author: { "@type": "Person", name: a.auteur },
-    publisher: { "@id": ORGANIZATION_ID },
+    publisher: organizationRef(),
     ...(a.section ? { articleSection: a.section } : {}),
     inLanguage: "fr",
   };
@@ -283,17 +303,17 @@ export function offerLd(offres: { nom: string; prix: number; devise: string }[])
   if (offres.length === 0) {
     // Math.min()/Math.max() sur un tableau vide renvoient ±Infinity, que
     // JSON.stringify transforme en null : un AggregateOffer avec des prix
-    // null est syntaxiquement valide mais rejete par le test des resultats
-    // enrichis de Google. Echec explicite plutot que JSON silencieusement
+    // null est syntaxiquement valide mais rejeté par le test des résultats
+    // enrichis de Google. Échec explicite plutôt que JSON silencieusement
     // invalide.
     throw new Error("offerLd nécessite au moins une offre.");
   }
   const devises = new Set(offres.map((o) => o.devise));
   if (devises.size > 1) {
     // Le projet manipule XOF et XAF (content/types.ts) : des devises
-    // melangees produiraient un lowPrice/highPrice incoherent avec la seule
-    // priceCurrency annoncee au niveau de l'AggregateOffer. Comportement
-    // explicite : on refuse plutot que de choisir silencieusement une devise.
+    // mélangées produiraient un lowPrice/highPrice incohérent avec la seule
+    // priceCurrency annoncée au niveau de l'AggregateOffer. Comportement
+    // explicite : on refuse plutôt que de choisir silencieusement une devise.
     throw new Error(
       `offerLd nécessite une devise unique pour toutes les offres (reçues : ${[...devises].join(", ")}).`,
     );
@@ -314,7 +334,7 @@ export function offerLd(offres: { nom: string; prix: number; devise: string }[])
   };
 }
 
-/** Union de tous les schemas produits par ce module, pour typer le composant JsonLd. */
+/** Union de tous les schémas produits par ce module, pour typer le composant JsonLd. */
 export type JsonLdSchema =
   | OrganizationLd
   | WebSiteLd

@@ -1,9 +1,9 @@
 /**
- * Contrainte structurelle minimale d'un schema JSON-LD : tout objet portant
- * "@context" et "@type" y est assignable. Plus large que l'union fermee des
- * 10 schemas de schema.ts pour que ce composant, qui ne fait que serialiser,
- * n'ait pas a etre modifie chaque fois qu'un futur schema (Person, Review,
- * LocalBusiness, @graph...) est ajoute ailleurs.
+ * Contrainte structurelle minimale d'un schéma JSON-LD : tout objet portant
+ * "@context" et "@type" y est assignable. Plus large que l'union fermée des
+ * 10 schémas de schema.ts pour que ce composant, qui ne fait que sérialiser,
+ * n'ait pas à être modifié chaque fois qu'un futur schéma (Person, Review,
+ * LocalBusiness, @graph...) est ajouté ailleurs.
  */
 export type JsonLdData = { "@context": string; "@type": string } & Record<string, unknown>;
 

@@ -14,11 +14,13 @@ import {
   offerLd,
   ORGANIZATION_ID,
 } from "@/lib/schema";
+import type { OrganizationRefLd } from "@/lib/schema";
 import { SITE_URL } from "@/lib/site";
 import JsonLd from "@/components/seo/JsonLd";
+import type { JsonLdData } from "@/components/seo/JsonLd";
 
 describe("organizationLd", () => {
-  it("decrit Wapy factuellement, sans revendication de clientele ni superlatif", () => {
+  it("décrit Wapy factuellement, sans revendication de clientèle ni superlatif", () => {
     const ld = organizationLd();
     expect(ld["@context"]).toBe("https://schema.org");
     expect(ld["@type"]).toBe("Organization");
@@ -45,30 +47,40 @@ describe("organizationLd", () => {
     for (const mot of motsInterdits) {
       expect(descriptionEnMinuscule).not.toContain(mot);
     }
-    // Aucun tiret long dans les chaines produites.
-    expect(ld.description).not.toContain("\u2014");
-    expect(ld.description).not.toContain("\u2013");
-    // Regression : le texte francais doit rester accentue (ronde de
-    // correction 1, defaut IMPORTANT 2 : le texte etait entierement
-    // desaccentue alors qu'il part dans le JSON-LD lu par Google/LLM).
-    expect(ld.description).toMatch(/[\u00e9\u00e8\u00e0\u00e7\u00f4\u00ee\u00ef\u00e2\u00ea\u00fb\u00fc]/i);
+    // Aucun tiret long dans les chaînes produites.
+    expect(ld.description).not.toContain("—");
+    expect(ld.description).not.toContain("–");
+    // Régression : le texte français doit rester accentué (ronde de
+    // correction 1, défaut IMPORTANT 2 : le texte était entièrement
+    // désaccentué alors qu'il part dans le JSON-LD lu par Google/LLM).
+    expect(ld.description).toMatch(/[éèàçôîïâêûü]/i);
   });
 });
 
 describe("websiteLd", () => {
-  it("produit un WebSite en francais avec un publisher Organization", () => {
+  it("produit un WebSite en français avec un publisher Organization référencé et résolu", () => {
     const ld = websiteLd();
     expect(ld["@context"]).toBe("https://schema.org");
     expect(ld["@type"]).toBe("WebSite");
     expect(ld.name).toBe("Wapy");
     expect(ld.url).toBe(SITE_URL);
     expect(ld.inLanguage).toBe("fr");
-    expect(ld.publisher).toEqual({ "@id": ORGANIZATION_ID });
+    // Ronde de correction 2, défaut IMPORTANT 1 : le publisher doit porter
+    // à la fois le @id (consolidation d'entité entre pages) et les données
+    // inline (@type, name, url), sinon une page qui n'émet pas aussi
+    // organizationLd() laisserait ce nœud non résolu pour les validateurs,
+    // qui évaluent une URL à la fois sans @graph consolidé.
+    expect(ld.publisher).toEqual({
+      "@id": ORGANIZATION_ID,
+      "@type": "Organization",
+      name: "Wapy",
+      url: SITE_URL,
+    });
   });
 });
 
 describe("softwareApplicationLd", () => {
-  it("produit un SoftwareApplication web en francais", () => {
+  it("produit un SoftwareApplication web en français", () => {
     const ld = softwareApplicationLd();
     expect(ld["@type"]).toBe("SoftwareApplication");
     expect(ld.name).toBe("Wapy");
@@ -80,21 +92,26 @@ describe("softwareApplicationLd", () => {
 });
 
 describe("serviceLd", () => {
-  it("produit un Service avec areaServed Country, un provider reference et availableLanguage", () => {
+  it("produit un Service avec areaServed Country, un provider référencé et résolu, et availableLanguage", () => {
     const ld = serviceLd({
       nom: "Chatbot WhatsApp Benin",
-      description: "Assistant WhatsApp pour les entreprises beninoises.",
+      description: "Assistant WhatsApp pour les entreprises béninoises.",
       url: `${SITE_URL}/chatbot-whatsapp/benin`,
       areaServed: { type: "Country", nom: "Benin" },
     });
     expect(ld["@type"]).toBe("Service");
     expect(ld.name).toBe("Chatbot WhatsApp Benin");
     expect(ld.url).toBe(`${SITE_URL}/chatbot-whatsapp/benin`);
-    expect(ld.provider).toEqual({ "@id": ORGANIZATION_ID });
+    expect(ld.provider).toEqual({
+      "@id": ORGANIZATION_ID,
+      "@type": "Organization",
+      name: "Wapy",
+      url: SITE_URL,
+    });
     expect(ld.areaServed).toEqual({ "@type": "Country", name: "Benin" });
     expect(ld.availableLanguage).toBe("fr");
     // "Service" est un Intangible : "inLanguage" n'existe pas sur ce type
-    // (ronde de correction 1, defaut IMPORTANT 3).
+    // (ronde de correction 1, défaut IMPORTANT 3).
     expect("inLanguage" in ld).toBe(false);
   });
 
@@ -110,10 +127,10 @@ describe("serviceLd", () => {
 });
 
 describe("faqLd", () => {
-  it("produit une Question et une Answer par entree, dans l'ordre fourni", () => {
+  it("produit une Question et une Answer par entrée, dans l'ordre fourni", () => {
     const ld = faqLd([
-      { q: "Question un ?", r: "Reponse un." },
-      { q: "Question deux ?", r: "Reponse deux." },
+      { q: "Question un ?", r: "Réponse un." },
+      { q: "Question deux ?", r: "Réponse deux." },
     ]);
     expect(ld["@context"]).toBe("https://schema.org");
     expect(ld["@type"]).toBe("FAQPage");
@@ -121,15 +138,15 @@ describe("faqLd", () => {
     expect(ld.mainEntity[0]).toEqual({
       "@type": "Question",
       name: "Question un ?",
-      acceptedAnswer: { "@type": "Answer", text: "Reponse un." },
+      acceptedAnswer: { "@type": "Answer", text: "Réponse un." },
     });
     expect(ld.mainEntity[1].name).toBe("Question deux ?");
-    expect(ld.mainEntity[1].acceptedAnswer.text).toBe("Reponse deux.");
+    expect(ld.mainEntity[1].acceptedAnswer.text).toBe("Réponse deux.");
   });
 });
 
 describe("breadcrumbLd", () => {
-  it("numerote les elements a partir de 1, dans l'ordre fourni", () => {
+  it("numérote les éléments à partir de 1, dans l'ordre fourni", () => {
     const ld = breadcrumbLd([
       { nom: "Accueil", url: SITE_URL },
       { nom: "Benin", url: `${SITE_URL}/chatbot-whatsapp/benin` },
@@ -148,7 +165,7 @@ describe("breadcrumbLd", () => {
 });
 
 describe("itemListLd", () => {
-  it("numerote les entrees et conserve les url fournies", () => {
+  it("numérote les entrées et conserve les url fournies", () => {
     const ld = itemListLd([
       { nom: "Wapy", url: SITE_URL },
       { nom: "Autre outil", url: "https://exemple.test" },
@@ -162,7 +179,7 @@ describe("itemListLd", () => {
 });
 
 describe("howToLd", () => {
-  it("numerote les etapes a partir de 1, dans l'ordre fourni", () => {
+  it("numérote les étapes à partir de 1, dans l'ordre fourni", () => {
     const ld = howToLd({
       nom: "Configurer Wapy",
       etapes: [
@@ -196,7 +213,12 @@ describe("articleLd", () => {
     expect(sansSection["@type"]).toBe("Article");
     expect(sansSection.mainEntityOfPage).toBe(`${SITE_URL}/blog/article`);
     expect(sansSection.author).toEqual({ "@type": "Person", name: "Wapy" });
-    expect(sansSection.publisher).toEqual({ "@id": ORGANIZATION_ID });
+    expect(sansSection.publisher).toEqual({
+      "@id": ORGANIZATION_ID,
+      "@type": "Organization",
+      name: "Wapy",
+      url: SITE_URL,
+    });
     expect("articleSection" in sansSection).toBe(false);
 
     const avecSection = articleLd({
@@ -213,7 +235,7 @@ describe("articleLd", () => {
 });
 
 describe("offerLd", () => {
-  it("calcule lowPrice, highPrice et offerCount a partir de la liste d'offres", () => {
+  it("calcule lowPrice, highPrice et offerCount à partir de la liste d'offres", () => {
     const ld = offerLd([
       { nom: "Starter", prix: 15000, devise: "XOF" },
       { nom: "Pro", prix: 35000, devise: "XOF" },
@@ -229,19 +251,19 @@ describe("offerLd", () => {
     ]);
   });
 
-  it("leve une erreur explicite plutot que de produire des prix null pour une liste vide", () => {
+  it("lève une erreur explicite plutôt que de produire des prix null pour une liste vide", () => {
     // Math.min()/Math.max() sur [] renvoient +/-Infinity, que JSON.stringify
-    // transforme en null : JSON syntaxiquement valide mais rejete par le
-    // test des resultats enrichis de Google (ronde de correction 1, defaut
+    // transforme en null : JSON syntaxiquement valide mais rejeté par le
+    // test des résultats enrichis de Google (ronde de correction 1, défaut
     // IMPORTANT 1).
     expect(() => offerLd([])).toThrow(/au moins une offre/i);
   });
 
-  it("leve une erreur explicite si les offres melangent des devises differentes", () => {
+  it("lève une erreur explicite si les offres mélangent des devises différentes", () => {
     // Le projet manipule XOF et XAF (content/types.ts) : sans ce garde-fou,
     // priceCurrency prendrait silencieusement la devise de la seule
-    // premiere offre, incoherente avec lowPrice/highPrice calcules sur des
-    // devises melangees (ronde de correction 1, defaut voisin de IMPORTANT 1).
+    // première offre, incohérente avec lowPrice/highPrice calculés sur des
+    // devises mélangées (ronde de correction 1, défaut voisin de IMPORTANT 1).
     expect(() =>
       offerLd([
         { nom: "Starter", prix: 15000, devise: "XOF" },
@@ -251,11 +273,21 @@ describe("offerLd", () => {
   });
 });
 
-describe("coherence de l'entite Organization consolidee", () => {
-  it("le meme @id relie organizationLd, websiteLd.publisher, serviceLd.provider et articleLd.publisher", () => {
-    const orgId = organizationLd()["@id"];
+describe("cohérence de l'entité Organization consolidée", () => {
+  it("le même @id et les mêmes données inline relient organizationLd, websiteLd.publisher, serviceLd.provider et articleLd.publisher", () => {
+    // Ronde de correction 2, défaut IMPORTANT 1 : dérivé des champs réels
+    // de organizationLd() (pas une valeur recopiée en dur), pour que ce
+    // test échoue si l'entité consolidée divergeait entre les fonctions
+    // productrices.
+    const org = organizationLd();
+    const referenceAttendue: OrganizationRefLd = {
+      "@id": org["@id"],
+      "@type": "Organization",
+      name: org.name,
+      url: org.url,
+    };
 
-    expect(websiteLd().publisher).toEqual({ "@id": orgId });
+    expect(websiteLd().publisher).toEqual(referenceAttendue);
 
     const service = serviceLd({
       nom: "Service test",
@@ -263,7 +295,7 @@ describe("coherence de l'entite Organization consolidee", () => {
       url: `${SITE_URL}/test`,
       areaServed: { type: "Country", nom: "Benin" },
     });
-    expect(service.provider).toEqual({ "@id": orgId });
+    expect(service.provider).toEqual(referenceAttendue);
 
     const article = articleLd({
       titre: "Titre",
@@ -273,23 +305,23 @@ describe("coherence de l'entite Organization consolidee", () => {
       modifieLe: "2026-02-01",
       auteur: "Wapy",
     });
-    expect(article.publisher).toEqual({ "@id": orgId });
+    expect(article.publisher).toEqual(referenceAttendue);
   });
 });
 
 describe("composant JsonLd", () => {
-  it("echappe les < pour empecher une chaine de donnees de fermer la balise script", () => {
+  it("échappe les < pour empêcher une chaîne de données de fermer la balise script", () => {
     const donneesPiegees = faqLd([
-      { q: "Question piegee", r: "Reponse </script><script>alert(1)</script> injectee." },
+      { q: "Question piégée", r: "Réponse </script><script>alert(1)</script> injectée." },
     ]);
     const html = renderToStaticMarkup(createElement(JsonLd, { data: donneesPiegees }));
 
     expect(html).not.toContain("</script><script>alert(1)</script>");
-    // Seul "<" est echappe (le regex du brief est /</g) : ">" reste litteral.
+    // Seul "<" est échappé (le regex du brief est /</g) : ">" reste littéral.
     expect(html).toContain("\\u003c/script>\\u003cscript>alert(1)\\u003c/script>");
   });
 
-  it("rend un script application/ld+json contenant le JSON serialise des donnees", () => {
+  it("rend un script application/ld+json contenant le JSON sérialisé des données", () => {
     const html = renderToStaticMarkup(createElement(JsonLd, { data: websiteLd() }));
 
     expect(html).toContain('type="application/ld+json"');
@@ -297,19 +329,48 @@ describe("composant JsonLd", () => {
     expect(html).toContain(`"url":"${SITE_URL}"`);
   });
 
-  it("accepte un objet JSON-LD ad hoc non defini dans schema.ts (prop elargi, defaut 4)", () => {
-    // Ronde de correction 1, point 4 : le prop "data" ne doit plus etre
-    // limite a l'union fermee des 10 schemas de schema.ts, pour qu'une
-    // tache future (LocalBusiness, Person, Review, @graph...) n'ait pas a
-    // modifier ce composant.
+  it("accepte à l'exécution un objet JSON-LD ad hoc non défini dans schema.ts (prop élargi, défaut 4)", () => {
+    // Ronde de correction 1, point 4 : le prop "data" ne doit plus être
+    // limité à l'union fermée des 10 schémas de schema.ts, pour qu'une
+    // tâche future (LocalBusiness, Person, Review, @graph...) n'ait pas à
+    // modifier ce composant. Ce test vérifie le comportement à l'exécution.
+    // Avant la ronde de correction 2 (tests/ exclu du typecheck), c'était
+    // une vérification uniquement à l'exécution : les types sont effacés à
+    // l'exécution, donc ce test seul passait deja avec l'ancienne union
+    // fermée sans rien démontrer côté typage. Depuis que tests/ est
+    // typechecké (point 2 du rapport), le literal ci-dessous est lui-même
+    // vérifié par le compilateur (confirmé en réintroduisant temporairement
+    // l'ancienne union : ce fichier ne compile plus). L'assertion de type
+    // dédiée ci-dessous (_verifElargissementJsonLdData) rend cette garantie
+    // explicite, sans dépendre de l'inférence de type d'un literal non
+    // annoté.
     const donneesLocalBusiness = {
       "@context": "https://schema.org",
       "@type": "LocalBusiness",
-      name: "Exemple non defini dans schema.ts",
+      name: "Exemple non défini dans schema.ts",
     };
     const html = renderToStaticMarkup(createElement(JsonLd, { data: donneesLocalBusiness }));
 
     expect(html).toContain('"@type":"LocalBusiness"');
-    expect(html).toContain('"name":"Exemple non defini dans schema.ts"');
+    expect(html).toContain('"name":"Exemple non défini dans schema.ts"');
   });
 });
+
+/**
+ * Assertion de type, pas d'assertion Vitest : démontre que JsonLdData
+ * accepte un schéma qui n'existe pas dans l'union fermée JsonLdSchema de
+ * schema.ts (LocalBusiness n'a pas de fonction productrice ici). Avec
+ * l'ancien type `data: JsonLdSchema`, cette ligne échouerait à la
+ * compilation (LocalBusiness n'étant assignable à aucune des 10 branches de
+ * l'union). Ce test ne peut exister utilement que parce que tests/ est
+ * désormais couvert par le typecheck du projet (ronde de correction 2,
+ * point 2) : avant ce changement, une régression sur ce point serait passée
+ * inaperçue par `npm test` (Vitest transpile sans vérifier les types) et par
+ * `npm run build` (qui ne typecheckait pas tests/).
+ */
+const _verifElargissementJsonLdData: JsonLdData = {
+  "@context": "https://schema.org",
+  "@type": "LocalBusiness",
+  name: "Vérification de type uniquement, jamais utilisée à l'exécution",
+};
+void _verifElargissementJsonLdData;
