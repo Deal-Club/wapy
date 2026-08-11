@@ -17,19 +17,27 @@ La publication se fait par vagues, pas en un largage.
 
 ---
 
-## Préalable bloquant : le nom de domaine
+## Nom de domaine — préalable levé le 2026-08-11
 
-Le site tourne sur `wapy.51.210.108.173.sslip.io`. Un sous-domaine `sslip.io` n'a
-aucune autorité : Google l'indexe mal et aucun moteur génératif ne le citera comme
-source fiable.
+Le domaine **`wapy.pro`** a été acquis. Le préalable bloquant décrit ci-dessous
+est résolu : les critères de succès de ce spec redeviennent atteignables.
 
-**Décision prise** : on construit malgré tout, tout étant paramétré par
-`NEXT_PUBLIC_SITE_URL` (cf. `web/lib/site.ts`). Le jour où un vrai domaine est
-branché, canonical, sitemap, JSON-LD et OpenGraph suivent sans retouche.
+**Bascule** : définir `NEXT_PUBLIC_SITE_URL=https://wapy.pro` au build
+(docker-compose `web`). `web/lib/site.ts` est le seul fichier du site portant une
+URL ; canonical, sitemap, robots, JSON-LD et OpenGraph en dérivent tous.
 
-**Conséquence assumée** : le travail décrit ici est intégralement réutilisable mais
-reste dormant tant que le domaine n'est pas acquis. Aucune des métriques de succès
-ci-dessous n'est atteignable avant.
+**Attention à la marque** : le produit s'appelle **Wapy** (avec un y), présent
+environ 150 fois dans le contenu publié, dans le nom d'entité du JSON-LD
+`Organization` et dans `llms.txt`. Toute variante de domaine doit conserver cette
+orthographe, sous peine d'affaiblir la consolidation d'entité auprès de Google et
+des moteurs génératifs. Acquérir les variantes proches est recommandé pour
+protéger la marque.
+
+**Contexte historique** : le site tournait sur `wapy.51.210.108.173.sslip.io`, un
+sous-domaine sans autorité que Google indexe mal et qu'aucun moteur génératif
+n'aurait cité comme source fiable. Le chantier a été conçu pour être entièrement
+paramétré par `NEXT_PUBLIC_SITE_URL` précisément pour rendre cette bascule
+gratuite.
 
 ---
 
