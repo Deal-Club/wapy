@@ -26,13 +26,41 @@ describe("IndexNow", () => {
     expect(CLE).toMatch(/^[a-f0-9]{16,128}$/);
   });
 
-  it("sert la clé en dehors des zones interdites au crawl", async () => {
+  it("sert la clé en dehors des zones interdites au crawl", () => {
     // Le fichier vit dans public/ donc à la racine ; il ne doit tomber sous aucun
     // des préfixes que robots.ts interdit, sinon Bing ne peut pas le lire.
     const robots = readFileSync(join(racine, "app", "robots.ts"), "utf8");
     const prefixes = [...robots.matchAll(/"(\/[a-z-]+)"/g)].map((m) => m[1]);
     for (const prefixe of prefixes) {
       expect(`/${CLE}.txt`.startsWith(prefixe)).toBe(false);
+    }
+  });
+});
+
+// Même famille de panne que la clé IndexNow, d'où sa place ici : un fichier servi
+// à la racine qu'un moteur doit pouvoir relire, et dont la disparition ne casse
+// rien visiblement. Si BingSiteAuth.xml s'en va, Bing révoque la propriété du site
+// à sa prochaine revérification et les données s'arrêtent, sans erreur nulle part.
+describe("vérification Bing Webmaster Tools", () => {
+  const fichier = join(racine, "public", "BingSiteAuth.xml");
+
+  it("publie le fichier à la racine du site", () => {
+    expect(existsSync(fichier)).toBe(true);
+  });
+
+  it("contient un jeton au format attendu par Bing", () => {
+    const contenu = readFileSync(fichier, "utf8");
+    expect(contenu).toMatch(/^<\?xml version="1\.0"\?>/);
+    // Le jeton est un identifiant hexadécimal majuscule fourni par Bing. Il est
+    // public par construction : la vérification consiste à le servir en clair.
+    expect(contenu).toMatch(/<user>[A-F0-9]{16,}<\/user>/);
+  });
+
+  it("n'est pas rendu illisible par robots.ts", () => {
+    const robots = readFileSync(join(racine, "app", "robots.ts"), "utf8");
+    const prefixes = [...robots.matchAll(/"(\/[a-z-]+)"/g)].map((m) => m[1]);
+    for (const prefixe of prefixes) {
+      expect("/BingSiteAuth.xml".startsWith(prefixe)).toBe(false);
     }
   });
 });
