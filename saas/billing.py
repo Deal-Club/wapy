@@ -28,6 +28,7 @@ FEATURES = {
     "webchat": "Chatbot pour site web (widget à intégrer)",
     "data_connector": "Connexion à la base de l'entreprise (stock, produits)",
     "priority_support": "Support prioritaire",
+    "tiktok": "Canal TikTok (commentaires et messages privés)",
 }
 
 # Plans mensuels. limits : 0 = illimité. Prix en XOF.
@@ -141,6 +142,19 @@ ADDONS = {
     # Seule option qui change le modèle du cerveau. Facturée au-dessus du surcoût
     # mesuré (~3,7x sur l'entrée) pour que l'option finance ce qu'elle consomme.
     "modele_avance": {"label": "Réponses avancées (modèle supérieur)", "price": 9900, "model": MODELE_AVANCE},
+    # --- Canal TikTok -------------------------------------------------------
+    # Vendu en option et non inclus dans un plan : tous les établissements n'ont
+    # pas de compte TikTok, et facturer un canal inutilisé à tout le monde ferait
+    # payer les uns pour les autres.
+    #
+    # 5 000 réponses par mois couvrent 165 par jour. Le prospect qui a demandé la
+    # fonction en annonce 150. Le coût mesuré d'une réponse en commentaire est
+    # d'environ 0,6 FCFA (fiche déjà en cache, aucun historique à recharger) :
+    # 5 000 réponses coûtent ~3 000 F pour 7 900 F facturés.
+    "tiktok": {"label": "Canal TikTok", "price": 7900, "feature": "tiktok",
+               "grant": {"tiktok": 5000}},
+    "tiktok_5000": {"label": "+5 000 réponses TikTok", "price": 5900,
+                    "grant": {"tiktok": 5000}},
     "agents_3": {"label": "+3 agents", "price": 4000, "grant": {"agents": 3}},
     "documents_10": {"label": "+10 documents", "price": 3000, "grant": {"documents": 10}},
 }
@@ -186,8 +200,14 @@ def entitlements_for(plan_key: str, addons=None) -> dict:
         if ad.get("model"):
             modele = ad["model"]
         for k, v in (ad.get("grant") or {}).items():
-            if limits.get(k, 0) != 0:  # 0 = illimité : on ne rajoute rien
-                limits[k] = limits.get(k, 0) + v
+            if k not in limits:
+                # Clé absente du plan (« tiktok », vendu uniquement en option) :
+                # l'option la crée. Sans ce cas, `limits.get(k, 0)` vaudrait 0,
+                # que le reste du code lit comme « illimité » — l'option
+                # accorderait un quota infini au lieu des 5 000 vendus.
+                limits[k] = v
+            elif limits[k] != 0:  # 0 = illimité : on ne rajoute rien
+                limits[k] = limits[k] + v
     return {"features": feats, "limits": limits, "model": modele}
 
 

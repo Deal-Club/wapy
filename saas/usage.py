@@ -102,6 +102,54 @@ def quota_atteint(session, tenant_id: int, chat_id: str, limite: int) -> bool:
     return conversations_du_mois(session, tenant_id) >= limite
 
 
+# --- Quota du canal TikTok -------------------------------------------------
+#
+# Compteur SÉPARÉ de celui des conversations WhatsApp, et c'est délibéré. Sous
+# une vidéo qui marche, les commentateurs se comptent par centaines dans la
+# journée : les faire tomber dans le quota WhatsApp ferait sauter le forfait d'un
+# établissement dès la première vidéo réussie, sur un canal qui coûte pourtant
+# moins cher (aucun historique de conversation à recharger à chaque réponse).
+#
+# On compte les RÉPONSES ÉMISES, pas les interlocuteurs : sous une vidéo la même
+# personne commente souvent plusieurs fois, et c'est chaque réponse qui coûte un
+# appel au modèle.
+
+
+def tiktok_du_mois(session, tenant_id: int, kind: str = "") -> int:
+    q = session.query(models.TikTokUsage).filter_by(tenant_id=tenant_id, month=_month())
+    if kind:
+        q = q.filter_by(kind=kind)
+    return sum(r.count or 0 for r in q.all())
+
+
+def noter_reponse_tiktok(session, tenant_id: int, kind: str = "comment") -> int:
+    """Incrémente le compteur du mois. Renvoie le total à jour, tous types confondus."""
+    m = _month()
+    row = (session.query(models.TikTokUsage)
+           .filter_by(tenant_id=tenant_id, month=m, kind=kind).first())
+    if not row:
+        row = models.TikTokUsage(tenant_id=tenant_id, month=m, kind=kind, count=0)
+        session.add(row)
+        session.flush()
+    row.count = (row.count or 0) + 1
+    session.commit()
+    return tiktok_du_mois(session, tenant_id)
+
+
+def quota_tiktok_atteint(session, tenant_id: int, limite: int) -> bool:
+    """Vrai si l'établissement a épuisé son quota TikTok du mois.
+
+    ATTENTION : la convention est l'INVERSE de `quota_atteint`. Ici `limite <= 0`
+    signifie « aucun droit » et bloque, là où 0 vaut « illimité » pour les
+    conversations. TikTok est vendu en option : l'absence de quota accordé veut
+    dire que l'option n'a pas été souscrite, jamais qu'elle est sans limite.
+    Interpréter 0 comme illimité offrirait le canal à qui ne l'a pas acheté.
+    """
+    if limite <= 0:
+        return True
+    return tiktok_du_mois(session, tenant_id) >= limite
+
+
 def totals(session, tenant_id: int) -> dict:
     rows = session.query(models.UsageCounter).filter_by(tenant_id=tenant_id).all()
     return {

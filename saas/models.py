@@ -190,6 +190,50 @@ class MonthlyConversation(Base):
     )
 
 
+class TikTokAccount(Base):
+    """Connexion TikTok d'un établissement (compte Business, OAuth).
+
+    Même modèle que `GoogleAuth` : chaque établissement autorise SON propre
+    compte, aucun secret opérateur ici. Les jetons sont chiffrés au repos avec
+    la clé Fernet de l'opérateur (`saas.connector.encrypt`) — un dump de la base
+    ne révèle rien d'exploitable.
+
+    `open_id` est l'identifiant du compte chez TikTok : il sert à router un
+    évènement entrant vers le bon établissement, comme `WaSession.session_name`
+    le fait pour WhatsApp.
+    """
+    __tablename__ = "tiktok_accounts"
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), primary_key=True)
+    open_id = Column(String(120), unique=True, index=True)
+    display_name = Column(String(255), default="")
+    access_token_enc = Column(Text, default="")
+    refresh_token_enc = Column(Text, default="")
+    expires_at = Column(DateTime)
+    scopes = Column(Text, default="")
+    status = Column(String(30), default="disconnected")  # disconnected | connected | expired
+    connected_at = Column(DateTime)
+
+
+class TikTokUsage(Base):
+    """Réponses TikTok émises par mois et par établissement.
+
+    On compte les RÉPONSES ÉMISES, pas les interlocuteurs distincts comme pour
+    WhatsApp. Deux raisons : sous une vidéo, la même personne commente souvent
+    plusieurs fois, et c'est chaque réponse qui coûte un appel au modèle. Compter
+    les personnes facturerait mal un canal dont le volume ne vient pas du nombre
+    de gens mais du nombre de messages.
+    """
+    __tablename__ = "tiktok_usage"
+    id = Column(Integer, primary_key=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    month = Column(String(7), nullable=False)  # AAAA-MM
+    kind = Column(String(20), nullable=False, default="comment")  # comment | dm
+    count = Column(Integer, default=0)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "month", "kind", name="uq_tiktok_usage"),
+    )
+
+
 class AiCost(Base):
     """Coût IA réel, par établissement / mois / tâche / modèle (cf. saas/costs.py).
 
