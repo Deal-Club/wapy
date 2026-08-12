@@ -8,7 +8,31 @@ import jwt
 
 from saas import models
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "dev-secret-change-me")
+# Valeur qui servait autrefois de repli. Elle est dans l'historique Git, donc
+# publique : elle est refusée explicitement, sans quoi un déploiement qui la
+# reprendrait n'aurait aucune sécurité tout en semblant configuré.
+_ANCIEN_REPLI = "dev-secret-change-me"
+
+
+def _lire_jwt_secret() -> str:
+    """Secret de signature des jetons. Absent ou trivial : on refuse de démarrer.
+
+    Un repli permissif signait les jetons d'authentification avec une chaîne
+    présente dans le dépôt : quiconque lisait le code pouvait forger un jeton
+    d'administrateur. Une API qui refuse de démarrer est un incident visible en
+    trente secondes ; une API qui démarre avec un secret connu ne se voit pas.
+    """
+    secret = os.environ.get("JWT_SECRET", "").strip()
+    if not secret or secret == _ANCIEN_REPLI:
+        raise RuntimeError(
+            "JWT_SECRET manquant ou trivial. Renseigne-le dans l'environnement "
+            "avec 32 caractères aléatoires ou plus (les jetons d'authentification "
+            "sont signés avec) : python -c \"import secrets;print(secrets.token_urlsafe(32))\""
+        )
+    return secret
+
+
+JWT_SECRET = _lire_jwt_secret()
 JWT_ALGO = "HS256"
 TOKEN_TTL = 60 * 60 * 24 * 7  # 7 jours
 
