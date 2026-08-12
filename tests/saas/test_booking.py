@@ -108,3 +108,22 @@ def test_creneaux_hors_de_la_fiche_mise_en_cache():
     # le préfixe mis en cache est identique alors que les créneaux, eux, ont bougé
     assert fiche1 == fiche2
     assert extra1 != extra2
+
+
+def test_prompt_block_liste_les_creneaux_avec_horodatage():
+    cfg = dict(booking.DEFAULT, enabled=True,
+               services=[{"name": "Coupe", "duration": 30}])
+    bloc = booking.prompt_block(cfg, [datetime(2026, 8, 13, 10, 0)])
+    assert "## Rendez-vous" in bloc
+    assert "[2026-08-13T10:00]" in bloc
+    assert "Coupe" in bloc
+
+
+def test_prompt_block_sans_creneau_n_escalade_pas():
+    """Sans horaires configurés, escalader coupait le bot pour ce client :
+    `escalated` reste vrai et chaque message suivant part au staff sans réponse.
+    On enregistre la demande à la place — le responsable est notifié pareil."""
+    bloc = booking.prompt_block(dict(booking.DEFAULT, enabled=True), [])
+    assert "escalate" not in bloc
+    assert "record" in bloc
+    assert "disponibilit" in bloc.lower()

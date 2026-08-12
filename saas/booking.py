@@ -95,3 +95,28 @@ _MOIS = ["", "janvier", "février", "mars", "avril", "mai", "juin", "juillet", "
 
 def human(local_dt: datetime) -> str:
     return f"{_JOURS[local_dt.weekday()]} {local_dt.day} {_MOIS[local_dt.month]} à {local_dt:%H:%M}"
+
+
+def prompt_block(cfg: dict, slots: list) -> str:
+    """Section « ## Rendez-vous » injectée dans le prompt (hors cache : elle change
+    à chaque créneau écoulé).
+
+    Sans créneau (horaires non renseignés, ou agenda plein), on enregistre la
+    demande au lieu d'escalader. L'escalade mettait `escalated` à vrai : le bot
+    cessait alors de répondre à ce client et chaque message suivant partait au
+    responsable sans réponse, jusqu'à intervention humaine. Une config incomplète
+    rendait ainsi la conversation muette. `record` notifie le staff tout autant,
+    mais laisse la conversation vivante.
+    """
+    svc = ", ".join((x.get("name") or "") for x in cfg.get("services", []) or []) or "prestation"
+    if slots:
+        lignes = "\n".join(f"- [{s:%Y-%m-%dT%H:%M}] {human(s)}" for s in slots)
+        return ("\n\n## Rendez-vous\nRéservation possible. Services : " + svc +
+                ".\nCréneaux disponibles (utilise l'horodatage entre crochets pour "
+                "book_datetime) :\n" + lignes)
+    return ("\n\n## Rendez-vous\nLa prise de rendez-vous est possible (services : " + svc +
+            "), mais aucun créneau n'est libre dans la fenêtre actuelle. Ne dis JAMAIS "
+            "que tu ne prends pas de rendez-vous, et ne passe pas la main à un humain : "
+            "demande au client ses disponibilités souhaitées (jour et heure), puis "
+            "enregistre-les avec action='record', record_type='Demande de rendez-vous'. "
+            "Le responsable est prévenu automatiquement et confirmera.")

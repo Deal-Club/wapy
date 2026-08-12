@@ -38,11 +38,23 @@ def _csv(value: str | None) -> list[str]:
 def handle_message(channel, store, brain, fiche_text, staff_send, staff_recognize, payload, pay_link=None, book_slot=None, lookup_fn=None, extra_context="", quota_fn=None):
     msg = channel.parse_incoming(payload)
     if msg is None:
+        # Événement non-message (accusé de réception, présence…). Très fréquent et
+        # jamais une perte : en DEBUG, sinon il noierait le journal.
+        logger.debug("Webhook sans message exploitable")
         return {"status": "ignored"}
     if msg.from_me or msg.is_group or is_broadcast(msg.chat_id) or is_group(msg.chat_id):
+        motif = ("envoyé par nous" if msg.from_me
+                 else "groupe" if (msg.is_group or is_group(msg.chat_id))
+                 else "diffusion")
+        logger.info("Message écarté (%s) — %s : %s",
+                    motif, msg.chat_id, (msg.text or "")[:80])
         return {"status": "ignored"}
 
     if msg.id and store.is_processed(msg.id):
+        # Renvoi du même id par WAHA. Sans cette trace, un message perdu ici était
+        # invisible : le webhook répond 200 et le client n'a jamais de réponse.
+        logger.info("Message déjà traité (id=%s) — %s : %s",
+                    msg.id, msg.chat_id, (msg.text or "")[:80])
         return {"status": "duplicate"}
     if msg.id:
         store.mark_processed(msg.id)
@@ -288,22 +300,11 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
             )
             taken_local = [booking.to_local(bcfg, b.start) for b in ups]
             slots = booking.free_slots(bcfg, taken_local)
-            svc = ", ".join((x.get("name") or "") for x in bcfg.get("services", [])) or "prestation"
-            if slots:
-                lines = "\n".join(f"- [{s:%Y-%m-%dT%H:%M}] {booking.human(s)}" for s in slots)
-                volatile += (
-                    "\n\n## Rendez-vous\nRéservation possible. Services : " + svc +
-                    ".\nCréneaux disponibles (utilise l'horodatage entre crochets pour book_datetime) :\n" + lines
-                )
-            else:
-                # RDV activés mais aucun créneau libre (agenda plein ou horaires non
-                # renseignés) : ne JAMAIS nier la prise de RDV — proposer de noter.
-                volatile += (
-                    "\n\n## Rendez-vous\nLa prise de rendez-vous est possible (services : " + svc +
-                    "), mais aucun créneau n'est libre dans la fenêtre actuelle. Ne dis pas que tu ne "
-                    "prends pas de rendez-vous : invite le client à laisser ses disponibilités "
-                    "souhaitées, puis escalade au responsable (action='escalate')."
-                )
+            volatile += booking.prompt_block(bcfg, slots)
+            if not slots:
+                logger.warning(
+                    "RDV activés mais aucun créneau libre (tenant %s) — horaires "
+                    "d'ouverture renseignés : %s", tenant.id, bool(bcfg.get("hours")))
 
             def book_slot(dt_iso, service, chat_id, name, _b=bcfg):
                 try:

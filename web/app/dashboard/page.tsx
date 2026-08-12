@@ -515,6 +515,14 @@ function BookingConfig() {
         <input type="checkbox" checked={b.enabled} onChange={(e) => set({ enabled: e.target.checked })} />
         Activer la prise de rendez-vous
       </label>
+      {b.enabled && !Object.values(b.hours || {}).some((rows: any) => (rows || []).some((r: any) => r[0] && r[1])) && (
+        // Activé sans horaires = zéro créneau : le bot ne peut rien proposer.
+        <p className="flex items-start gap-1.5 text-sm text-amber-600">
+          <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+          Aucun horaire d'ouverture renseigné : le bot ne pourra proposer aucun créneau.
+          Remplissez les horaires ci-dessous, puis enregistrez.
+        </p>
+      )}
 
       <div className="grid gap-2 sm:grid-cols-4">
         <label className="text-sm">Durée d'un créneau (min)
@@ -612,7 +620,7 @@ function GoogleCalendarCard() {
     catch { alert("Impossible de démarrer la connexion Google."); setBusy(false); }
   }
   async function disconnect() {
-    if (!confirm("Déconnecter votre Google Agenda ? Les prochains RDV ne s'y ajouteront plus.")) return;
+    if (!confirm("Déconnecter votre Google Agenda ? Les prochains RDV ne s'y ajouteront plus. L'agenda « Wapy — Réservations » et les RDV déjà créés restent dans votre compte Google.")) return;
     setBusy(true);
     try { await api.googleDisconnect(); load(); } finally { setBusy(false); }
   }
@@ -624,8 +632,8 @@ function GoogleCalendarCard() {
           <div className="text-sm font-medium">Google Agenda</div>
           <div className="text-xs text-muted">
             {st.connected
-              ? <>Connecté{st.email ? ` — ${st.email}` : ""}. Chaque RDV s'ajoute à votre agenda.</>
-              : "Connectez votre agenda : chaque RDV pris par le bot s'y ajoute automatiquement."}
+              ? <>Connecté{st.email ? ` — ${st.email}` : ""}. Chaque RDV s'ajoute à l'agenda « Wapy — Réservations ».</>
+              : "Connectez votre compte : Wapy crée un agenda dédié « Wapy — Réservations » dans votre Google Agenda, et chaque RDV pris par le bot s'y ajoute. Votre agenda personnel n'est jamais consulté ni modifié."}
           </div>
         </div>
         {st.connected
