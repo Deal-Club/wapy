@@ -130,10 +130,10 @@ export default function Landing() {
           <div className="rise">
             <span className="pill bg-emerald-soft text-emerald-dark">● En ligne 24h/24 sur WhatsApp</span>
             <h1 className="mt-4 font-display text-5xl font-semibold leading-[1.05] md:text-6xl">
-              Ne perdez plus jamais un client sur <span className="text-brand">WhatsApp</span>.
+              <span className="text-brand">Wapy</span>, l&apos;assistant WhatsApp qui répond à vos clients 24h/24.
             </h1>
             <p className="mt-5 max-w-xl text-lg text-muted">
-              Wapy répond automatiquement à vos clients (questions, commandes, réservations), dans votre ton, avec vos informations. Pour tout secteur. Sans code.
+              Wapy est un assistant qui répond automatiquement à vos clients sur WhatsApp (questions, commandes, réservations), dans votre ton et avec vos informations. Pour tout secteur, sans code, pour ne plus jamais perdre une vente.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-3">
               <Link href="/signup" className="btn text-base">Créer mon assistant gratuitement</Link>
