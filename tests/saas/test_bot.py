@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy.orm import sessionmaker
 
 from channel.base import IncomingMessage
@@ -353,3 +355,50 @@ def test_process_incoming_end_to_end_db():
     # persistance en DB
     rows = s.query(models.Conversation).filter_by(tenant_id=tenant.id).all()
     assert any(x.role == "assistant" for x in rows)
+
+
+class _Journal(logging.Handler):
+    """Capte les logs de `wapy.saas` sans dépendre de la config globale : d'autres
+    tests reconfigurent le logging et neutralisent la capture de pytest."""
+
+    def __enter__(self):
+        self.lignes = []
+        self._lg = logging.getLogger("wapy.saas")
+        self._niveau, self._propage = self._lg.level, self._lg.propagate
+        self._lg.setLevel(logging.INFO)
+        self._lg.addHandler(self)
+        return self
+
+    def __exit__(self, *_):
+        self._lg.removeHandler(self)
+        self._lg.setLevel(self._niveau)
+        self._lg.propagate = self._propage
+
+    def emit(self, record):
+        self.lignes.append(record.getMessage())
+
+    @property
+    def texte(self):
+        return "\n".join(self.lignes)
+
+
+def test_message_deja_traite_est_journalise():
+    """WAHA peut renvoyer le même id. Sans trace, un message perdu ici était
+    indétectable : le webhook répond 200 et le client n'a jamais de réponse."""
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("reply", "Bonjour !", "salut"))
+    m = _msg(body="bonjour", mid="dup1")
+    handle_message(ch, store, brain, "x", [], [], m)
+    with _Journal() as j:
+        r = handle_message(ch, store, brain, "x", [], [], m)
+    assert r["status"] == "duplicate"
+    assert "dup1" in j.texte and "déjà traité" in j.texte
+
+
+def test_message_ecarte_journalise_le_motif():
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("reply", "Bonjour !", "salut"))
+    with _Journal() as j:
+        r = handle_message(ch, store, brain, "x", [], [], _msg(from_me=True, mid="own1"))
+    assert r["status"] == "ignored"
+    assert "écarté" in j.texte and "envoyé par nous" in j.texte
