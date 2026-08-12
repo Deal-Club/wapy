@@ -10,7 +10,10 @@ l'autre pour un même établissement -> ils forment le préfixe stable et porten
 message entrant) arrive APRÈS ce point de rupture, sinon le cache est invalidé.
 """
 import json
+import logging
 from dataclasses import dataclass
+
+logger = logging.getLogger("wapy.brain")
 
 DECISION_SCHEMA = {
     "type": "object",
@@ -372,19 +375,38 @@ class Brain:
         for cle, valeur in lire_conso(resp).items():
             self.conso[cle] = self.conso.get(cle, 0) + valeur
 
-    def decide(self, fiche_text: str, history: list[dict], incoming_text: str,
-               channel: str = "whatsapp", extra: str = "") -> Decision:
-        messages = build_messages(history, incoming_text, extra)
+    # Réponse servie quand le modèle n'a produit aucun JSON exploitable, même
+    # après relance. Le silence est le pire des cas : le client ne distingue pas
+    # « le bot réfléchit » de « personne ne répondra jamais ».
+    SECOURS = ("Désolé, je n'ai pas bien saisi votre message. "
+               "Pouvez-vous le reformuler en quelques mots ?")
+
+    def _appel(self, fiche_text, history, incoming_text, channel, extra) -> str:
         resp = self._client.messages.create(
             model=self._model,
             max_tokens=1024,
             system=build_system_blocks(fiche_text, channel, extra),
-            messages=messages,
+            messages=build_messages(history, incoming_text, extra),
             output_config={"format": {"type": "json_schema", "schema": DECISION_SCHEMA}},
         )
         self._cumuler(resp)
-        text = next(b.text for b in resp.content if b.type == "text")
-        data = json.loads(text)
+        return next(b.text for b in resp.content if b.type == "text")
+
+    def decide(self, fiche_text: str, history: list[dict], incoming_text: str,
+               channel: str = "whatsapp", extra: str = "") -> Decision:
+        data = None
+        for tentative in (1, 2):
+            text = self._appel(fiche_text, history, incoming_text, channel, extra)
+            try:
+                data = json.loads(text)
+                break
+            except (json.JSONDecodeError, TypeError):
+                # Sortie tronquée (plafond de tokens) ou malformée. On journalise le
+                # texte fautif — sans lui, l'incident est indiagnosticable a posteriori.
+                logger.warning("Décision illisible (tentative %d/2) : %r", tentative, text[:300])
+        if data is None:
+            return Decision(action="reply", message=self.SECOURS,
+                            reason="JSON illisible après relance")
         return Decision(
             action=data["action"],
             message=data["message"],

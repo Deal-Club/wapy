@@ -212,3 +212,40 @@ def test_les_exemples_maintiennent_les_petits_tenants_au_dessus_du_seuil_haiku()
         f"préfixe estimé à {total:.0f} tokens : sous la frontière mesurée du cache "
         f"Haiku. Les exemples ({exemples} car.) ont-ils été raccourcis ?"
     )
+
+
+class _MessagesTexteBrut:
+    """Renvoie un JSON invalide au 1er appel, puis un JSON valide."""
+
+    def __init__(self, *textes):
+        self._textes = list(textes)
+        self.calls = []
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        return _FakeResp(self._textes[min(len(self.calls) - 1, len(self._textes) - 1)])
+
+
+class _ClientTexteBrut:
+    def __init__(self, *textes):
+        self.messages = _MessagesTexteBrut(*textes)
+
+
+def test_decide_reessaie_quand_le_json_est_invalide():
+    """En prod, un JSON tronqué levait JSONDecodeError : webhook 500 et le client
+    ne recevait RIEN, sans le moindre message d'erreur."""
+    bon = json.dumps({"action": "reply", "message": "Bonjour !", "reason": "ok"})
+    c = _ClientTexteBrut("{ ", bon)
+    d = Brain(c, "m").decide("fiche", [], "salut")
+    assert d.action == "reply" and d.message == "Bonjour !"
+    assert len(c.messages.calls) == 2   # une seule relance
+
+
+def test_decide_repond_quand_meme_si_le_json_reste_invalide():
+    """Deux échecs de suite : on répond une phrase d'attente plutôt que de laisser
+    le client dans le silence."""
+    c = _ClientTexteBrut("{ ", "encore casse")
+    d = Brain(c, "m").decide("fiche", [], "salut")
+    assert d.action == "reply"
+    assert d.message.strip()          # jamais vide
+    assert "reformul" in d.message.lower()
