@@ -390,7 +390,10 @@ class Brain:
             output_config={"format": {"type": "json_schema", "schema": DECISION_SCHEMA}},
         )
         self._cumuler(resp)
-        return next(b.text for b in resp.content if b.type == "text")
+        # TOUS les blocs de texte, recollés. Le modèle découpe parfois sa réponse
+        # en plusieurs blocs : n'en lire qu'un (`next(...)`) faisait perdre le JSON
+        # dès que le premier se réduisait à ' ' ou ' {' — observé en production.
+        return "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
 
     def decide(self, fiche_text: str, history: list[dict], incoming_text: str,
                channel: str = "whatsapp", extra: str = "") -> Decision:

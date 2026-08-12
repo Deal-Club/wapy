@@ -249,3 +249,42 @@ def test_decide_repond_quand_meme_si_le_json_reste_invalide():
     assert d.action == "reply"
     assert d.message.strip()          # jamais vide
     assert "reformul" in d.message.lower()
+
+
+class _RespMultiBlocs:
+    def __init__(self, morceaux):
+        self.content = [_FakeBlock(m) for m in morceaux]
+
+
+class _MessagesMultiBlocs:
+    def __init__(self, morceaux):
+        self._morceaux = morceaux
+        self.calls = []
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        return _RespMultiBlocs(self._morceaux)
+
+
+class _ClientMultiBlocs:
+    def __init__(self, morceaux):
+        self.messages = _MessagesMultiBlocs(morceaux)
+
+
+def test_decide_recolle_les_blocs_de_texte():
+    """Le modèle peut découper sa réponse en plusieurs blocs de contenu. On n'en
+    lisait qu'UN (`next(...)`), donc un premier bloc réduit à ' ' ou ' {' faisait
+    perdre tout le JSON qui suivait — observé en production."""
+    bon = json.dumps({"action": "reply", "message": "Bonjour !", "reason": "ok"})
+    c = _ClientMultiBlocs([" ", " {", bon[1:]])
+    d = Brain(c, "m").decide("fiche", [], "salut")
+    assert d.action == "reply" and d.message == "Bonjour !"
+    assert len(c.messages.calls) == 1      # aucune relance nécessaire
+
+
+def test_decide_gere_un_bloc_unique_comme_avant():
+    bon = json.dumps({"action": "record", "message": "Noté", "reason": "r",
+                      "record_type": "Réservation", "record": "x"})
+    c = _ClientMultiBlocs([bon])
+    d = Brain(c, "m").decide("fiche", [], "salut")
+    assert d.action == "record" and d.record_type == "Réservation"

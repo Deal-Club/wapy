@@ -195,6 +195,15 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 
     if init:
+        # Sans configuration, Python n'émet qu'à partir de WARNING via son handler
+        # de dernier recours, et sans horodatage ni niveau : les `logger.info` du
+        # bot (message entrant, message écarté) n'atteignaient jamais les logs.
+        logging.basicConfig(
+            level=os.environ.get("LOG_LEVEL", "INFO").upper(),
+            format="%(asctime)s %(levelname)s %(name)s : %(message)s",
+            force=True,
+        )
+
         @app.on_event("startup")
         def _startup():
             init_db()
