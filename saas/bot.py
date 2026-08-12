@@ -355,4 +355,13 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
             in_delta=1,
             out_delta=1 if status in _SENT_STATUSES else 0,
         )
+    # Coût réel du tour de parole. Après `handle_message` et non dans le cerveau :
+    # un tour peut coûter plusieurs appels (boucle `lookup`), et c'est le tour
+    # entier qu'on veut imputer. Un message qui n'a pas atteint le cerveau
+    # (escalade, opt-out, doublon) laisse le cumul vide et n'écrit rien.
+    if hasattr(brain, "consommer_conso"):
+        from saas import costs
+
+        costs.enregistrer(session, tenant.id, "brain",
+                          getattr(brain, "modele", ""), brain.consommer_conso())
     return result

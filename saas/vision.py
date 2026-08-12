@@ -20,7 +20,14 @@ SYSTEM = (
 )
 
 
-def analyze_image(client, model: str, image_bytes: bytes, media_type: str = "image/jpeg") -> str:
+def analyze_image(client, model: str, image_bytes: bytes, media_type: str = "image/jpeg",
+                  on_conso=None) -> str:
+    """`on_conso` reçoit les compteurs de tokens de l'appel (cf. saas/costs.py).
+
+    Un callback plutôt qu'un attribut de module : le webhook traite plusieurs
+    établissements en parallèle dans un threadpool, un état partagé mélangerait
+    leurs consommations.
+    """
     mt = media_type if media_type in _ALLOWED else "image/jpeg"
     b64 = base64.standard_b64encode(image_bytes).decode()
     resp = client.messages.create(
@@ -35,4 +42,8 @@ def analyze_image(client, model: str, image_bytes: bytes, media_type: str = "ima
             ],
         }],
     )
+    if on_conso is not None:
+        from brain.brain import lire_conso
+
+        on_conso(lire_conso(resp))
     return next((b.text for b in resp.content if b.type == "text"), "").strip()

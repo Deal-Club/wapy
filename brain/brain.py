@@ -333,10 +333,44 @@ def build_messages(history: list[dict], incoming_text: str, extra: str = "") -> 
     return messages + [{"role": "user", "content": incoming_text}]
 
 
+def lire_conso(resp) -> dict:
+    """Compteurs de tokens d'une réponse, normalisés. Vide si l'objet n'en porte pas.
+
+    `getattr` plutôt qu'un accès direct : ce module tourne aussi contre des clients
+    de test, et une télémétrie ne doit jamais faire échouer l'appel qu'elle mesure.
+    """
+    u = getattr(resp, "usage", None)
+    if u is None:
+        return {}
+    return {
+        "entree": getattr(u, "input_tokens", 0) or 0,
+        "sortie": getattr(u, "output_tokens", 0) or 0,
+        "cache_lecture": getattr(u, "cache_read_input_tokens", 0) or 0,
+        "cache_ecriture": getattr(u, "cache_creation_input_tokens", 0) or 0,
+    }
+
+
 class Brain:
     def __init__(self, client, model: str):
         self._client = client
         self._model = model
+        # Cumul des tokens depuis le dernier `consommer_conso()`. Un tour de parole
+        # peut coûter plusieurs appels (boucle `lookup`) : c'est le tour entier qu'on
+        # veut facturer, pas le dernier appel.
+        self.conso = {}
+
+    @property
+    def modele(self) -> str:
+        return self._model
+
+    def consommer_conso(self) -> dict:
+        """Renvoie le cumul et le remet à zéro (le lecteur en devient responsable)."""
+        cumul, self.conso = self.conso, {}
+        return cumul
+
+    def _cumuler(self, resp) -> None:
+        for cle, valeur in lire_conso(resp).items():
+            self.conso[cle] = self.conso.get(cle, 0) + valeur
 
     def decide(self, fiche_text: str, history: list[dict], incoming_text: str,
                channel: str = "whatsapp", extra: str = "") -> Decision:
@@ -348,6 +382,7 @@ class Brain:
             messages=messages,
             output_config={"format": {"type": "json_schema", "schema": DECISION_SCHEMA}},
         )
+        self._cumuler(resp)
         text = next(b.text for b in resp.content if b.type == "text")
         data = json.loads(text)
         return Decision(

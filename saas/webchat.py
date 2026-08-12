@@ -129,6 +129,13 @@ def reply(session, tenant, sess, message: str, brain: Brain, notify=None, feats=
 
     decision = decide_with_lookup(brain, fiche, history, message, lookup_fn, channel="web",
                                   extra_context=volatile)
+    # Même imputation que sur WhatsApp : le widget consomme le même cerveau et doit
+    # apparaître dans le coût du même établissement, sinon la ventilation ment.
+    if hasattr(brain, "consommer_conso"):
+        from saas import costs
+
+        costs.enregistrer(session, tenant.id, "webchat",
+                          getattr(brain, "modele", ""), brain.consommer_conso())
     chat_id = f"web:{sess.session_key}"
     out = decision.message
 

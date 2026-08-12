@@ -49,6 +49,61 @@ PLANS = {
     },
 }
 
+# --- Modèle par TÂCHE ------------------------------------------------------
+#
+# Le modèle du plan ne vaut que pour le cerveau conversationnel : c'est le seul
+# que le client entend, donc le seul qui différencie les plans. Les tâches
+# annexes tournaient elles aussi sur le modèle du plan, ce qui faisait lire un
+# reçu Mobile Money sur Opus 5 — cinq fois le prix de la même extraction, sans
+# que personne ne perçoive la différence.
+#
+# Chaque tâche est donc épinglée au modèle le moins cher qui la fait BIEN, quel
+# que soit le plan payé. Pour deux d'entre elles c'est une hausse de qualité sur
+# Starter, pour Business une baisse de coût : les deux vont dans le bon sens.
+MODELES_TACHES = {
+    # Lecture des justificatifs de paiement. Sonnet 5 et non Haiku : Haiku plafonne
+    # à 1 568 px quand Sonnet 5 monte à 2 576 px, et une capture d'écran de Mobile
+    # Money est exactement le cas « image dense ou dégradée ». Un montant mal lu est
+    # une erreur commerciale, pas une approximation.
+    "vision": "claude-sonnet-5",
+    # Génération de la fiche à l'inscription. Plafonnée à AI_GENERATE_PER_MONTH
+    # appels par mois, donc le coût est borné — et c'est la toute première
+    # impression du client. C'est l'endroit où dépenser PLUS, pas moins.
+    "config": "claude-sonnet-5",
+    # Suggestions d'amélioration de la fiche. Haiku assumé : c'est la tâche au plus
+    # gros volume d'entrée (toutes les conversations récentes), et sa sortie passe
+    # par une validation humaine (accepter / rejeter) avant d'avoir le moindre effet.
+    # Une suggestion faible est rejetée d'un clic ; elle ne casse rien.
+    "learn": "claude-haiku-4-5-20251001",
+}
+
+# --- Garde-fou de marge ----------------------------------------------------
+#
+# Part du prix du plan au-delà de laquelle le coût IA du mois fait basculer le
+# cerveau d'un cran vers le bas. À 50 %, un établissement normal ne l'atteint
+# jamais : c'est un filet contre le cas extrême (usage industriel sur un forfait
+# illimité), pas un rationnement.
+#
+# Dégrader plutôt que couper est délibéré : un bot qui répond un peu moins bien
+# reste un bot qui répond. Un bot coupé, c'est un client perdu.
+PART_COUT_MAX = 0.5
+
+# Cran du dessous pour chaque modèle. Haiku est le plancher : on ne descend pas
+# en dessous, la dégradation s'arrête là.
+DEGRADATION = {
+    "claude-opus-5": "claude-sonnet-5",
+    "claude-opus-4-8": "claude-sonnet-5",
+    "claude-sonnet-5": "claude-haiku-4-5-20251001",
+    "claude-sonnet-4-6": "claude-haiku-4-5-20251001",
+}
+
+
+def plafond_xof(plan_key: str) -> int:
+    """Coût IA mensuel au-delà duquel on dégrade. 0 = pas de plafond connu."""
+    prix = PLANS.get(plan_key, {}).get("price", 0)
+    return int(prix * PART_COUT_MAX)
+
+
 # Add-ons : s'ajoutent au prix et débloquent un service (feature) ou augmentent une limite (grant).
 ADDONS = {
     "vision": {"label": "Lecture des justificatifs", "price": 4000, "feature": "vision"},

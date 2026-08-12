@@ -3,10 +3,16 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api, getToken, clearToken } from "@/lib/api";
 
+// Doit rester aligné sur les modèles de `saas/billing.py` (PLANS[*].model).
+// Sonnet 4.6 a été retiré : le cerveau envoie `output_config.format` (sorties
+// structurées), que ce modèle ne prend pas en charge — le sélectionner cassait
+// chaque message. Opus 4.8 et Sonnet 4.6 étaient de toute façon une génération
+// en retard, à tarif identique : les choisir dégradait la qualité sans rien
+// économiser.
 const MODELS = [
   { id: "claude-haiku-4-5-20251001", label: "Haiku 4.5 (le moins cher)" },
-  { id: "claude-sonnet-4-6", label: "Sonnet 4.6 (équilibré)" },
-  { id: "claude-opus-4-8", label: "Opus 4.8 (max qualité)" },
+  { id: "claude-sonnet-5", label: "Sonnet 5 (équilibré)" },
+  { id: "claude-opus-5", label: "Opus 5 (max qualité)" },
 ];
 
 export default function Admin() {

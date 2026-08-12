@@ -171,6 +171,32 @@ class UsageCounter(Base):
     __table_args__ = (UniqueConstraint("tenant_id", "day", name="uq_usage_day"),)
 
 
+class AiCost(Base):
+    """Coût IA réel, par établissement / mois / tâche / modèle (cf. saas/costs.py).
+
+    Distinct de `UsageCounter`, qui compte des messages : un message ne dit rien
+    de ce qu'il coûte (le modèle et l'état du cache font varier le prix d'un
+    facteur cinquante). Ventilé par tâche pour pouvoir répondre à « qu'est-ce qui
+    coûte cher chez ce client » sans relire les logs.
+    """
+    __tablename__ = "ai_costs"
+    id = Column(Integer, primary_key=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    month = Column(String(7), nullable=False)  # AAAA-MM
+    task = Column(String(30), nullable=False)  # brain | vision | config | learn
+    model = Column(String(80), nullable=False)
+    calls = Column(Integer, default=0)
+    tokens_in = Column(Integer, default=0)
+    tokens_out = Column(Integer, default=0)
+    tokens_cache_read = Column(Integer, default=0)
+    tokens_cache_write = Column(Integer, default=0)
+    # Micro-dollars entiers : additionner des flottants sur des milliers d'appels dérive.
+    cost_micro_usd = Column(Integer, default=0)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "month", "task", "model", name="uq_ai_cost"),
+    )
+
+
 class Contact(Base):
     """Nom d'affichage d'un interlocuteur (pushName WhatsApp) pour ne pas afficher
     un @lid illisible dans le tableau de bord."""

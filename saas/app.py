@@ -40,7 +40,7 @@ def _widget_rate_ok(key: str) -> bool:
     return True
 
 from saas.db import SessionLocal, init_db
-from saas import auth, config_repo, models, phone, sectors, usage, wa
+from saas import auth, config_repo, costs, models, phone, sectors, usage, wa
 from saas.bot import process_incoming
 from saas.store_db import DbStore
 
@@ -244,6 +244,11 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             tenant_id=tenant.id, plan="", addons=[], status="trial",
             current_period_end=datetime.utcnow() + timedelta(days=billing.TRIAL_DAYS),
         ))
+        # L'essai tourne sur le modèle annoncé par TRIAL_ENT, et non sur le défaut
+        # de la colonne (le moins cher). Ces sept jours sont ceux qui décident de
+        # l'abonnement : les faire tourner sur le modèle le plus faible, c'est se
+        # juger sur son plus mauvais jour. Le volume d'un essai est négligeable.
+        tenant.wapy_model = billing.TRIAL_ENT["model"] or tenant.wapy_model
         s.commit()
         return {"token": auth.create_token(user.id, tenant.id), "tenant": {"id": tenant.id, "name": tenant.name}}
 
@@ -343,6 +348,9 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
                 "id": t.id, "name": t.name,
                 "plan": t.plan, "status": getattr(t, "status", "active") or "active",
                 "model": t.wapy_model,
+                # Coût IA du mois : sans lui, l'admin voit un volume de messages
+                # mais pas la marge, alors que c'est la seule question qui compte.
+                "cout_ia_xof": costs.detail_du_mois(s, t.id)["total_xof"],
                 "owner": owner.email if owner else "",
                 "messages_in": u.get("messages_in", 0), "messages_out": u.get("messages_out", 0),
                 "wa_status": sess.status if sess else "—",
@@ -467,7 +475,8 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             from saas.ai_config import generate_config
 
             client = anthropic.Anthropic()
-            data = generate_config(client, tenant.wapy_model, body.sector, body.description, tenant.name)
+            modele = costs.modele_tache("config", tenant.wapy_model)
+            data = generate_config(client, modele, body.sector, body.description, tenant.name)
         else:
             data = gen(tenant, body.sector, body.description)
         remaining = max(0, billing.AI_GENERATE_PER_MONTH - usage.ai_gen_bump(s, tenant.id))
@@ -591,7 +600,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             from saas.ai_learn import analyze
 
             learn = lambda t, fiche_text, convs: analyze(  # noqa: E731
-                anthropic.Anthropic(), t.wapy_model, fiche_text, convs
+                anthropic.Anthropic(), costs.modele_tache("learn", t.wapy_model), fiche_text, convs
             )
         suggestions = learn(tenant, fiche, conversations)
 
@@ -800,7 +809,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
 
     @app.get("/api/usage")
     def get_usage(tenant=Depends(current_tenant), s=Depends(db)):
-        return usage.totals(s, tenant.id)
+        return {**usage.totals(s, tenant.id), "cout_ia": costs.detail_du_mois(s, tenant.id)}
 
     # --- Abonnement de l'établissement à Wapy (facturation opérateur via GeniusPay) ---
     def _entitlements(tenant, s):
@@ -1148,7 +1157,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         if br is None:
             import anthropic
             from brain.brain import Brain
-            br = Brain(anthropic.Anthropic(), tenant.wapy_model)
+            br = Brain(anthropic.Anthropic(), costs.modele_effectif(s, tenant, sub))
 
         def notify(text, _t=tenant):
             try:
@@ -1322,12 +1331,17 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             from brain.brain import Brain
 
             client = anthropic.Anthropic()
-            br = Brain(client, tenant.wapy_model)
+            br = Brain(client, costs.modele_effectif(s, tenant, s.get(models.Subscription, tenant.id)))
             if vision_fn is None:
                 from saas.vision import analyze_image
 
-                def vision_fn(image_bytes, media_type, _c=client, _m=tenant.wapy_model):
-                    return analyze_image(_c, _m, image_bytes, media_type)
+                _mv = costs.modele_tache("vision", tenant.wapy_model)
+
+                def vision_fn(image_bytes, media_type, _c=client, _m=_mv, _tid=tenant.id):
+                    return analyze_image(
+                        _c, _m, image_bytes, media_type,
+                        on_conso=lambda c: costs.enregistrer(s, _tid, "vision", _m, c),
+                    )
             if transcribe_fn is None:
                 from saas.transcribe import transcribe_audio
                 transcribe_fn = transcribe_audio
