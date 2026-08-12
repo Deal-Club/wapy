@@ -83,6 +83,28 @@ class WahaProvider(WhatsAppChannel):
         except Exception:
             return None
 
+    def _presence(self, chemin: str, chat_id: str) -> None:
+        """startTyping / stopTyping. Vérifiés sur WAHA 2026.7.2 (NOWEB) : 201.
+
+        Best-effort : un indicateur d'écriture ne doit jamais faire échouer un
+        message, ni retarder la réponse si WAHA est lent.
+        """
+        try:
+            requests.post(
+                f"{self.base_url}/api/{chemin}",
+                json={"session": self.session, "chatId": chat_id},
+                headers=self._headers,
+                timeout=5,
+            )
+        except Exception:
+            pass
+
+    def start_typing(self, chat_id: str) -> None:
+        self._presence("startTyping", chat_id)
+
+    def stop_typing(self, chat_id: str) -> None:
+        self._presence("stopTyping", chat_id)
+
     def send_image(self, chat_id: str, url: str, caption: str = "") -> None:
         r = requests.post(
             f"{self.base_url}/api/sendImage",

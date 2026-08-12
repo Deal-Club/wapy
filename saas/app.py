@@ -3,6 +3,7 @@
 P1 : auth + webhook multi-tenant.
 P2 : endpoints d'onboarding (config, modèle Excel, import xlsx, WhatsApp connect/qr/status).
 """
+import asyncio
 import io
 import logging
 import os
@@ -21,6 +22,23 @@ MEDIA_DIR = os.environ.get("MEDIA_DIR", "media")
 OTP_TTL = timedelta(minutes=15)
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "https://wapy.51.210.108.173.sslip.io")
 logger = logging.getLogger("wapy.saas")
+
+# Issues de `handle_message` qui n'envoient RIEN au client : après elles, il faut
+# retirer l'indicateur « écrit… », sinon il reste affiché sans réponse derrière.
+_STATUTS_MUETS = {
+    "ignored", "duplicate", "handback", "staff-idle", "relayed",
+    "handed_off", "optout", "forwarded", "blocked",
+}
+
+
+def _sans_erreur(fn, *args):
+    """Exécute un effet de bord cosmétique sans jamais propager son échec."""
+    try:
+        return fn(*args)
+    except Exception:
+        logger.debug("Indicateur d'écriture indisponible", exc_info=True)
+        return None
+
 
 # Limiteur de débit en mémoire pour le chat public du widget (anti-abus / coût LLM).
 _WIDGET_HITS: dict = {}
@@ -42,6 +60,7 @@ def _widget_rate_ok(key: str) -> bool:
 from saas.db import SessionLocal, init_db
 from saas import auth, config_repo, costs, models, phone, sectors, usage, wa
 from saas.bot import process_incoming
+from saas.debounce import Regroupeur, fusionner
 from saas.store_db import DbStore
 
 # Générateur du modèle Excel (dossier tools/).
@@ -167,6 +186,9 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     app = FastAPI(title="Wapy Platform")
     sf = session_factory or SessionLocal
     wam = wa_module or wa
+    # Tampon des messages en rafale, propre à cette application (un seul worker
+    # uvicorn : l'état en mémoire suffit et reste cohérent).
+    regroupeur = Regroupeur(echelle=float(os.environ.get("WAPY_REGROUPEMENT", "1")))
 
     # Fichiers média (images des catalogues) servis publiquement + accessibles à WAHA.
     os.makedirs(MEDIA_DIR, exist_ok=True)
@@ -1355,9 +1377,44 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         # thread pour NE PAS figer la boucle asyncio : les messages de plusieurs
         # conversations/établissements sont alors traités en parallèle (chaque requête
         # a sa propre session DB -> aucune donnée partagée, aucun mélange de réponses).
-        return await run_in_threadpool(
-            process_incoming, s, channel, br, tenant, payload,
-            vision_analyze=vision_fn, transcribe=transcribe_fn,
+        async def _traiter(textes=None):
+            # Un seul cycle pour tout le lot : le cerveau voit la demande complète
+            # au lieu de répondre à chaque fragment séparément.
+            charge = fusionner(payload, textes)
+            res = await run_in_threadpool(
+                process_incoming, s, channel, br, tenant, charge,
+                vision_analyze=vision_fn, transcribe=transcribe_fn,
+            )
+            # Rien n'a été envoyé au client : on retire l'indicateur « écrit… »,
+            # sinon il resterait affiché jusqu'à son expiration côté WhatsApp.
+            if apercu is not None and (res or {}).get("status") in _STATUTS_MUETS:
+                await run_in_threadpool(_sans_erreur, channel.stop_typing, apercu.chat_id)
+            return res
+
+        apercu = channel.parse_incoming(payload)
+        # On ne regroupe que du texte simple. Un média porte une URL dans SA charge
+        # utile (fusionner les corps la perdrait), et une réponse citée désigne une
+        # cible précise du relais staff : ces deux cas passent immédiatement.
+        regroupable = (
+            apercu is not None
+            and not apercu.from_me
+            and not apercu.is_group
+            and not apercu.media_url
+            and not apercu.media_type
+            and not apercu.quoted_id
+            and bool((apercu.text or "").strip())
+        )
+        if not regroupable:
+            return await _traiter()
+
+        def _ecrire():
+            # Appel HTTP vers WAHA : hors boucle asyncio, et sans l'attendre —
+            # l'indicateur est un confort, pas une étape du traitement.
+            asyncio.create_task(
+                run_in_threadpool(_sans_erreur, channel.start_typing, apercu.chat_id))
+
+        return await regroupeur.soumettre(
+            (tenant.id, apercu.chat_id), apercu.text, _traiter, avant_attente=_ecrire,
         )
 
     return app
