@@ -99,6 +99,9 @@ class _Store:
             if h[1] == client:
                 h[2] = True
 
+    def escalade_recente(self, cid):
+        return cid in getattr(self, "escalades_recentes", set())
+
 
 def _msg(cid="c@c.us", body="c'est quoi vos horaires ?", from_me=False, mid="m1"):
     return {"event": "message", "payload": {"from": cid, "body": body, "fromMe": from_me, "id": mid}}
@@ -402,3 +405,46 @@ def test_message_ecarte_journalise_le_motif():
         r = handle_message(ch, store, brain, "x", [], [], _msg(from_me=True, mid="own1"))
     assert r["status"] == "ignored"
     assert "écarté" in j.texte and "envoyé par nous" in j.texte
+
+
+def test_action_inconnue_ne_reveille_jamais_le_responsable():
+    """L'escalade était le cas PAR DÉFAUT en fin de `handle_message` : toute
+    action non gérée alertait le responsable. Déranger un humain ne doit jamais
+    être ce vers quoi on glisse par accident."""
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("bidule", "On ouvre à 12h.", "action inattendue"))
+    r = handle_message(ch, store, brain, "x", ["s@c.us"], ["s@c.us"], _msg())
+    assert r["status"] == "replied"
+    assert ("c@c.us", "On ouvre à 12h.") in ch.sent
+    assert store.handoffs == []                      # aucune alerte ouverte
+    assert "c@c.us" not in store.esc
+
+
+def test_action_inconnue_sans_message_repond_quand_meme():
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("bidule", "", "vide"))
+    r = handle_message(ch, store, brain, "x", ["s@c.us"], ["s@c.us"], _msg())
+    assert r["status"] == "replied"
+    assert ch.sent and ch.sent[0][1].strip()         # jamais un envoi vide
+
+
+def test_pas_de_seconde_alerte_si_escalade_recente():
+    """Sans garde-fou, chaque message rouvrait un handoff et renvoyait le meme
+    accuse : le client recevait « je transmets » en boucle et le responsable
+    etait alerte a chaque phrase."""
+    ch, store = _Ch(), _Store()
+    store.escalades_recentes = {"c@c.us"}
+    brain = _Brain(Decision("escalate", "", "client mecontent"))
+    r = handle_message(ch, store, brain, "x", ["s@c.us"], ["s@c.us"], _msg())
+    assert r["status"] == "escalade-deja-ouverte"
+    assert store.handoffs == []                      # pas de seconde alerte
+    envoyes_client = [t for c, t in ch.sent if c == "c@c.us"]
+    assert envoyes_client and "déjà" in envoyes_client[0].lower()
+
+
+def test_escalade_normale_alerte_bien_le_responsable():
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("escalate", "", "litige"))
+    r = handle_message(ch, store, brain, "x", ["s@c.us"], ["s@c.us"], _msg())
+    assert r["status"] == "escalated"
+    assert store.handoffs and store.handoffs[0][1] == "c@c.us"

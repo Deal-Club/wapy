@@ -17,6 +17,14 @@ from saas import config_repo, models, phone, usage
 logger = logging.getLogger("wapy.saas")
 
 HISTORY_LIMIT = 20
+
+# Servi quand le cerveau renvoie une action inconnue sans message : on parle au
+# client plutôt que de le laisser sans réponse ou d'alerter le responsable.
+ATTENTE = "Un instant, je vérifie cette information et je reviens vers vous."
+ESCALADE_DEJA_OUVERTE = (
+    "Votre demande est déjà transmise au responsable, "
+    "il revient vers vous au plus vite. 🙏"
+)
 HANDBACK_CMDS = {"/fin", "fin", "/bot", "terminé", "termine"}
 # Base interne pour que WAHA récupère les images servies par l'API.
 MEDIA_BASE = os.environ.get("MEDIA_INTERNAL_BASE", "http://api:8000")
@@ -198,6 +206,26 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
             if hasattr(store, "add_record"):
                 store.add_record(msg.chat_id, "Rendez-vous", confirm)
         return {"status": "booked" if ok else "replied"}
+
+    if decision.action != "escalate":
+        # Filet de sécurité. L'escalade était le comportement PAR DÉFAUT de cette
+        # fonction : toute action non reconnue réveillait le responsable. Déranger
+        # un humain doit résulter d'une décision explicite, jamais d'un glissement.
+        logger.warning("Action inconnue du cerveau (%r) — on répond sans escalader",
+                       decision.action)
+        texte = decision.message or ATTENTE
+        channel.send_text(msg.chat_id, texte)
+        store.append(msg.chat_id, "assistant", texte)
+        return {"status": "replied"}
+
+    # Une escalade déjà ouverte suffit : sans ce garde-fou, chaque message
+    # rouvrait un handoff et renvoyait le même accusé, si bien que le client
+    # recevait « je transmets » en boucle et le responsable était alerté à
+    # chaque phrase.
+    if getattr(store, "escalade_recente", lambda _c: False)(msg.chat_id):
+        channel.send_text(msg.chat_id, ESCALADE_DEJA_OUVERTE)
+        store.append(msg.chat_id, "assistant", ESCALADE_DEJA_OUVERTE)
+        return {"status": "escalade-deja-ouverte"}
 
     escalate_to_staff(channel, store, msg.chat_id, msg.text, staff_send, decision.reason)
     return {"status": "escalated"}

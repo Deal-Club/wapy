@@ -3,6 +3,8 @@
 Même interface que `store.conversations.ConversationStore` afin de réutiliser
 l'orchestration du bot sans la modifier. Toutes les requêtes filtrent par tenant_id.
 """
+from datetime import datetime, timedelta
+
 from saas import models
 
 
@@ -163,6 +165,24 @@ class DbStore:
             if rid == key or (stanza and rid.split("_")[-1] == stanza):
                 return r.client_id
         return None
+
+    def escalade_recente(self, chat_id: str, minutes: int = 15) -> bool:
+        """Une alerte a-t-elle déjà été envoyée au staff pour ce client récemment ?
+
+        On regarde les handoffs plutôt que le drapeau `escalated` : celui-ci est
+        remis à zéro dès que le responsable clôt l'échange depuis le dashboard,
+        ce qui rouvrait la porte à une nouvelle alerte au message suivant.
+        """
+        depuis = datetime.utcnow() - timedelta(minutes=minutes)
+        return bool(
+            self.s.query(models.Handoff)
+            .filter(
+                models.Handoff.tenant_id == self.tid,
+                models.Handoff.client_id == chat_id,
+                models.Handoff.created_at >= depuis,
+            )
+            .first()
+        )
 
     def resolve_handoffs_for_client(self, client_id: str) -> None:
         for h in (
