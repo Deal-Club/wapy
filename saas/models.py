@@ -336,8 +336,12 @@ class GoogleAuth(Base):
     __tablename__ = "google_auth"
     tenant_id = Column(Integer, ForeignKey("tenants.id"), primary_key=True)
     refresh_token = Column(Text, default="")
-    calendar_id = Column(String(255), default="primary")
-    email = Column(String(255), default="")   # id du calendrier principal (= e-mail), pour affichage
+    # Agenda secondaire « Wapy — Réservations » créé chez l'établissement au
+    # moment du consentement. Les lignes antérieures à la bascule vers le scope
+    # non sensible portent encore "primary" et continuent de fonctionner avec
+    # leur ancien jeton, jusqu'à reconnexion.
+    calendar_id = Column(String(255), default="")
+    email = Column(String(255), default="")   # e-mail du compte Google, pour affichage
     connected_at = Column(DateTime, default=datetime.utcnow)
 
 

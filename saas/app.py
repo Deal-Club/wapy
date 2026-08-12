@@ -1036,9 +1036,15 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             if not refresh:
                 # Google n'a pas renvoyé de refresh_token (déjà consenti sans prompt).
                 return RedirectResponse(f"{dest}&gcal=noconsent", status_code=302)
+            access = tokens.get("access_token", "")
+            # Le scope `calendar.app.created` ne donne accès qu'aux agendas que
+            # l'on crée soi-même : sans cet agenda, rien à synchroniser.
+            calendar_id = gcal.create_calendar(access)
+            if not calendar_id:
+                return RedirectResponse(f"{dest}&gcal=error", status_code=302)
             email = ""
             try:
-                email = gcal.primary_calendar(tokens.get("access_token", "")).get("id", "")
+                email = gcal.user_email(access)
             except Exception:
                 pass
             ga = s.get(models.GoogleAuth, data["tid"])
@@ -1046,7 +1052,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
                 ga = models.GoogleAuth(tenant_id=data["tid"])
                 s.add(ga)
             ga.refresh_token = refresh
-            ga.calendar_id = "primary"
+            ga.calendar_id = calendar_id
             ga.email = email
             s.commit()
             return RedirectResponse(f"{dest}&gcal=ok", status_code=302)
