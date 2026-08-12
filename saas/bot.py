@@ -35,7 +35,7 @@ def _csv(value: str | None) -> list[str]:
     return [x.strip() for x in (value or "").split(",") if x.strip()]
 
 
-def handle_message(channel, store, brain, fiche_text, staff_send, staff_recognize, payload, pay_link=None, book_slot=None, lookup_fn=None, extra_context=""):
+def handle_message(channel, store, brain, fiche_text, staff_send, staff_recognize, payload, pay_link=None, book_slot=None, lookup_fn=None, extra_context="", quota_fn=None):
     msg = channel.parse_incoming(payload)
     if msg is None:
         return {"status": "ignored"}
@@ -103,6 +103,16 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
 
     # Bot
     store.append(msg.chat_id, "user", msg.text)
+
+    # Quota de conversations. Contrôlé ICI, avant l'appel au modèle : un refus qui
+    # se paie un appel au modèle ne protège de rien.
+    if quota_fn is not None:
+        refus = quota_fn(msg.chat_id)
+        if refus:
+            channel.send_text(msg.chat_id, refus)
+            store.append(msg.chat_id, "assistant", refus)
+            return {"status": "quota"}
+
     history = store.get_history(msg.chat_id, HISTORY_LIMIT)
     decision = decide_with_lookup(brain, fiche_text, history, msg.text, lookup_fn,
                                   extra_context=extra_context)
@@ -343,9 +353,36 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
         fiche_text += connector.fiche_note(dc)
         lookup_fn = connector.lookup_fn_for(dc)
 
+    _limite = billing.tenant_entitlements(
+        session.get(models.Subscription, tenant.id)
+    )["limits"].get("conversations", 0)
+
+    def quota_fn(chat_id, _t=tenant, _lim=_limite):
+        """Message d'attente si le quota est atteint, chaîne vide sinon."""
+        if not usage.quota_atteint(session, _t.id, chat_id, _lim):
+            usage.noter_conversation(session, _t.id, chat_id)
+            # Alerte une seule fois par mois, au moment précis où la dernière
+            # conversation du forfait est comptée. Prévenir à chaque refus
+            # inonderait le responsable le jour où ça compte le plus.
+            if _lim and usage.conversations_du_mois(session, _t.id) == _lim:
+                for num in staff_send:
+                    try:
+                        channel.send_text(num, (
+                            f"⚠️ Forfait atteint : {_lim} conversations ce mois-ci.\n"
+                            "Les échanges déjà engagés continuent normalement, mais "
+                            "les nouveaux clients recevront un message d'attente.\n"
+                            "Augmentez le forfait pour rouvrir le service."
+                        ))
+                    except Exception:
+                        pass
+            return ""
+        return ("Merci pour votre message ! Nous revenons vers vous très vite — "
+                "un membre de l'équipe prend le relais.")
+
     result = handle_message(
         channel, store, brain, fiche_text, staff_send, staff_recognize, payload,
-        pay_link=None, book_slot=book_slot, lookup_fn=lookup_fn, extra_context=volatile
+        pay_link=None, book_slot=book_slot, lookup_fn=lookup_fn, extra_context=volatile,
+        quota_fn=quota_fn,
     )
     status = result.get("status")
     if status not in ("ignored", "duplicate"):

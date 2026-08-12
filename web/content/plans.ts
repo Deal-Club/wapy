@@ -8,23 +8,25 @@ import type { Colonne, Ligne } from "@/components/seo/TableauComparatif";
  * lignes 20 à 50) et les options (`ADDONS`, lignes 53 à 64). Rien n'y est
  * déduit d'un document de planification.
  *
- * AUCUN MONTANT N'EST PUBLIÉ, ET C'EST DÉLIBÉRÉ.
- * `prix` est absent de chaque entrée. Les prix de `saas/billing.py:33` portent
- * la mention « à ajuster librement », la grille est en cours de révision, et
- * publier un montant reviendrait à s'engager commercialement sur une valeur
- * destinée à changer. Le champ existe malgré tout, optionnel : le jour où la
- * grille est arrêtée, renseigner `prix` ici, dans ce seul fichier, suffit à
- * faire apparaître les montants sur `/tarifs` (via `montantAffiche` et
- * `lignesTarifs`) et à faire émettre l'AggregateOffer de la page (via
- * `offresPubliables`). Aucun gabarit n'est à toucher. Les deux branches,
- * prix absent et prix renseigné, sont couvertes par `tests/entite.test.ts`.
+ * LES MONTANTS SONT PUBLIÉS DEPUIS QUE LA GRILLE EST ARRÊTÉE.
+ * Ils reprennent `PLANS[*].price` de `saas/billing.py`, à l'unité près. Les deux
+ * branches, prix absent et prix renseigné, restent couvertes par
+ * `tests/entite.test.ts` : le champ demeure optionnel.
  *
- * AUCUN QUOTA DE CONVERSATIONS N'EST PUBLIÉ NON PLUS.
- * `saas/billing.py:38,43` déclare 500 et 2 500 conversations par mois et
- * `billing.py:61` vend un add-on « +1 000 conversations », mais aucun code ne
- * les applique : `entitlements_for` recopie la limite, personne ne la lit. Les
- * seules limites réellement contrôlées sont `agents` (`saas/app.py:285-289`) et
- * `documents` (`saas/app.py:696-698`) : ce sont les seules décrites ici.
+ * LES QUOTAS DE CONVERSATIONS SONT PUBLIÉS AUSSI, PARCE QU'ILS SONT APPLIQUÉS.
+ * Ils ne l'étaient pas : la limite était déclarée et personne ne la lisait. Elle
+ * est désormais contrôlée à chaque message entrant (`saas/usage.py`,
+ * `quota_atteint`, appelé par `saas/bot.py` avant l'appel au modèle et par
+ * `saas/webchat.py`). Une limite annoncée et appliquée peut être publiée ; une
+ * limite annoncée et ignorée était une contrainte fictive qu'il aurait fallu se
+ * garder de vendre.
+ *
+ * AUCUN NOM DE MODÈLE N'EST PUBLIÉ, ET C'EST DÉLIBÉRÉ.
+ * Les trois plans tournent sur le même modèle : `tools/eval_prompt.py` ne mesure
+ * aucun écart de comportement entre lui et le modèle supérieur sur les huit
+ * scénarios réels (8/8 des deux côtés). Vendre « un modèle plus avancé » comme
+ * différence de plan reviendrait à facturer un écart que rien ne mesure. Ce qui
+ * distingue les plans est ce qui se constate : le volume et les fonctions.
  */
 
 export type Devise = "XOF";
@@ -67,6 +69,7 @@ export const PLANS: Plan[] = [
     slug: "essentiel",
     nom: "Starter",
     resume: "Répondre aux messages et enregistrer les demandes, sans rien de plus.",
+    prix: 9900,
     devise: "XOF",
     periode: "mois",
     inclus: [
@@ -76,12 +79,17 @@ export const PLANS: Plan[] = [
       "Passage de main au responsable quand un humain est nécessaire",
       "Base de connaissances alimentée par vos documents",
     ],
-    limites: ["Un compte collaborateur en plus du vôtre", "Trois documents dans la base de connaissances"],
+    limites: [
+      "500 conversations par mois",
+      "Un compte collaborateur en plus du vôtre",
+      "Trois documents dans la base de connaissances",
+    ],
   },
   {
     slug: "pro",
     nom: "Pro",
     resume: "Le plan complet : rendez-vous, chat du site web, vocaux et justificatifs.",
+    prix: 24900,
     devise: "XOF",
     periode: "mois",
     inclus: [
@@ -93,40 +101,52 @@ export const PLANS: Plan[] = [
       "Suggestions d'amélioration de votre fiche",
       "Support prioritaire",
     ],
-    limites: ["Trois comptes collaborateurs en plus du vôtre", "Dix documents dans la base de connaissances"],
+    limites: [
+      "2 000 conversations par mois",
+      "Trois comptes collaborateurs en plus du vôtre",
+      "Dix documents dans la base de connaissances",
+    ],
   },
   {
     slug: "business",
     nom: "Business",
-    resume: "Pour une entreprise qui veut brancher son propre stock et ouvrir les accès.",
+    resume: "Pour une entreprise à fort volume qui veut brancher son propre stock.",
+    prix: 49900,
     devise: "XOF",
     periode: "mois",
     inclus: [
       "Tout ce que contient le plan Pro",
       "Connexion à la base de votre entreprise pour les stocks et les produits",
-      "Le modèle d'intelligence artificielle le plus avancé des trois plans",
+      "Trois fois le volume de conversations du plan Pro",
     ],
-    limites: ["Comptes collaborateurs sans limite", "Documents sans limite"],
+    limites: [
+      "6 000 conversations par mois",
+      "Comptes collaborateurs sans limite",
+      "Documents sans limite",
+    ],
   },
 ];
 
 /**
- * Options activables en plus d'un plan.
+ * Options activables en plus d'un plan. Montants repris de `ADDONS` dans
+ * `saas/billing.py`.
  *
- * L'add-on « +1 000 conversations » de `saas/billing.py:61` est volontairement
- * absent : il augmente une limite qu'aucun code n'applique, le vendre serait
- * facturer une contrainte inexistante.
+ * « +1 000 conversations » y figure désormais : la limite qu'elle augmente est
+ * réellement appliquée, la vendre a donc un objet. Tant que ce n'était pas le
+ * cas, elle était volontairement absente d'ici.
  */
 export const OPTIONS: Option[] = [
-  { slug: "booking", nom: "Prise de rendez-vous", devise: "XOF", periode: "mois" },
-  { slug: "webchat", nom: "Chat pour site web", devise: "XOF", periode: "mois" },
-  { slug: "vision", nom: "Lecture des justificatifs de paiement", devise: "XOF", periode: "mois" },
-  { slug: "voice", nom: "Transcription des notes vocales", devise: "XOF", periode: "mois" },
-  { slug: "suggestions", nom: "Suggestions d'amélioration de la fiche", devise: "XOF", periode: "mois" },
-  { slug: "data_connector", nom: "Connexion à la base de l'entreprise", devise: "XOF", periode: "mois" },
-  { slug: "priority_support", nom: "Support prioritaire", devise: "XOF", periode: "mois" },
-  { slug: "agents_3", nom: "Trois comptes collaborateurs de plus", devise: "XOF", periode: "mois" },
-  { slug: "documents_10", nom: "Dix documents de plus", devise: "XOF", periode: "mois" },
+  { slug: "booking", nom: "Prise de rendez-vous", prix: 5000, devise: "XOF", periode: "mois" },
+  { slug: "webchat", nom: "Chat pour site web", prix: 6000, devise: "XOF", periode: "mois" },
+  { slug: "vision", nom: "Lecture des justificatifs de paiement", prix: 4000, devise: "XOF", periode: "mois" },
+  { slug: "voice", nom: "Transcription des notes vocales", prix: 4000, devise: "XOF", periode: "mois" },
+  { slug: "suggestions", nom: "Suggestions d'amélioration de la fiche", prix: 3000, devise: "XOF", periode: "mois" },
+  { slug: "data_connector", nom: "Connexion à la base de l'entreprise", prix: 9000, devise: "XOF", periode: "mois" },
+  { slug: "priority_support", nom: "Support prioritaire", prix: 6000, devise: "XOF", periode: "mois" },
+  { slug: "conversations_1000", nom: "Mille conversations de plus", prix: 6900, devise: "XOF", periode: "mois" },
+  { slug: "modele_avance", nom: "Réponses avancées (modèle supérieur)", prix: 9900, devise: "XOF", periode: "mois" },
+  { slug: "agents_3", nom: "Trois comptes collaborateurs de plus", prix: 4000, devise: "XOF", periode: "mois" },
+  { slug: "documents_10", nom: "Dix documents de plus", prix: 3000, devise: "XOF", periode: "mois" },
 ];
 
 /** Nom d'usage de la devise en Afrique de l'Ouest. `XOF` est le code ISO. */

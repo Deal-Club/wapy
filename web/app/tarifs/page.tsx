@@ -104,7 +104,7 @@ export default function PageTarifs() {
             { id: ID_ESSAI, libelle: `Les ${JOURS_ESSAI} jours d'essai` },
             { id: ID_PLANS, libelle: "Les trois plans" },
             { id: ID_OPTIONS, libelle: "Les options" },
-            { id: ID_MONTANTS, libelle: "Pourquoi aucun montant n'est affiché" },
+            { id: ID_MONTANTS, libelle: "Ce que vous payez, et ce qui est compté" },
           ]}
         />
 
@@ -190,18 +190,25 @@ export default function PageTarifs() {
 
         <section id={ID_MONTANTS} className="mt-12 scroll-mt-24">
           <h2 className="font-display text-2xl font-bold">
-            Pourquoi aucun montant n&apos;est affiché
+            Ce que vous payez, et ce qui est compté
           </h2>
           <p className="mt-4 text-muted">
-            La grille tarifaire est en cours de révision. Publier des montants aujourd&apos;hui
-            reviendrait à vous engager sur des valeurs qui vont bouger, et un tarif annoncé puis
-            corrigé coûte plus cher en confiance qu&apos;un tarif annoncé plus tard. La colonne
-            Tarif du tableau porte donc la mention « {TARIF_NON_PUBLIE} ».
+            La facturation est mensuelle, en francs CFA, sans engagement de durée et sans frais
+            de mise en service. L&apos;entrée de gamme est à 9 900 FCFA par mois, et
+            l&apos;essai de {JOURS_ESSAI} jours la précède, sans carte bancaire.
           </p>
           <p className="mt-4 text-muted">
-            Ce qui est acquis, en revanche : la facturation est mensuelle, en francs CFA, et
-            l&apos;essai de {JOURS_ESSAI} jours la précède. Écrivez-nous ou lancez l&apos;essai
-            pour connaitre le montant applicable à votre établissement.
+            Ce qui est compté, c&apos;est la conversation : un client qui vous écrit dans le mois
+            compte pour une, qu&apos;il envoie deux messages ou trente, et qu&apos;il revienne ou
+            non les jours suivants. Un habitué qui vous écrit chaque semaine reste donc une seule
+            conversation sur sa facture. Le plan Starter en couvre 500 par mois, le plan Pro
+            2 000, le plan Business 6 000.
+          </p>
+          <p className="mt-4 text-muted">
+            Si vous atteignez le plafond, les échanges déjà engagés continuent normalement et
+            vous êtes prévenu sur WhatsApp. Les nouveaux clients reçoivent un message
+            d&apos;attente jusqu&apos;à ce que vous ajoutiez du volume : rien ne se coupe sans
+            que vous le sachiez.
           </p>
         </section>
 

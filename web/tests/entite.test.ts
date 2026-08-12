@@ -176,27 +176,32 @@ describe("plans", () => {
     expect(JOURS_ESSAI).toBe(7);
   });
 
-  // --- Branche 1 : aucun prix renseigné (état publié aujourd'hui) ------------
+  // --- Branche 1 : la grille est arrêtée, les montants sont publiés ----------
 
-  it("ne renseigne le prix d'aucun plan ni d'aucune option", () => {
-    for (const p of PLANS) expect(p.prix, `prix publié pour le plan ${p.slug}`).toBeUndefined();
-    for (const o of OPTIONS) expect(o.prix, `prix publié pour l'option ${o.slug}`).toBeUndefined();
+  it("renseigne le prix de chaque plan et de chaque option", () => {
+    for (const p of PLANS) expect(p.prix, `prix manquant pour le plan ${p.slug}`).toBeGreaterThan(0);
+    for (const o of OPTIONS) expect(o.prix, `prix manquant pour l'option ${o.slug}`).toBeGreaterThan(0);
   });
 
-  it("ne rend aucun montant tant que le champ prix est absent", () => {
+  it("rend un montant pour chaque plan, aucune case ne reste vide", () => {
     for (const p of PLANS) {
-      expect(montantAffiche(p), `montant rendu pour le plan ${p.slug}`).toBeNull();
+      expect(montantAffiche(p), `montant absent pour le plan ${p.slug}`).toMatch(MONTANT);
     }
     for (const ligne of lignesTarifs(PLANS)) {
-      expect(ligne.tarif).toBe(TARIF_NON_PUBLIE);
-      const texte = COLONNES_TARIFS.map((c) => ligne[c.cle] ?? "").join(" ");
-      expect(texte, `montant dans la ligne ${ligne.plan}`).not.toMatch(MONTANT);
+      expect(ligne.tarif, `tarif non publié pour ${ligne.plan}`).not.toBe(TARIF_NON_PUBLIE);
+      expect(ligne.tarif).toMatch(MONTANT);
     }
   });
 
-  it("n'émet aucune offre structurée tant qu'aucun prix n'est publié", () => {
-    // `offerLd` lève sur un tableau vide : la page ne doit donc pas l'appeler.
-    expect(offresPubliables(PLANS)).toEqual([]);
+  it("émet une offre structurée par plan", () => {
+    // `offerLd` lève sur un tableau vide : il faut donc qu'il soit rempli.
+    expect(offresPubliables(PLANS)).toHaveLength(PLANS.length);
+    for (const o of offresPubliables(PLANS)) expect(o.prix).toBeGreaterThan(0);
+  });
+
+  it("classe les plans par prix croissant", () => {
+    const prix = PLANS.map((p) => p.prix ?? 0);
+    expect(prix).toEqual([...prix].sort((a, b) => a - b));
   });
 
   // --- Branche 2 : prix renseigné (état futur, une seule édition de plans.ts) -
@@ -226,13 +231,14 @@ describe("plans", () => {
 
   // --- Contenu des plans ----------------------------------------------------
 
-  it("n'annonce aucun quota de conversations", () => {
-    const texte = [
-      ...PLANS.flatMap((p) => [p.nom, p.resume, ...p.inclus, ...p.limites]),
-      ...OPTIONS.map((o) => o.nom),
-    ].join(" ");
-    expect(texte).not.toMatch(QUOTA_CONVERSATIONS);
-    expect(texte, "option de conversations supplémentaires publiée").not.toMatch(/conversations/i);
+  it("annonce un quota de conversations sur chaque plan", () => {
+    // Le quota n'est publiable que parce qu'il est appliqué (saas/usage.py,
+    // `quota_atteint`). Annoncer une limite que personne ne contrôle serait
+    // vendre une contrainte fictive ; ne pas annoncer une limite appliquée
+    // serait pire encore.
+    for (const p of PLANS) {
+      expect(p.limites.join(" "), `quota absent du plan ${p.slug}`).toMatch(QUOTA_CONVERSATIONS);
+    }
   });
 
   it("n'utilise aucun tiret long", () => {
@@ -322,12 +328,12 @@ describe("pages entité", () => {
     }
   });
 
-  it("ne publie aucun montant ni aucun quota de conversations", () => {
-    for (const { url, page } of PAGES_ENTITE) {
-      const texte = textePage(page());
-      expect(texte, `montant publié sur ${url}`).not.toMatch(MONTANT);
-      expect(texte, `quota de conversations sur ${url}`).not.toMatch(QUOTA_CONVERSATIONS);
-    }
+  it("publie les montants et les quotas sur la page tarifs", () => {
+    const tarifs = PAGES_ENTITE.find((p) => p.url === "/tarifs");
+    expect(tarifs, "page /tarifs introuvable").toBeDefined();
+    const texte = textePage(tarifs!.page());
+    expect(texte, "aucun montant sur /tarifs").toMatch(MONTANT);
+    expect(texte, "aucun quota de conversations sur /tarifs").toMatch(QUOTA_CONVERSATIONS);
   });
 });
 
@@ -338,8 +344,14 @@ describe("page tarifs", () => {
     expect(texte).toMatch(/sept jours/i);
   });
 
-  it("dit pourquoi aucun montant n'est affiché", () => {
-    expect(textePage(PageTarifs())).toContain(TARIF_NON_PUBLIE);
+  it("publie le tarif d'entrée et explique ce qui est compté", () => {
+    // Un tarif sans unité de compte n'est pas un tarif : le visiteur ne peut pas
+    // savoir ce qu'il achète. La page doit porter les deux.
+    const texte = textePage(PageTarifs());
+    expect(texte, "aucun montant en francs CFA").toMatch(MONTANT);
+    expect(texte, "l'unité facturée n'est pas expliquée").toMatch(/conversation/i);
+    expect(texte, "le comportement au plafond n'est pas dit").toMatch(/plafond|attente/i);
+    expect(texte, "mention « non publié » résiduelle").not.toContain(TARIF_NON_PUBLIE);
   });
 });
 

@@ -171,6 +171,25 @@ class UsageCounter(Base):
     __table_args__ = (UniqueConstraint("tenant_id", "day", name="uq_usage_day"),)
 
 
+class MonthlyConversation(Base):
+    """Une ligne par interlocuteur distinct et par mois : c'est le compteur du quota.
+
+    « Conversation » = un interlocuteur qui a écrit au moins une fois dans le mois,
+    pas un échange ni une session. C'est la définition que le client comprend en
+    lisant l'offre, et la seule qui ne dépende pas d'un délai d'inactivité
+    arbitraire. Un habitué qui écrit chaque semaine compte donc pour un.
+    """
+    __tablename__ = "monthly_conversations"
+    id = Column(Integer, primary_key=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    month = Column(String(7), nullable=False)  # AAAA-MM
+    chat_id = Column(String(120), nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "month", "chat_id", name="uq_monthly_conv"),
+    )
+
+
 class AiCost(Base):
     """Coût IA réel, par établissement / mois / tâche / modèle (cf. saas/costs.py).
 

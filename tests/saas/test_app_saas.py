@@ -502,15 +502,21 @@ def test_billing_upgrade_pays_difference_and_addon_pays_supplement(monkeypatch):
         sig = hmac.new(b"whsec_op", f"{ts}.{body}".encode(), hashlib.sha256).hexdigest()
         return c.post("/webhook/geniuspay", content=body, headers={"X-Webhook-Signature": sig, "X-Webhook-Timestamp": ts})
 
-    # Upgrade Pro (25000) -> Business (40000) : ne paie QUE la différence (15000)
+    # Upgrade Pro -> Business : ne paie QUE la différence. Les montants sont lus
+    # dans la grille et non recopiés : un changement de prix ne doit pas se
+    # traduire par un test rouge sur une logique qui, elle, n'a pas bougé.
+    from saas import billing
+
+    diff = billing.PLANS["business"]["price"] - billing.PLANS["pro"]["price"]
     r = c.post("/api/billing/upgrade", json={"plan": "business"}, headers=_auth(tok))
-    assert r.status_code == 200 and cap["amount"] == 15000 and cap["meta"]["kind"] == "upgrade"
+    assert r.status_code == 200 and cap["amount"] == diff and cap["meta"]["kind"] == "upgrade"
     assert webhook("R-upgrade", {"plan": "business", "kind": "upgrade"}).status_code == 200
     assert c.get("/api/billing", headers=_auth(tok)).json()["plan"] == "business"
 
-    # Ajout d'une option : ne paie QUE le supplément (5000), même période
+    # Ajout d'une option : ne paie QUE le supplément, même période
+    supplement = billing.ADDONS["conversations_1000"]["price"]
     r2 = c.post("/api/billing/addon", json={"addon": "conversations_1000"}, headers=_auth(tok))
-    assert r2.status_code == 200 and cap["amount"] == 5000 and cap["meta"]["kind"] == "addon"
+    assert r2.status_code == 200 and cap["amount"] == supplement and cap["meta"]["kind"] == "addon"
     assert webhook("R-addon", {"addon": "conversations_1000", "kind": "addon"}).status_code == 200
     assert "conversations_1000" in c.get("/api/billing", headers=_auth(tok)).json()["addons"]
 

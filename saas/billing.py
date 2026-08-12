@@ -30,22 +30,43 @@ FEATURES = {
     "priority_support": "Support prioritaire",
 }
 
-# Plans mensuels. limits : 0 = illimité. Prix en XOF (à ajuster librement).
+# Plans mensuels. limits : 0 = illimité. Prix en XOF.
+#
+# LES TROIS PLANS TOURNENT SUR LE MÊME MODÈLE, ET C'EST DÉLIBÉRÉ.
+# `tools/eval_prompt.py` rejoue 8 scénarios réels (escalade, justificatif de
+# paiement, prix listé, horodatage exact d'un créneau). Haiku 4.5 les passe 8/8,
+# Sonnet 5 aussi — pour environ 3,7x le coût sur un travail identique. Vendre un
+# modèle plus cher comme différence de plan, c'est facturer un écart que rien ne
+# mesure et que le client ne perçoit pas.
+#
+# Les plans se différencient donc sur ce qui crée vraiment de la valeur et que le
+# code sait contrôler : le VOLUME de conversations et les FONCTIONS. Qui veut
+# quand même le modèle supérieur prend l'option `modele_avance`, facturée à son
+# coût réel.
+#
+# Limite assumée de cette décision : l'éval sature à 8/8, elle ne discrimine pas
+# au-dessus de cette barre et ne couvre pas les conversations longues ou
+# ambiguës. Si un écart apparaît un jour, il apparaîtra d'abord là.
+MODELE_STANDARD = "claude-haiku-4-5-20251001"
+MODELE_AVANCE = "claude-sonnet-5"
+
 PLANS = {
     "essentiel": {
-        "label": "Starter", "price": 10000, "model": "claude-haiku-4-5-20251001",
+        "label": "Starter", "price": 9900, "model": MODELE_STANDARD,
         "features": ["handoff", "records", "knowledge"],
         "limits": {"conversations": 500, "agents": 1, "documents": 3},
     },
     "pro": {
-        "label": "Pro", "price": 25000, "model": "claude-sonnet-5",
+        "label": "Pro", "price": 24900, "model": MODELE_STANDARD,
         "features": ["handoff", "records", "knowledge", "vision", "voice", "suggestions", "booking", "webchat", "priority_support"],
-        "limits": {"conversations": 2500, "agents": 3, "documents": 10},
+        "limits": {"conversations": 2000, "agents": 3, "documents": 10},
     },
     "business": {
-        "label": "Business", "price": 40000, "model": "claude-opus-5",
+        "label": "Business", "price": 49900, "model": MODELE_STANDARD,
         "features": ["handoff", "records", "knowledge", "vision", "voice", "suggestions", "booking", "webchat", "data_connector", "priority_support"],
-        "limits": {"conversations": 0, "agents": 0, "documents": 0},
+        # Plus d'illimité sur les conversations : c'était le seul poste dont le
+        # coût grandit sans borne, sur le plan qui promettait de ne pas le borner.
+        "limits": {"conversations": 6000, "agents": 0, "documents": 0},
     },
 }
 
@@ -113,17 +134,31 @@ ADDONS = {
     "webchat": {"label": "Chatbot pour site web", "price": 6000, "feature": "webchat"},
     "data_connector": {"label": "Connexion base de l'entreprise", "price": 9000, "feature": "data_connector"},
     "priority_support": {"label": "Support prioritaire", "price": 6000, "feature": "priority_support"},
-    "conversations_1000": {"label": "+1 000 conversations/mois", "price": 5000, "grant": {"conversations": 1000}},
+    # Prix aligné sur le coût marginal réel d'une conversation (cf. saas/costs.py)
+    # et sur le pas d'un changement de plan : Pro -> Business achète 4 000
+    # conversations pour 25 000 F, soit le même ordre de prix à l'unité.
+    "conversations_1000": {"label": "+1 000 conversations/mois", "price": 6900, "grant": {"conversations": 1000}},
+    # Seule option qui change le modèle du cerveau. Facturée au-dessus du surcoût
+    # mesuré (~3,7x sur l'entrée) pour que l'option finance ce qu'elle consomme.
+    "modele_avance": {"label": "Réponses avancées (modèle supérieur)", "price": 9900, "model": MODELE_AVANCE},
     "agents_3": {"label": "+3 agents", "price": 4000, "grant": {"agents": 3}},
     "documents_10": {"label": "+10 documents", "price": 3000, "grant": {"documents": 10}},
 }
 
 _ALL_FEATURES = set(FEATURES.keys())
 _UNLIMITED = {"conversations": 0, "agents": 0, "documents": 0}
-# Essai et tenants d'avant la facturation : tout inclus.
-TRIAL_ENT = {"features": _ALL_FEATURES, "limits": dict(_UNLIMITED), "model": "claude-sonnet-5"}
+# Essai : toutes les fonctions, mais le MÊME modèle que les plans payants.
+# Faire tourner l'essai sur un modèle supérieur reviendrait à faire découvrir le
+# produit sous une forme qu'on ne vend pas : la conversion se paierait d'une
+# déception le huitième jour. Les conversations restent plafonnées au quota du
+# plan d'entrée — un essai n'a pas à être un forfait illimité.
+TRIAL_ENT = {
+    "features": _ALL_FEATURES,
+    "limits": {"conversations": 500, "agents": 1, "documents": 3},
+    "model": MODELE_STANDARD,
+}
 GRANDFATHER_ENT = {"features": _ALL_FEATURES, "limits": dict(_UNLIMITED), "model": ""}
-EXPIRED_ENT = {"features": set(), "limits": {"conversations": 1, "agents": 1, "documents": 0}, "model": "claude-haiku-4-5-20251001"}
+EXPIRED_ENT = {"features": set(), "limits": {"conversations": 1, "agents": 1, "documents": 0}, "model": MODELE_STANDARD}
 
 
 def _clean_addons(addons):
@@ -143,14 +178,17 @@ def entitlements_for(plan_key: str, addons=None) -> dict:
         return dict(EXPIRED_ENT)
     feats = set(plan["features"])
     limits = dict(plan["limits"])
+    modele = plan["model"]
     for a in _clean_addons(addons):
         ad = ADDONS[a]
         if ad.get("feature"):
             feats.add(ad["feature"])
+        if ad.get("model"):
+            modele = ad["model"]
         for k, v in (ad.get("grant") or {}).items():
             if limits.get(k, 0) != 0:  # 0 = illimité : on ne rajoute rien
                 limits[k] = limits.get(k, 0) + v
-    return {"features": feats, "limits": limits, "model": plan["model"]}
+    return {"features": feats, "limits": limits, "model": modele}
 
 
 def tenant_entitlements(sub) -> dict:

@@ -127,6 +127,21 @@ def reply(session, tenant, sess, message: str, brain: Brain, notify=None, feats=
         fiche += connector.fiche_note(dc)
         lookup_fn = connector.lookup_fn_for(dc)
 
+    # Même quota que sur WhatsApp : le widget consomme le même cerveau. Le compter
+    # à part reviendrait à vendre deux fois le même forfait.
+    from saas import billing, usage as _usage
+
+    _chat_id = f"web:{sess.session_key}"
+    _lim = billing.tenant_entitlements(
+        session.get(models.Subscription, tenant.id)
+    )["limits"].get("conversations", 0)
+    if _usage.quota_atteint(session, tenant.id, _chat_id, _lim):
+        attente = ("Merci pour votre message ! Nous revenons vers vous très vite — "
+                   "un membre de l'équipe prend le relais.")
+        _add_msg(session, sess, "assistant", attente)
+        return {"reply": attente, "escalated": bool(sess.escalated)}
+    _usage.noter_conversation(session, tenant.id, _chat_id)
+
     decision = decide_with_lookup(brain, fiche, history, message, lookup_fn, channel="web",
                                   extra_context=volatile)
     # Même imputation que sur WhatsApp : le widget consomme le même cerveau et doit
