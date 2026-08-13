@@ -24,6 +24,19 @@ const REDIRECTIONS_SECTEURS = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  images: {
+    // Images hebergees sur Cloudinary (compte « ocenevpc »). Sans cette
+    // declaration, `next/image` refuse toute source distante et leve
+    // « hostname is not configured under images ». Le chemin est restreint au
+    // compte : une URL Cloudinary d'un autre compte reste refusee.
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+        pathname: "/ocenevpc/**",
+      },
+    ],
+  },
   experimental: {
     // `@vercel/og` (images OpenGraph, cf. lib/og.tsx) lit ses moteurs .wasm et
     // sa police avec `new URL("./resvg.wasm", import.meta.url)`. Bundlé par
@@ -38,6 +51,20 @@ const nextConfig = {
       destination: `/secteurs/${secteur}`,
       permanent: true,
     }));
+  },
+  // En production, Caddy route /api, /auth, /webhook et /media vers l'API et le
+  // reste vers ce serveur (cf. deploy/Caddyfile) : le front appelle donc des
+  // chemins relatifs (web/lib/api.ts, BASE = ""). En local il n'y a pas de
+  // reverse-proxy, et l'API n'ouvre aucun CORS : sans ces rewrites, /auth/login
+  // depuis localhost:3001 tomberait sur Next et renverrait 404.
+  // Actif uniquement si WAPY_API_PROXY est defini (web/.env.local) : en prod la
+  // variable est absente, la liste est vide, Caddy garde la main.
+  async rewrites() {
+    const api = process.env.WAPY_API_PROXY;
+    if (!api) return [];
+    return ["/api/:path*", "/auth/:path*", "/webhook", "/webhook/:path*", "/media/:path*"].map(
+      (source) => ({ source, destination: `${api}${source}` })
+    );
   },
 };
 

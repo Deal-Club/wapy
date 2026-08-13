@@ -63,8 +63,47 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" className={montserrat.variable}>
+    // `suppressHydrationWarning` : le script ci-dessous ajoute la classe `js` sur
+    // <html> avant l'hydratation, donc le client voit un className que le serveur
+    // n'a pas rendu. Sans cette annotation, React signale une différence
+    // d'hydratation à chaque chargement. Elle ne porte que sur cet élément.
+    <html lang="fr" className={montserrat.variable} suppressHydrationWarning>
       <body>
+        {/*
+          Marque le document comme « JavaScript actif », avant tout contenu.
+          Les états cachés des animations (`.js .revele`, `.js .bulle` dans
+          globals.css) en dépendent : sans script — navigateur sans JS, robot
+          d'indexation, échec de chargement du bundle — rien n'est masqué et la
+          page reste entièrement lisible. Placé en tête de body, il s'exécute
+          avant que le contenu suivant soit peint : pas de clignotement.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `document.documentElement.classList.add('js')`,
+          }}
+        />
+        {/*
+          Filet de sécurité, développement uniquement : désinscrit tout service
+          worker et vide ses caches, puis recharge une fois.
+
+          Pourquoi ici plutôt que dans PWARegister, qui fait déjà ce nettoyage :
+          PWARegister est un composant React, son effet ne tourne qu'une fois
+          l'application montée. Or c'est précisément quand un chunk périmé casse
+          l'hydratation que le nettoyage devient nécessaire — et là, React ne
+          monte jamais. Le nettoyage ne pouvait donc jamais s'exécuter dans le
+          seul cas où il servait à quelque chose. Ce script est inline dans le
+          HTML : il tourne avant tout chunk, même quand le bundle est cassé.
+
+          Pas de boucle de rechargement possible : après le passage il ne reste
+          aucun enregistrement, la condition est fausse et rien ne se produit.
+        */}
+        {process.env.NODE_ENV !== "production" && (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `(function(){if(!navigator.serviceWorker)return;navigator.serviceWorker.getRegistrations().then(function(r){if(!r.length)return;Promise.all(r.map(function(x){return x.unregister()})).then(function(){return caches.keys()}).then(function(k){return Promise.all(k.map(function(n){return caches.delete(n)}))}).then(function(){location.reload()})}).catch(function(){})})()`,
+            }}
+          />
+        )}
         {/*
           Entité et site déclarés une seule fois, pour toutes les pages. Les
           schémas propres à une page (Service, FAQPage, HowTo, BreadcrumbList)

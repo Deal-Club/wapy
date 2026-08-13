@@ -5,7 +5,9 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        cream: "#F7F4EF",
+        // Fond de page. Blanc pur : `cream` garde son nom parce qu'il est
+        // reference partout (bg-cream, text-cream sur les blocs sombres).
+        cream: "#FFFFFF",
         surface: "#FFFFFF",
         ink: "#211C18",
         muted: "#726A61",
