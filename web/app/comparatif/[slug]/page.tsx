@@ -3,10 +3,16 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import Reveal from "@/components/Reveal";
+import BandeReperes from "@/components/gabarit/BandeReperes";
+import BlocFinal, { LIEN_SECONDAIRE_SOMBRE } from "@/components/gabarit/BlocFinal";
+import FilAriane from "@/components/gabarit/FilAriane";
+import HeroGuide from "@/components/gabarit/HeroGuide";
+import SectionGuide from "@/components/gabarit/SectionGuide";
 import JsonLd from "@/components/seo/JsonLd";
 import EnBref from "@/components/seo/EnBref";
 import Sommaire, { ENTREE_FAQ } from "@/components/seo/Sommaire";
-import FAQ from "@/components/seo/FAQ";
+import FAQ, { ID_FAQ } from "@/components/seo/FAQ";
 import TableauComparatif from "@/components/seo/TableauComparatif";
 import PagesLiees from "@/components/seo/PagesLiees";
 import Auteur, { AUTEUR } from "@/components/seo/Auteur";
@@ -94,74 +100,124 @@ export default function PageComparatif({ params }: { params: { slug: string } })
 
       <SiteHeader lienSecondaire={{ href: "/comparatif", libelle: "Comparatifs" }} />
 
-      <main className="mx-auto max-w-3xl px-4 py-10">
-        <nav
-          className="flex flex-wrap items-center gap-1.5 text-xs text-muted"
-          aria-label="Fil d'Ariane"
-        >
-          <Link href="/" className="hover:text-ink">
-            Accueil
-          </Link>
-          <span aria-hidden="true">›</span>
-          <Link href="/comparatif" className="hover:text-ink">
-            Comparatifs
-          </Link>
-          <span aria-hidden="true">›</span>
-          <span className="text-ink/70">{c.ancre}</span>
-        </nav>
+      <main>
+        <HeroGuide>
+          <FilAriane>
+            <Link href="/" className="transition hover:text-brand">
+              Accueil
+            </Link>
+            <Link href="/comparatif" className="transition hover:text-brand">
+              Comparatifs
+            </Link>
+            <span className="text-ink/70">{c.ancre}</span>
+          </FilAriane>
 
-        <h1 className="mt-5 font-display text-3xl font-bold leading-tight md:text-[2.6rem]">
-          {c.titre}
-        </h1>
+          <span className="pill mt-5 bg-brand-soft text-brand">Comparatif</span>
 
-        <EnBref>{c.enBref}</EnBref>
-        <Dates publieLe={PUBLIE_LE} modifieLe={MODIFIE_LE} />
+          {/* Le titre est rendu d'un seul tenant : `tests/pages.test.ts` le
+              cherche tel quel dans le texte de la page, et une mise en couleur
+              par morceaux le couperait en deux chaînes. */}
+          <h1 className="mt-4 font-display text-[2.1rem] font-bold leading-[1.1] md:text-[2.8rem]">
+            {c.titre}
+          </h1>
 
-        <Sommaire
-          entrees={[
-            ...c.sections.map((s) => ({ id: s.id, libelle: s.titre })),
-            { id: ID_TABLEAU, libelle: "Le comparatif en tableau" },
-            ENTREE_FAQ,
+          <EnBref>{c.enBref}</EnBref>
+
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <a href={`#${ID_TABLEAU}`} className="btn text-base">
+              Voir le tableau
+            </a>
+            <Link href="/signup" className="btn-ghost text-base">
+              Essayer Wapy
+            </Link>
+          </div>
+
+          <Dates publieLe={PUBLIE_LE} modifieLe={MODIFIE_LE} />
+        </HeroGuide>
+
+        {/*
+          Repères vrais pour TOUS les comparatifs. Rien n'est déduit de la forme
+          du tableau : selon la page, une ligne est un critère (comparaison à
+          deux outils) ou un outil (page de classement). Compter « les outils »
+          sur les lignes donnerait donc un chiffre faux une page sur deux.
+        */}
+        <BandeReperes
+          reperes={[
+            ["Relevé daté", "Chaque tableau porte sa date"],
+            [`${c.faq.length} réponses`, "Aux questions qui décident"],
+            ["Nos limites", "Écrites noir sur blanc"],
           ]}
         />
 
-        {c.sections.map((s) => (
-          <section key={s.id} id={s.id} className="mt-12 scroll-mt-24">
-            <h2 className="font-display text-2xl font-bold">{s.titre}</h2>
-            {s.paragraphes.map((p) => (
-              <p key={p.slice(0, 40)} className="mt-4 text-muted">
-                {p}
-              </p>
-            ))}
-          </section>
+        <div className="mx-auto max-w-6xl px-4 pt-10">
+          <Sommaire
+            variante="barre"
+            entrees={[
+              ...c.sections.map((s) => ({ id: s.id, libelle: s.titre })),
+              { id: ID_TABLEAU, libelle: "Le comparatif en tableau" },
+              ENTREE_FAQ,
+            ]}
+          />
+        </div>
+
+        {/* Une bande sur deux est teintée : sur un comparatif, le nombre de
+            sections vient du contenu, et sans alternance la page redevient une
+            colonne de texte de trois mètres. */}
+        {c.sections.map((s, i) => (
+          <SectionGuide key={s.id} id={s.id} titre={s.titre} fond={i % 2 === 1 ? "teinte" : "clair"}>
+            <Reveal>
+              <div className="card">
+                {s.paragraphes.map((p, j) => (
+                  <p key={p.slice(0, 40)} className={`leading-relaxed text-muted ${j ? "mt-4" : ""}`}>
+                    {p}
+                  </p>
+                ))}
+              </div>
+            </Reveal>
+          </SectionGuide>
         ))}
 
-        <section id={ID_TABLEAU} className="mt-12 scroll-mt-24">
-          <h2 className="font-display text-2xl font-bold">Le comparatif en tableau</h2>
+        <SectionGuide
+          id={ID_TABLEAU}
+          disposition="pleine"
+          titre="Le comparatif en tableau"
+          intro="Les mêmes critères pour tous les outils, relevés chez leurs éditeurs à la date indiquée sous le tableau."
+          fond={c.sections.length % 2 === 1 ? "teinte" : "clair"}
+        >
           <TableauComparatif
             colonnes={c.tableau.colonnes}
             lignes={c.tableau.lignes}
             legende={c.tableau.legende}
           />
-        </section>
+        </SectionGuide>
 
-        <FAQ items={c.faq} />
+        <SectionGuide id={ID_FAQ} disposition="pleine" titre="Questions fréquentes">
+          <Reveal>
+            <FAQ items={c.faq} titre={null} colonnes={2} id={`${ID_FAQ}-liste`} />
+          </Reveal>
+        </SectionGuide>
 
-        <div className="mt-12 rounded-xl2 bg-ink px-6 py-10 text-center text-cream">
-          <h2 className="font-display text-2xl font-bold">Comparez sur vos vraies conversations</h2>
-          <p className="mx-auto mt-2 max-w-md text-cream/70">
-            Sept jours d&apos;essai gratuit. Vous liez le compte WhatsApp que vous utilisez déjà en
-            scannant un QR code, sans changer de numéro.
-          </p>
-          <div className="mt-6 flex justify-center">
-            <Link href="/signup" className="btn">
-              Essayer Wapy
-            </Link>
-          </div>
+        <BlocFinal
+          titre="Comparez sur vos vraies conversations"
+          texte={
+            <>
+              Sept jours d&apos;essai gratuit. Vous liez le compte WhatsApp que vous utilisez déjà
+              en scannant un QR code, sans changer de numéro.
+            </>
+          }
+        >
+          <Link href="/signup" className="btn text-base">
+            Essayer Wapy
+          </Link>
+          <Link href="/comparatif" className={LIEN_SECONDAIRE_SOMBRE}>
+            Voir les autres comparatifs
+          </Link>
+        </BlocFinal>
+
+        <div className="mx-auto max-w-6xl px-4 pb-16">
+          <PagesLiees liens={liens} />
+          <Auteur />
         </div>
-
-        <PagesLiees liens={liens} />
-        <Auteur />
       </main>
 
       <SiteFooter />

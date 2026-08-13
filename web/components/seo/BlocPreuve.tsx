@@ -32,14 +32,19 @@ export default function BlocPreuve({ id }: { id: string }) {
   const { chiffre } = preuve;
 
   return (
-    <aside className="mt-8 rounded-xl border border-line bg-surface p-5">
+    /* Encart de preuve : bordure pleine à gauche, comme « En bref ». Les deux
+       blocs jouent le même rôle, porter une affirmation qu'on peut vérifier,
+       et se reconnaissent donc au même signe. */
+    <aside className="relative mt-8 overflow-hidden rounded-xl2 border border-line bg-surface py-5 pl-7 pr-6 shadow-soft">
+      <span aria-hidden="true" className="absolute inset-y-0 left-0 w-1 bg-brand/60" />
+      <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Repère vérifié</p>
       {chiffre && (
-        <p className="font-display text-3xl font-bold text-brand">
+        <p className="mt-2 font-display text-3xl font-bold text-brand">
           {chiffre.valeur.toLocaleString("fr-FR")}
         </p>
       )}
-      <p className="mt-1 text-sm font-semibold text-ink">{preuve.libelle}</p>
-      <p className="mt-2 text-sm text-muted">{preuve.texte}</p>
+      <p className="mt-1 font-semibold text-ink">{preuve.libelle}</p>
+      <p className="mt-2 text-sm leading-relaxed text-muted">{preuve.texte}</p>
       {chiffre && source && (
         <p className="mt-3 text-xs text-muted">
           Source :{" "}

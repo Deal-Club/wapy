@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { SITE_URL } from "@/lib/site";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import FilAriane from "@/components/gabarit/FilAriane";
 
 const CONTACT = "contact@wapy.pro";
 
@@ -17,11 +19,25 @@ export default function Conditions() {
   return (
     <div className="min-h-screen bg-cream">
       <SiteHeader />
-      <main className="mx-auto max-w-3xl px-4 py-12">
-        <h1 className="font-display text-3xl font-bold md:text-4xl">Conditions d'utilisation</h1>
-        <p className="mt-2 text-sm text-muted">Dernière mise à jour : 11 août 2026</p>
+      <main className="mx-auto max-w-3xl px-4 pb-16 pt-10">
+        <FilAriane>
+          <Link href="/" className="transition hover:text-brand">
+            Accueil
+          </Link>
+          <span className="text-ink/70">Conditions d&apos;utilisation</span>
+        </FilAriane>
 
-        <article className="article mt-8">
+        <h1 className="mt-5 font-display text-3xl font-bold leading-tight md:text-4xl">
+          Conditions d&apos;utilisation
+        </h1>
+        <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1 text-xs text-muted">
+          Dernière mise à jour : 11 août 2026
+        </p>
+
+        {/* Le texte légal dans une carte : il se lit d'une traite, et la carte
+            le sépare franchement du reste du site au lieu de le laisser flotter
+            sur le fond de page. */}
+        <article className="article mt-8 rounded-xl2 border border-line bg-surface p-7 shadow-soft md:p-9">
           <p>
             En créant un compte et en utilisant Wapy, vous acceptez les présentes conditions. Wapy est un service
             qui répond automatiquement, sur WhatsApp, aux clients d'un établissement, à partir des informations que

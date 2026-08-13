@@ -2,13 +2,20 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import Reveal from "@/components/Reveal";
+import BandeReperes from "@/components/gabarit/BandeReperes";
+import BlocFinal, { LIEN_SECONDAIRE_SOMBRE } from "@/components/gabarit/BlocFinal";
+import FilAriane from "@/components/gabarit/FilAriane";
+import HeroGuide from "@/components/gabarit/HeroGuide";
+import SectionGuide from "@/components/gabarit/SectionGuide";
 import JsonLd from "@/components/seo/JsonLd";
 import EnBref from "@/components/seo/EnBref";
-import FAQ from "@/components/seo/FAQ";
+import FAQ, { ID_FAQ } from "@/components/seo/FAQ";
 import PagesLiees from "@/components/seo/PagesLiees";
 import Auteur from "@/components/seo/Auteur";
 import Dates from "@/components/seo/Dates";
 import { FAQ_GLOBALE } from "@/content/faq-globale";
+import { JOURS_ESSAI } from "@/content/plans";
 import { liensSortants } from "@/lib/maillage";
 import { IMAGE_OG_PAR_DEFAUT } from "@/lib/og";
 import { faqLd, breadcrumbLd } from "@/lib/schema";
@@ -22,6 +29,17 @@ const TITRE = "Questions fréquentes sur l'assistant WhatsApp Wapy";
 // 155 caractères maximum : au-delà, Google tronque et choisit lui-même où.
 const DESCRIPTION =
   "Connexion au numéro existant, réponses tirées de votre fiche, passage à un humain, langue, données, essai : les réponses courtes, vérifiables.";
+
+/*
+  Repères comptés ou tenus par le code : le nombre de questions est compté sur
+  `content/faq-globale.ts`, la connexion se fait par QR code (`saas/wa.py:73-79`),
+  l'essai dure `JOURS_ESSAI` jours (`saas/billing.py:14`).
+*/
+const REPERES: [string, string][] = [
+  [`${FAQ_GLOBALE.length} réponses`, "Chacune adossée au comportement réel"],
+  ["QR code", "Sur le numéro que vous utilisez déjà"],
+  [`${JOURS_ESSAI} jours`, "Pour vérifier par vous-même"],
+];
 
 export const metadata: Metadata = {
   title: `${TITRE} · Wapy`,
@@ -56,53 +74,106 @@ export default function PageFaq() {
 
       <SiteHeader lienSecondaire={{ href: "/comment-ca-marche", libelle: "Comment ça marche" }} />
 
-      <main className="mx-auto max-w-3xl px-4 py-10">
-        <nav
-          className="flex flex-wrap items-center gap-1.5 text-xs text-muted"
-          aria-label="Fil d'Ariane"
+      <main>
+        <HeroGuide
+          visuel={
+            /* Ce que le produit ne fait pas, en trois lignes, à côté du titre.
+               C'est la seule page du site où l'aveu vaut argument : elle est
+               faite pour lever des doutes, et une page de doutes qui ne montre
+               que des promesses se lit comme un argumentaire. Ancrages :
+               `brain/brain.py:50-52` (français uniquement), `saas/bot.py:42`
+               (groupes et diffusions ignorés), `brain/brain.py:53-55` (rien
+               hors de la fiche). */
+            <div className="rounded-xl2 border border-line bg-surface p-7 shadow-lift">
+              <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">
+                À savoir avant d&apos;essayer
+              </p>
+              <ul className="mt-4 space-y-4">
+                {[
+                  ["Il ne répond qu'en français.", "Quelle que soit la langue du message reçu."],
+                  [
+                    "Il n'émet pas vers une liste.",
+                    "Ni campagne, ni diffusion : il répond, il n'appelle pas.",
+                  ],
+                  [
+                    "Il ne dit que ce que contient votre fiche.",
+                    "Une information absente n'est pas devinée.",
+                  ],
+                ].map(([titre, detail]) => (
+                  <li key={titre} className="border-l-2 border-brand/40 pl-4">
+                    <p className="font-semibold leading-snug text-ink">{titre}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-muted">{detail}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          }
         >
-          <Link href="/" className="hover:text-ink">
-            Accueil
-          </Link>
-          <span aria-hidden="true">›</span>
-          <span className="text-ink/70">Questions fréquentes</span>
-        </nav>
+          <FilAriane>
+            <Link href="/" className="transition hover:text-brand">
+              Accueil
+            </Link>
+            <span className="text-ink/70">Questions fréquentes</span>
+          </FilAriane>
 
-        <h1 className="mt-5 font-display text-3xl font-bold leading-tight md:text-[2.6rem]">
-          {TITRE}
-        </h1>
+          <span className="pill mt-5 bg-brand-soft text-brand">Questions fréquentes</span>
 
-        <EnBref>
-          Wapy répond à vos clients sur le compte WhatsApp que vous utilisez déjà, à partir
-          d&apos;une fiche que vous remplissez. Les questions ci-dessous portent sur la connexion,
-          sur ce que l&apos;assistant fait de vos informations, et sur ce qu&apos;il ne fait pas.
-        </EnBref>
-        <Dates publieLe={PUBLIE_LE} modifieLe={MODIFIE_LE} />
+          <h1 className="mt-4 font-display text-[2.1rem] font-bold leading-[1.1] md:text-[2.9rem]">
+            Questions fréquentes sur{" "}
+            <span className="text-brand">l&apos;assistant WhatsApp Wapy</span>
+          </h1>
 
-        <p className="mt-8 text-muted">
-          Chaque réponse décrit le comportement réel du produit, y compris quand il déçoit :
-          l&apos;assistant ne répond qu&apos;en français, il n&apos;envoie pas de campagnes, et il
-          ne sait dire que ce que votre fiche contient. Une question qui manque ici mérite
-          d&apos;être posée avant l&apos;essai plutôt qu&apos;après.
-        </p>
+          <EnBref>
+            Wapy répond à vos clients sur le compte WhatsApp que vous utilisez déjà, à partir
+            d&apos;une fiche que vous remplissez. Les questions ci-dessous portent sur la connexion,
+            sur ce que l&apos;assistant fait de vos informations, et sur ce qu&apos;il ne fait pas.
+          </EnBref>
 
-        <FAQ items={FAQ_GLOBALE} />
-
-        <div className="mt-12 rounded-xl2 bg-ink px-6 py-10 text-center text-cream">
-          <h2 className="font-display text-2xl font-bold">La réponse tient en un essai</h2>
-          <p className="mx-auto mt-2 max-w-md text-cream/70">
-            Sept jours d&apos;essai gratuit, sur vos vraies conversations. Vous liez le compte
-            WhatsApp que vous utilisez déjà en scannant un QR code, sans changer de numéro.
-          </p>
-          <div className="mt-6 flex justify-center">
-            <Link href="/signup" className="btn">
+          <div className="mt-7 flex flex-wrap items-center gap-3">
+            <a href={`#${ID_FAQ}`} className="btn text-base">
+              Lire les réponses
+            </a>
+            <Link href="/signup" className="btn-ghost text-base">
               Créer mon assistant
             </Link>
           </div>
-        </div>
 
-        <PagesLiees liens={liens} />
-        <Auteur />
+          <Dates publieLe={PUBLIE_LE} modifieLe={MODIFIE_LE} />
+        </HeroGuide>
+
+        <BandeReperes reperes={REPERES} />
+
+        <SectionGuide
+          disposition="pleine"
+          titre="Toutes les réponses"
+          intro="Chaque réponse décrit le comportement réel du produit, y compris quand il déçoit : l'assistant ne répond qu'en français, il n'envoie pas de campagnes, et il ne sait dire que ce que votre fiche contient. Une question qui manque ici mérite d'être posée avant l'essai plutôt qu'après."
+        >
+          <Reveal>
+            <FAQ items={FAQ_GLOBALE} titre={null} colonnes={2} />
+          </Reveal>
+        </SectionGuide>
+
+        <BlocFinal
+          titre="La réponse tient en un essai"
+          texte={
+            <>
+              Sept jours d&apos;essai gratuit, sur vos vraies conversations. Vous liez le compte
+              WhatsApp que vous utilisez déjà en scannant un QR code, sans changer de numéro.
+            </>
+          }
+        >
+          <Link href="/signup" className="btn text-base">
+            Créer mon assistant
+          </Link>
+          <Link href="/comment-ca-marche" className={LIEN_SECONDAIRE_SOMBRE}>
+            Voir comment ça marche
+          </Link>
+        </BlocFinal>
+
+        <div className="mx-auto max-w-6xl px-4 pb-16">
+          <PagesLiees liens={liens} />
+          <Auteur />
+        </div>
       </main>
 
       <SiteFooter />

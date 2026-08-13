@@ -6,12 +6,11 @@
   color-scheme: light;
 }
 
+/* Fond blanc pur, sans voile colore : les deux degrades radiaux (brique et
+   vert) qui teintaient les coins ont ete retires, ils rendaient le blanc
+   legerement beige. */
 body {
   @apply bg-cream text-ink font-sans antialiased;
-  background-image:
-    radial-gradient(60rem 40rem at 80% -10%, rgba(194, 80, 47, 0.06), transparent 60%),
-    radial-gradient(50rem 30rem at -10% 110%, rgba(31, 164, 99, 0.05), transparent 60%);
-  background-attachment: fixed;
 }
 
 h1, h2, h3 {
@@ -45,8 +44,18 @@ h1, h2, h3 {
     @apply inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium;
   }
   .chip {
-    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-sm text-ink transition hover:border-brand/50 hover:text-brand;
+    @apply inline-flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-sm text-ink transition
+           hover:-translate-y-px hover:border-brand/50 hover:text-brand hover:shadow-soft;
   }
+}
+
+/* ---------------------------------------------------------------------------
+   Mouvement
+   Une seule courbe pour tout le site : sortie rapide puis arrivee amortie.
+   Une animation qui ne s'en sert pas detonnera, c'est voulu.
+--------------------------------------------------------------------------- */
+:root {
+  --sortie: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Réveil au chargement */
@@ -54,7 +63,200 @@ h1, h2, h3 {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.rise { animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.rise { animation: rise 0.5s var(--sortie) both; }
+
+/* --- Revelation au defilement ----------------------------------------------
+   L'etat cache est conditionne a la classe `js` posee sur <html> par le script
+   du layout. Sans JavaScript, aucune regle ne s'applique : le contenu reste
+   visible au lieu de rester bloque a opacity 0 — ce que verrait aussi un
+   moteur de recherche qui n'execute pas le script.
+   `.est-visible` est ajoutee par components/Reveal.tsx a l'entree dans l'ecran.
+--------------------------------------------------------------------------- */
+.js .revele {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.6s var(--sortie), transform 0.6s var(--sortie);
+}
+.js .revele.est-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* --- Maquette de conversation ----------------------------------------------
+   La demonstration du produit : les messages arrivent l'un apres l'autre et le
+   statut du contact bascule sur « en train d'ecrire… » juste avant chaque
+   reponse de Wapy, comme dans WhatsApp. Le calage des deux animations est
+   solidaire : voir SEQUENCE dans app/page.tsx, qui produit les delais.
+--------------------------------------------------------------------------- */
+@keyframes bulle-arrive {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+.js .bulle {
+  animation: bulle-arrive 0.42s var(--sortie) both;
+  animation-delay: var(--delai, 0s);
+}
+
+/* Les deux statuts occupent la meme cellule de grille : ils se croisent en
+   fondu sans jamais decaler l'en-tete d'un pixel. */
+.statut { display: grid; }
+.statut > * { grid-area: 1 / 1; }
+/* Etat de repos : seul « en ligne » s'affiche. Sans cette regle, une page servie
+   sans JavaScript empile les deux libelles dans la meme cellule et les rend
+   illisibles l'un sur l'autre. L'animation ci-dessous reprend la main des que la
+   classe `js` est posee. */
+.statut-ecrit { opacity: 0; }
+
+/* Fenetres de saisie : 0,40→0,85 s, 1,50→1,95 s et 2,60→3,05 s sur un cycle de
+   3,5 s, soit juste avant chacune des trois reponses de Wapy. */
+@keyframes wapy-ecrit {
+  0%, 11.4%    { opacity: 0; }
+  12.5%, 24.3% { opacity: 1; }
+  25.4%, 42.9% { opacity: 0; }
+  44%, 55.7%   { opacity: 1; }
+  56.8%, 74.3% { opacity: 0; }
+  75.4%, 87.1% { opacity: 1; }
+  88.2%, 100%  { opacity: 0; }
+}
+@keyframes wapy-en-ligne {
+  0%, 11.4%    { opacity: 1; }
+  12.5%, 24.3% { opacity: 0; }
+  25.4%, 42.9% { opacity: 1; }
+  44%, 55.7%   { opacity: 0; }
+  56.8%, 74.3% { opacity: 1; }
+  75.4%, 87.1% { opacity: 0; }
+  88.2%, 100%  { opacity: 1; }
+}
+.js .statut-ecrit    { animation: wapy-ecrit 3.5s linear both; }
+.js .statut-en-ligne { animation: wapy-en-ligne 3.5s linear both; }
+
+@keyframes point-saute {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30%           { opacity: 1;   transform: translateY(-2px); }
+}
+.point { animation: point-saute 1.1s ease-in-out infinite; }
+.point:nth-child(2) { animation-delay: 0.15s; }
+.point:nth-child(3) { animation-delay: 0.3s; }
+
+/* --- Flux du schema des canaux ---------------------------------------------
+   Un point parcourt chaque raccord : des canaux vers l'assistant, puis de
+   l'assistant vers ce qu'il produit. Boucle infinie de 3,6 s, decalee par carte
+   (`animationDelay` en ligne dans app/page.tsx) pour que le faisceau se
+   remplisse au lieu de clignoter d'un bloc.
+
+   Le trajet fait 2,5 rem, exactement la largeur des raccords (`w-10`). Le
+   `translateY(-50%)` est DANS les keyframes et non dans une classe Tailwind :
+   une animation `transform` ecrase la transformation de l'element, le point
+   tomberait sous le trait au lieu d'y etre centre.
+
+   Le point n'est visible que sur un tiers du cycle : le reste du temps il
+   attend, transparent, pour que l'oeil suive un passage et non une file.
+--------------------------------------------------------------------------- */
+@keyframes flux-part {
+  0%          { transform: translate(0, -50%);      opacity: 0; }
+  4%          { opacity: 1; }
+  28%         { opacity: 1; }
+  33%, 100%   { transform: translate(2.5rem, -50%); opacity: 0; }
+}
+@keyframes flux-arrive {
+  0%          { transform: translate(-2.5rem, -50%); opacity: 0; }
+  4%          { opacity: 1; }
+  28%         { opacity: 1; }
+  33%, 100%   { transform: translate(0, -50%);       opacity: 0; }
+}
+.js .flux-droite  { animation: flux-part 3.6s linear infinite; }
+.js .flux-arrivee { animation: flux-arrive 3.6s linear infinite; }
+/* Sans JavaScript, la classe `js` est absente : les points restent immobiles et
+   transparents plutot que de se figer en plein trajet, au milieu d'un trait. */
+.flux-droite, .flux-arrivee { opacity: 0; }
+
+/* --- Frise du parcours d'un message (components/ParcoursMessage.tsx) --------
+   Un point unique parcourt le rail des quatre temps, de gauche a droite. Il
+   passe SOUS les cartes, qui sont opaques : on ne le voit que dans les
+   gouttieres, si bien que le message avance par bonds d'une etape a l'autre.
+
+   L'animation porte sur `left` et non sur `transform` : un pourcentage de
+   `translateX` se rapporte a la largeur du point (6 px), pas a celle du rail.
+   Un seul point de 6 px, la propriete de mise en page ne coute rien ici.
+--------------------------------------------------------------------------- */
+@keyframes flux-rail {
+  0%        { left: 0;    opacity: 0; }
+  5%        { opacity: 1; }
+  90%       { opacity: 1; }
+  100%      { left: 100%; opacity: 0; }
+}
+.js .flux-rail { animation: flux-rail 4.2s linear infinite; }
+/* Sans JavaScript, le point reste transparent plutot que plante sur le trait. */
+.flux-rail { opacity: 0; }
+
+/* --- Decor de haut de page des guides ---------------------------------------
+   Une trame de points, masquee en ellipse pour s'eteindre avant d'atteindre le
+   texte : elle donne de la matiere au coin droit du heros sans teinter le blanc
+   de la page, ce que faisaient les degrades radiaux retires du `body`.
+--------------------------------------------------------------------------- */
+.decor-points {
+  background-image: radial-gradient(circle at 1px 1px, rgba(33, 28, 24, 0.09) 1px, transparent 0);
+  background-size: 24px 24px;
+  -webkit-mask-image: radial-gradient(ellipse 55% 80% at 82% 10%, #000 10%, transparent 70%);
+  mask-image: radial-gradient(ellipse 55% 80% at 82% 10%, #000 10%, transparent 70%);
+}
+
+/* Halo de l'assistant : une respiration lente, jamais un clignotement. */
+@keyframes halo {
+  0%, 100% { transform: scale(1);    opacity: 0.55; }
+  50%      { transform: scale(1.18); opacity: 0; }
+}
+.js .halo { animation: halo 3.6s var(--sortie) infinite; }
+.halo { opacity: 0; }
+
+/* --- Plancher d'accessibilite ----------------------------------------------
+   « Reduire les animations » (macOS, iOS, Windows, Android) doit tout arreter,
+   y compris `.rise` : son `fill-mode: both` laissait sinon le hero a opacity 0
+   avant le demarrage de l'animation.
+--------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .js .bulle,
+  .js .statut-ecrit,
+  .js .statut-en-ligne,
+  .js .flux-droite,
+  .js .flux-arrivee,
+  .js .flux-rail,
+  .js .halo,
+  .point {
+    animation: none !important;
+  }
+  /* Les points de flux et le halo disparaissent au lieu de rester plantes sur
+     leur trait : ce sont des ornements, leur absence ne retire aucune
+     information — le schema se lit deja par ses rails et ses cartes. */
+  .js .flux-droite,
+  .js .flux-arrivee,
+  .js .flux-rail,
+  .js .halo {
+    opacity: 0;
+  }
+  /* Le statut se fige sur « en ligne » : l'indicateur de saisie disparait. */
+  .js .statut-ecrit { opacity: 0; }
+  .js .statut-en-ligne { opacity: 1; }
+  .js .revele {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+  * { scroll-behavior: auto !important; }
+}
+
+/* --- Fil d'Ariane -----------------------------------------------------------
+   Le chevron est peint par la feuille de style et non ecrit dans le HTML : une
+   page n'a pas a glisser un `<span aria-hidden>` entre chaque maillon, et le
+   separateur reste ce qu'il est, un ornement. Le premier maillon n'en porte
+   pas, d'ou le selecteur `* + *`.
+--------------------------------------------------------------------------- */
+.fil-ariane > * + *::before {
+  content: "›";
+  margin-right: 0.375rem;
+  color: #cfc6b8;
+}
 
 /* scrollbars discrètes */
 * { scrollbar-width: thin; scrollbar-color: #d9d1c5 transparent; }

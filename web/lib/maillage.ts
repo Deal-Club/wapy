@@ -2,6 +2,10 @@ import { paysPublies, getPays } from "@/content/pays";
 import { secteursPublies, getSecteur } from "@/content/secteurs";
 import { villesPubliees, villesDuPays } from "@/content/villes";
 import { COMPARATIFS_PUBLIES } from "@/content/comparatifs";
+// La préposition vient du pays lui-même : « Wapy au Bénin », mais « Wapy en
+// Côte d'Ivoire ». Un `au ${p.nom}` écrit en dur produisait « Wapy au Côte
+// d'Ivoire » sur toutes les pages qui portent cette ancre.
+import { auPays } from "@/lib/texte";
 
 export type TypePage = "accueil" | "pays" | "ville" | "secteur" | "comparatif" | "entite";
 export type PageRef = { url: string; titre: string; type: TypePage };
@@ -151,7 +155,7 @@ export function liensSortants(url: string): Lien[] {
       })),
       ...paysPublies().slice(0, 3).map((p) => ({
         href: `/chatbot-whatsapp/${p.slug}`,
-        ancre: ancre([`chatbot WhatsApp ${p.nom}`, `Wapy au ${p.nom}`], secteur.slug + p.slug),
+        ancre: ancre([`chatbot WhatsApp ${p.nom}`, `Wapy ${auPays(p)}`], secteur.slug + p.slug),
       })),
       { href: "/tarifs", ancre: "tarifs de Wapy" },
       { href: "/comment-ca-marche", ancre: "comment fonctionne Wapy" },
@@ -163,7 +167,7 @@ export function liensSortants(url: string): Lien[] {
     return filtrer(url, [
       ...paysPublies().map((p) => ({
         href: `/chatbot-whatsapp/${p.slug}`,
-        ancre: ancre([`chatbot WhatsApp ${p.nom}`, `Wapy au ${p.nom}`], comparatif.slug + p.slug),
+        ancre: ancre([`chatbot WhatsApp ${p.nom}`, `Wapy ${auPays(p)}`], comparatif.slug + p.slug),
       })),
       ...liensSecteurs(comparatif.secteursLies, comparatif.slug),
       { href: "/tarifs", ancre: "tarifs de Wapy" },
@@ -198,7 +202,7 @@ export function liensSortants(url: string): Lien[] {
     return filtrer(url, [
       ...paysPublies().slice(0, 3).map((p) => ({
         href: `/chatbot-whatsapp/${p.slug}`,
-        ancre: ancre([`chatbot WhatsApp ${p.nom}`, `Wapy au ${p.nom}`], url + p.slug),
+        ancre: ancre([`chatbot WhatsApp ${p.nom}`, `Wapy ${auPays(p)}`], url + p.slug),
       })),
       ...secteursPublies().slice(0, 3).map((s) => ({ href: `/secteurs/${s.slug}`, ancre: s.motCle })),
       ...PAGES_ENTITE.filter((p) => p.url !== url).map((p) => ({ href: p.url, ancre: p.titre.toLowerCase() })),

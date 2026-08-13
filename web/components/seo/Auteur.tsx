@@ -1,3 +1,5 @@
+import WapyMarque from "@/components/WapyMarque";
+
 /**
  * Signature éditoriale du site.
  *
@@ -18,16 +20,17 @@ export const AUTEUR = {
 
 export default function Auteur() {
   return (
-    <section className="mt-14 flex items-start gap-4 rounded-xl border border-line bg-surface p-5">
-      <div
-        aria-hidden="true"
-        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand-soft font-display text-lg font-bold text-brand"
-      >
-        W
-      </div>
+    <section className="mt-8 flex items-center gap-4 rounded-xl2 border border-line bg-brand-soft/25 p-5">
+      {/* La marque plutôt qu'un W dessiné à la main : c'est la même signature
+          que l'en-tête et le pied de page, à la même échelle que l'avatar
+          qu'elle remplace. */}
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-brand">
+        <WapyMarque className="h-7 w-7 text-white" couleurLettre="#C2502F" />
+      </span>
       <div>
-        <p className="font-semibold text-ink">{AUTEUR.nom}</p>
-        <p className="mt-1 text-sm text-muted">{AUTEUR.role}</p>
+        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muted">Rédigé par</p>
+        <p className="mt-1 font-display font-bold text-ink">{AUTEUR.nom}</p>
+        <p className="mt-0.5 text-sm text-muted">{AUTEUR.role}</p>
         {AUTEUR.linkedin && (
           <a href={AUTEUR.linkedin} className="mt-1 inline-block text-sm text-brand underline">
             Profil LinkedIn

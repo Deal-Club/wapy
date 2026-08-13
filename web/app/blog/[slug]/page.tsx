@@ -4,8 +4,11 @@ import { notFound } from "next/navigation";
 import { IMAGE_OG_PAR_DEFAUT } from "@/lib/og";
 import { SITE_URL } from "@/lib/site";
 import { POSTS, getPost, tagFor, related } from "@/lib/blog";
+import { ArrowRight } from "lucide-react";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import BlocFinal, { LIEN_SECONDAIRE_SOMBRE } from "@/components/gabarit/BlocFinal";
+import FilAriane from "@/components/gabarit/FilAriane";
 
 export function generateStaticParams() {
   return POSTS.map((p) => ({ slug: p.slug }));
@@ -77,48 +80,87 @@ export default function Article({ params }: { params: { slug: string } }) {
 
       <SiteHeader lienSecondaire={{ href: "/blog", libelle: "Blog" }} />
 
-      <main className="mx-auto max-w-3xl px-4 py-10">
-        {/* Fil d'Ariane */}
-        <nav className="flex flex-wrap items-center gap-1.5 text-xs text-muted" aria-label="Fil d'Ariane">
-          <Link href="/" className="hover:text-ink">Accueil</Link>
-          <span>›</span>
-          <Link href="/blog" className="hover:text-ink">Blog</Link>
-          <span>›</span>
-          <span className="text-ink/70">{tag}</span>
-        </nav>
+      <main>
+        {/* Chapeau d'article : sur toute la largeur de la colonne de lecture,
+            avec la trame de points du reste du site. Le corps de l'article
+            garde ses 48 rem, c'est la largeur qui se lit. */}
+        <div className="relative overflow-hidden border-b border-line">
+          <div
+            aria-hidden="true"
+            className="decor-points pointer-events-none absolute inset-0 hidden md:block"
+          />
+          <div className="relative mx-auto max-w-3xl px-4 pb-10 pt-8">
+            <FilAriane>
+              <Link href="/" className="transition hover:text-brand">
+                Accueil
+              </Link>
+              <Link href="/blog" className="transition hover:text-brand">
+                Blog
+              </Link>
+              <span className="text-ink/70">{tag}</span>
+            </FilAriane>
 
-        <div className="mt-5 flex items-center gap-2 text-xs">
-          <span className="chip !py-1 text-brand">{tag}</span>
-          <span className="text-muted">{fmtDate(post.date)} · {post.readingMin} min de lecture</span>
-        </div>
-        <h1 className="mt-3 font-display text-3xl font-bold leading-tight md:text-[2.6rem]">{post.title}</h1>
-        <p className="mt-4 border-l-2 border-brand/40 pl-4 text-lg text-muted">{post.excerpt}</p>
-
-        <article className="article mt-8" dangerouslySetInnerHTML={{ __html: post.body }} />
-
-        {/* CTA */}
-        <div className="mt-12 rounded-xl2 bg-ink px-6 py-10 text-center text-cream">
-          <h2 className="font-display text-2xl font-bold">Prêt à ne plus rater un client ?</h2>
-          <p className="mx-auto mt-2 max-w-md text-cream/70">Créez votre assistant WhatsApp sans code, gratuitement.</p>
-          <div className="mt-6 flex justify-center">
-            <Link href="/signup" className="btn">Commencer maintenant</Link>
+            <div className="mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs">
+              <span className="pill bg-brand-soft text-brand">{tag}</span>
+              <span className="text-muted">
+                {fmtDate(post.date)} · {post.readingMin} min de lecture
+              </span>
+            </div>
+            <h1 className="mt-4 font-display text-[2rem] font-bold leading-[1.12] md:text-[2.6rem]">
+              {post.title}
+            </h1>
+            <p className="mt-5 border-l-2 border-brand pl-4 text-lg leading-relaxed text-ink/80">
+              {post.excerpt}
+            </p>
           </div>
         </div>
 
-        {/* Articles similaires */}
-        {others.length > 0 && (
-          <section className="mt-14">
-            <h2 className="font-display text-xl font-bold">Sur le même sujet</h2>
-            <div className="mt-5 grid gap-4 sm:grid-cols-3">
-              {others.map((p) => (
-                <Link key={p.slug} href={`/blog/${p.slug}`} className="group rounded-xl border border-line bg-surface p-5 shadow-soft transition hover:shadow-lift">
-                  <span className="chip !py-1 text-xs text-brand">{tagFor(p.slug)}</span>
-                  <h3 className="mt-2 text-sm font-bold leading-snug group-hover:text-brand">{p.title}</h3>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+        <div className="mx-auto max-w-3xl px-4 pb-16">
+          <article className="article mt-10" dangerouslySetInnerHTML={{ __html: post.body }} />
+
+          {/* Articles similaires avant l'appel à l'action : un lecteur arrivé au
+              bout d'un article cherche d'abord le suivant. */}
+          {others.length > 0 && (
+            <section className="mt-14 border-t border-line pt-10">
+              <h2 className="font-display text-xl font-bold">Sur le même sujet</h2>
+              <div className="mt-6 grid gap-4 sm:grid-cols-3">
+                {others.map((p) => (
+                  <Link
+                    key={p.slug}
+                    href={`/blog/${p.slug}`}
+                    className="group flex h-full flex-col rounded-xl2 border border-line bg-surface p-5 shadow-soft transition duration-300 hover:-translate-y-0.5 hover:border-brand/30 hover:shadow-lift"
+                  >
+                    <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-muted">
+                      {tagFor(p.slug)}
+                    </span>
+                    <h3 className="mt-2.5 flex-1 text-sm font-bold leading-snug transition group-hover:text-brand">
+                      {p.title}
+                    </h3>
+                    <ArrowRight
+                      aria-hidden="true"
+                      className="mt-4 h-4 w-4 text-line transition duration-300 group-hover:translate-x-1 group-hover:text-brand"
+                      strokeWidth={2.25}
+                    />
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+        </div>
+
+        <BlocFinal
+          titre="Prêt à ne plus rater un client ?"
+          texte="Créez votre assistant WhatsApp sans code. Sept jours d'essai gratuit, sur le numéro que vous utilisez déjà."
+        >
+          <Link href="/signup" className="btn text-base">
+            Commencer maintenant
+          </Link>
+          <Link href="/comment-ca-marche" className={LIEN_SECONDAIRE_SOMBRE}>
+            Voir comment ça marche
+          </Link>
+        </BlocFinal>
+
+        <div className="pb-10" />
       </main>
 
       <SiteFooter />

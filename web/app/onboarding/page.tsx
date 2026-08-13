@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Check } from "lucide-react";
 import { api, getToken } from "@/lib/api";
 import ConfigEditor, { Config, emptyConfig } from "@/components/ConfigEditor";
 import SectorPicker from "@/components/SectorPicker";
@@ -36,18 +38,27 @@ export default function Onboarding() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-4 py-10">
-      <header className="mb-8 text-center rise">
-        <div className="mb-1 inline-flex items-center gap-2 font-display text-3xl font-semibold text-brand">
+    <main className="relative mx-auto max-w-3xl px-4 py-10">
+      {/* Même trame que le haut des pages publiques : la mise en route reste
+          visiblement le même site que celui qui vient de la promettre. */}
+      <div
+        aria-hidden="true"
+        className="decor-points pointer-events-none absolute inset-x-0 top-0 h-72 hidden md:block"
+      />
+      <header className="relative mb-8 text-center rise">
+        <Link
+          href="/"
+          className="mb-1 inline-flex items-center gap-2 font-display text-3xl font-semibold text-brand"
+        >
           <WapyMarque className="h-8 w-8" />
           Wapy
-        </div>
+        </Link>
         <p className="text-muted">Mettons votre assistant en route</p>
       </header>
 
       <Stepper step={step} />
 
-      <div className="mt-8 rise">
+      <div className="relative mt-8 rise">
         {step === 0 && (
           <div className="card space-y-5">
             <h2 className="text-2xl">Parlez-nous de votre activité</h2>
@@ -97,7 +108,12 @@ export default function Onboarding() {
 
         {step === 3 && (
           <div className="card space-y-4 text-center">
-            <div className="text-5xl">🎉</div>
+            {/* Une pastille verte plutôt qu'un émoji : le reste du site n'en
+                emploie aucun, et un émoji change de dessin d'un système à
+                l'autre. */}
+            <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-soft text-emerald-dark">
+              <Check className="h-7 w-7" strokeWidth={2.5} />
+            </span>
             <h2 className="text-2xl">Votre assistant est en ligne</h2>
             <p className="text-muted">Envoyez un message au WhatsApp de l&apos;établissement depuis un autre téléphone pour voir Wapy répondre.</p>
             <div><button className="btn" onClick={() => router.push("/dashboard")}>Aller au tableau de bord</button></div>
