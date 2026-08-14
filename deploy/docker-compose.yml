@@ -39,7 +39,10 @@ services:
       - WAPY_FERNET_KEY=${WAPY_FERNET_KEY:-}
       - RECAPTCHA_SITE_KEY=${RECAPTCHA_SITE_KEY:-}
       - RECAPTCHA_SECRET=${RECAPTCHA_SECRET:-}
-      - PUBLIC_URL=${PUBLIC_URL:-https://wapy.51.210.108.173.sslip.io}
+      # Domaine de production. Il sert aussi à construire le redirect_uri OAuth
+      # Google (`/api/google/callback`) : toute autre valeur doit être enregistrée
+      # dans le client OAuth, sinon la connexion Agenda échoue en redirect_uri_mismatch.
+      - PUBLIC_URL=${PUBLIC_URL:-https://wapy.pro}
       - SMTP_HOST=${SMTP_HOST:-}
       - SMTP_PORT=${SMTP_PORT:-587}
       - SMTP_SECURE=${SMTP_SECURE:-}

@@ -10,7 +10,10 @@ l'autre pour un même établissement -> ils forment le préfixe stable et porten
 message entrant) arrive APRÈS ce point de rupture, sinon le cache est invalidé.
 """
 import json
+import logging
 from dataclasses import dataclass
+
+logger = logging.getLogger("wapy.brain")
 
 DECISION_SCHEMA = {
     "type": "object",
@@ -333,23 +336,80 @@ def build_messages(history: list[dict], incoming_text: str, extra: str = "") -> 
     return messages + [{"role": "user", "content": incoming_text}]
 
 
+def lire_conso(resp) -> dict:
+    """Compteurs de tokens d'une réponse, normalisés. Vide si l'objet n'en porte pas.
+
+    `getattr` plutôt qu'un accès direct : ce module tourne aussi contre des clients
+    de test, et une télémétrie ne doit jamais faire échouer l'appel qu'elle mesure.
+    """
+    u = getattr(resp, "usage", None)
+    if u is None:
+        return {}
+    return {
+        "entree": getattr(u, "input_tokens", 0) or 0,
+        "sortie": getattr(u, "output_tokens", 0) or 0,
+        "cache_lecture": getattr(u, "cache_read_input_tokens", 0) or 0,
+        "cache_ecriture": getattr(u, "cache_creation_input_tokens", 0) or 0,
+    }
+
+
 class Brain:
     def __init__(self, client, model: str):
         self._client = client
         self._model = model
+        # Cumul des tokens depuis le dernier `consommer_conso()`. Un tour de parole
+        # peut coûter plusieurs appels (boucle `lookup`) : c'est le tour entier qu'on
+        # veut facturer, pas le dernier appel.
+        self.conso = {}
 
-    def decide(self, fiche_text: str, history: list[dict], incoming_text: str,
-               channel: str = "whatsapp", extra: str = "") -> Decision:
-        messages = build_messages(history, incoming_text, extra)
+    @property
+    def modele(self) -> str:
+        return self._model
+
+    def consommer_conso(self) -> dict:
+        """Renvoie le cumul et le remet à zéro (le lecteur en devient responsable)."""
+        cumul, self.conso = self.conso, {}
+        return cumul
+
+    def _cumuler(self, resp) -> None:
+        for cle, valeur in lire_conso(resp).items():
+            self.conso[cle] = self.conso.get(cle, 0) + valeur
+
+    # Réponse servie quand le modèle n'a produit aucun JSON exploitable, même
+    # après relance. Le silence est le pire des cas : le client ne distingue pas
+    # « le bot réfléchit » de « personne ne répondra jamais ».
+    SECOURS = ("Désolé, je n'ai pas bien saisi votre message. "
+               "Pouvez-vous le reformuler en quelques mots ?")
+
+    def _appel(self, fiche_text, history, incoming_text, channel, extra) -> str:
         resp = self._client.messages.create(
             model=self._model,
             max_tokens=1024,
             system=build_system_blocks(fiche_text, channel, extra),
-            messages=messages,
+            messages=build_messages(history, incoming_text, extra),
             output_config={"format": {"type": "json_schema", "schema": DECISION_SCHEMA}},
         )
-        text = next(b.text for b in resp.content if b.type == "text")
-        data = json.loads(text)
+        self._cumuler(resp)
+        # TOUS les blocs de texte, recollés. Le modèle découpe parfois sa réponse
+        # en plusieurs blocs : n'en lire qu'un (`next(...)`) faisait perdre le JSON
+        # dès que le premier se réduisait à ' ' ou ' {' — observé en production.
+        return "".join(b.text for b in resp.content if getattr(b, "type", "") == "text")
+
+    def decide(self, fiche_text: str, history: list[dict], incoming_text: str,
+               channel: str = "whatsapp", extra: str = "") -> Decision:
+        data = None
+        for tentative in (1, 2):
+            text = self._appel(fiche_text, history, incoming_text, channel, extra)
+            try:
+                data = json.loads(text)
+                break
+            except (json.JSONDecodeError, TypeError):
+                # Sortie tronquée (plafond de tokens) ou malformée. On journalise le
+                # texte fautif — sans lui, l'incident est indiagnosticable a posteriori.
+                logger.warning("Décision illisible (tentative %d/2) : %r", tentative, text[:300])
+        if data is None:
+            return Decision(action="reply", message=self.SECOURS,
+                            reason="JSON illisible après relance")
         return Decision(
             action=data["action"],
             message=data["message"],

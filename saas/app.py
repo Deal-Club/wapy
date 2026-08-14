@@ -3,6 +3,7 @@
 P1 : auth + webhook multi-tenant.
 P2 : endpoints d'onboarding (config, modèle Excel, import xlsx, WhatsApp connect/qr/status).
 """
+import asyncio
 import io
 import logging
 import os
@@ -22,6 +23,23 @@ OTP_TTL = timedelta(minutes=15)
 PUBLIC_URL = os.environ.get("PUBLIC_URL", "https://wapy.51.210.108.173.sslip.io")
 logger = logging.getLogger("wapy.saas")
 
+# Issues de `handle_message` qui n'envoient RIEN au client : après elles, il faut
+# retirer l'indicateur « écrit… », sinon il reste affiché sans réponse derrière.
+_STATUTS_MUETS = {
+    "ignored", "duplicate", "handback", "staff-idle", "relayed",
+    "handed_off", "optout", "forwarded", "blocked",
+}
+
+
+def _sans_erreur(fn, *args):
+    """Exécute un effet de bord cosmétique sans jamais propager son échec."""
+    try:
+        return fn(*args)
+    except Exception:
+        logger.debug("Indicateur d'écriture indisponible", exc_info=True)
+        return None
+
+
 # Limiteur de débit en mémoire pour le chat public du widget (anti-abus / coût LLM).
 _WIDGET_HITS: dict = {}
 _WIDGET_WINDOW = 60.0
@@ -40,8 +58,9 @@ def _widget_rate_ok(key: str) -> bool:
     return True
 
 from saas.db import SessionLocal, init_db
-from saas import auth, config_repo, models, phone, sectors, usage, wa
+from saas import auth, config_repo, costs, models, phone, sectors, usage, wa
 from saas.bot import process_incoming
+from saas.debounce import Regroupeur, fusionner
 from saas.store_db import DbStore
 
 # Générateur du modèle Excel (dossier tools/).
@@ -167,12 +186,24 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     app = FastAPI(title="Wapy Platform")
     sf = session_factory or SessionLocal
     wam = wa_module or wa
+    # Tampon des messages en rafale, propre à cette application (un seul worker
+    # uvicorn : l'état en mémoire suffit et reste cohérent).
+    regroupeur = Regroupeur(echelle=float(os.environ.get("WAPY_REGROUPEMENT", "1")))
 
     # Fichiers média (images des catalogues) servis publiquement + accessibles à WAHA.
     os.makedirs(MEDIA_DIR, exist_ok=True)
     app.mount("/media", StaticFiles(directory=MEDIA_DIR), name="media")
 
     if init:
+        # Sans configuration, Python n'émet qu'à partir de WARNING via son handler
+        # de dernier recours, et sans horodatage ni niveau : les `logger.info` du
+        # bot (message entrant, message écarté) n'atteignaient jamais les logs.
+        logging.basicConfig(
+            level=os.environ.get("LOG_LEVEL", "INFO").upper(),
+            format="%(asctime)s %(levelname)s %(name)s : %(message)s",
+            force=True,
+        )
+
         @app.on_event("startup")
         def _startup():
             init_db()
@@ -244,6 +275,11 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             tenant_id=tenant.id, plan="", addons=[], status="trial",
             current_period_end=datetime.utcnow() + timedelta(days=billing.TRIAL_DAYS),
         ))
+        # L'essai tourne sur le modèle annoncé par TRIAL_ENT, et non sur le défaut
+        # de la colonne (le moins cher). Ces sept jours sont ceux qui décident de
+        # l'abonnement : les faire tourner sur le modèle le plus faible, c'est se
+        # juger sur son plus mauvais jour. Le volume d'un essai est négligeable.
+        tenant.wapy_model = billing.TRIAL_ENT["model"] or tenant.wapy_model
         s.commit()
         return {"token": auth.create_token(user.id, tenant.id), "tenant": {"id": tenant.id, "name": tenant.name}}
 
@@ -343,6 +379,9 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
                 "id": t.id, "name": t.name,
                 "plan": t.plan, "status": getattr(t, "status", "active") or "active",
                 "model": t.wapy_model,
+                # Coût IA du mois : sans lui, l'admin voit un volume de messages
+                # mais pas la marge, alors que c'est la seule question qui compte.
+                "cout_ia_xof": costs.detail_du_mois(s, t.id)["total_xof"],
                 "owner": owner.email if owner else "",
                 "messages_in": u.get("messages_in", 0), "messages_out": u.get("messages_out", 0),
                 "wa_status": sess.status if sess else "—",
@@ -467,7 +506,8 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             from saas.ai_config import generate_config
 
             client = anthropic.Anthropic()
-            data = generate_config(client, tenant.wapy_model, body.sector, body.description, tenant.name)
+            modele = costs.modele_tache("config", tenant.wapy_model)
+            data = generate_config(client, modele, body.sector, body.description, tenant.name)
         else:
             data = gen(tenant, body.sector, body.description)
         remaining = max(0, billing.AI_GENERATE_PER_MONTH - usage.ai_gen_bump(s, tenant.id))
@@ -591,7 +631,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             from saas.ai_learn import analyze
 
             learn = lambda t, fiche_text, convs: analyze(  # noqa: E731
-                anthropic.Anthropic(), t.wapy_model, fiche_text, convs
+                anthropic.Anthropic(), costs.modele_tache("learn", t.wapy_model), fiche_text, convs
             )
         suggestions = learn(tenant, fiche, conversations)
 
@@ -800,7 +840,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
 
     @app.get("/api/usage")
     def get_usage(tenant=Depends(current_tenant), s=Depends(db)):
-        return usage.totals(s, tenant.id)
+        return {**usage.totals(s, tenant.id), "cout_ia": costs.detail_du_mois(s, tenant.id)}
 
     # --- Abonnement de l'établissement à Wapy (facturation opérateur via GeniusPay) ---
     def _entitlements(tenant, s):
@@ -1027,9 +1067,15 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             if not refresh:
                 # Google n'a pas renvoyé de refresh_token (déjà consenti sans prompt).
                 return RedirectResponse(f"{dest}&gcal=noconsent", status_code=302)
+            access = tokens.get("access_token", "")
+            # Le scope `calendar.app.created` ne donne accès qu'aux agendas que
+            # l'on crée soi-même : sans cet agenda, rien à synchroniser.
+            calendar_id = gcal.create_calendar(access)
+            if not calendar_id:
+                return RedirectResponse(f"{dest}&gcal=error", status_code=302)
             email = ""
             try:
-                email = gcal.primary_calendar(tokens.get("access_token", "")).get("id", "")
+                email = gcal.user_email(access)
             except Exception:
                 pass
             ga = s.get(models.GoogleAuth, data["tid"])
@@ -1037,7 +1083,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
                 ga = models.GoogleAuth(tenant_id=data["tid"])
                 s.add(ga)
             ga.refresh_token = refresh
-            ga.calendar_id = "primary"
+            ga.calendar_id = calendar_id
             ga.email = email
             s.commit()
             return RedirectResponse(f"{dest}&gcal=ok", status_code=302)
@@ -1148,7 +1194,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         if br is None:
             import anthropic
             from brain.brain import Brain
-            br = Brain(anthropic.Anthropic(), tenant.wapy_model)
+            br = Brain(anthropic.Anthropic(), costs.modele_effectif(s, tenant, sub))
 
         def notify(text, _t=tenant):
             try:
@@ -1322,12 +1368,17 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             from brain.brain import Brain
 
             client = anthropic.Anthropic()
-            br = Brain(client, tenant.wapy_model)
+            br = Brain(client, costs.modele_effectif(s, tenant, s.get(models.Subscription, tenant.id)))
             if vision_fn is None:
                 from saas.vision import analyze_image
 
-                def vision_fn(image_bytes, media_type, _c=client, _m=tenant.wapy_model):
-                    return analyze_image(_c, _m, image_bytes, media_type)
+                _mv = costs.modele_tache("vision", tenant.wapy_model)
+
+                def vision_fn(image_bytes, media_type, _c=client, _m=_mv, _tid=tenant.id):
+                    return analyze_image(
+                        _c, _m, image_bytes, media_type,
+                        on_conso=lambda c: costs.enregistrer(s, _tid, "vision", _m, c),
+                    )
             if transcribe_fn is None:
                 from saas.transcribe import transcribe_audio
                 transcribe_fn = transcribe_audio
@@ -1335,9 +1386,44 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         # thread pour NE PAS figer la boucle asyncio : les messages de plusieurs
         # conversations/établissements sont alors traités en parallèle (chaque requête
         # a sa propre session DB -> aucune donnée partagée, aucun mélange de réponses).
-        return await run_in_threadpool(
-            process_incoming, s, channel, br, tenant, payload,
-            vision_analyze=vision_fn, transcribe=transcribe_fn,
+        async def _traiter(textes=None):
+            # Un seul cycle pour tout le lot : le cerveau voit la demande complète
+            # au lieu de répondre à chaque fragment séparément.
+            charge = fusionner(payload, textes)
+            res = await run_in_threadpool(
+                process_incoming, s, channel, br, tenant, charge,
+                vision_analyze=vision_fn, transcribe=transcribe_fn,
+            )
+            # Rien n'a été envoyé au client : on retire l'indicateur « écrit… »,
+            # sinon il resterait affiché jusqu'à son expiration côté WhatsApp.
+            if apercu is not None and (res or {}).get("status") in _STATUTS_MUETS:
+                await run_in_threadpool(_sans_erreur, channel.stop_typing, apercu.chat_id)
+            return res
+
+        apercu = channel.parse_incoming(payload)
+        # On ne regroupe que du texte simple. Un média porte une URL dans SA charge
+        # utile (fusionner les corps la perdrait), et une réponse citée désigne une
+        # cible précise du relais staff : ces deux cas passent immédiatement.
+        regroupable = (
+            apercu is not None
+            and not apercu.from_me
+            and not apercu.is_group
+            and not apercu.media_url
+            and not apercu.media_type
+            and not apercu.quoted_id
+            and bool((apercu.text or "").strip())
+        )
+        if not regroupable:
+            return await _traiter()
+
+        def _ecrire():
+            # Appel HTTP vers WAHA : hors boucle asyncio, et sans l'attendre —
+            # l'indicateur est un confort, pas une étape du traitement.
+            asyncio.create_task(
+                run_in_threadpool(_sans_erreur, channel.start_typing, apercu.chat_id))
+
+        return await regroupeur.soumettre(
+            (tenant.id, apercu.chat_id), apercu.text, _traiter, avant_attente=_ecrire,
         )
 
     return app

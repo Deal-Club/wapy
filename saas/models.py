@@ -171,6 +171,95 @@ class UsageCounter(Base):
     __table_args__ = (UniqueConstraint("tenant_id", "day", name="uq_usage_day"),)
 
 
+class MonthlyConversation(Base):
+    """Une ligne par interlocuteur distinct et par mois : c'est le compteur du quota.
+
+    « Conversation » = un interlocuteur qui a écrit au moins une fois dans le mois,
+    pas un échange ni une session. C'est la définition que le client comprend en
+    lisant l'offre, et la seule qui ne dépende pas d'un délai d'inactivité
+    arbitraire. Un habitué qui écrit chaque semaine compte donc pour un.
+    """
+    __tablename__ = "monthly_conversations"
+    id = Column(Integer, primary_key=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    month = Column(String(7), nullable=False)  # AAAA-MM
+    chat_id = Column(String(120), nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "month", "chat_id", name="uq_monthly_conv"),
+    )
+
+
+class TikTokAccount(Base):
+    """Connexion TikTok d'un établissement (compte Business, OAuth).
+
+    Même modèle que `GoogleAuth` : chaque établissement autorise SON propre
+    compte, aucun secret opérateur ici. Les jetons sont chiffrés au repos avec
+    la clé Fernet de l'opérateur (`saas.connector.encrypt`) — un dump de la base
+    ne révèle rien d'exploitable.
+
+    `open_id` est l'identifiant du compte chez TikTok : il sert à router un
+    évènement entrant vers le bon établissement, comme `WaSession.session_name`
+    le fait pour WhatsApp.
+    """
+    __tablename__ = "tiktok_accounts"
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), primary_key=True)
+    open_id = Column(String(120), unique=True, index=True)
+    display_name = Column(String(255), default="")
+    access_token_enc = Column(Text, default="")
+    refresh_token_enc = Column(Text, default="")
+    expires_at = Column(DateTime)
+    scopes = Column(Text, default="")
+    status = Column(String(30), default="disconnected")  # disconnected | connected | expired
+    connected_at = Column(DateTime)
+
+
+class TikTokUsage(Base):
+    """Réponses TikTok émises par mois et par établissement.
+
+    On compte les RÉPONSES ÉMISES, pas les interlocuteurs distincts comme pour
+    WhatsApp. Deux raisons : sous une vidéo, la même personne commente souvent
+    plusieurs fois, et c'est chaque réponse qui coûte un appel au modèle. Compter
+    les personnes facturerait mal un canal dont le volume ne vient pas du nombre
+    de gens mais du nombre de messages.
+    """
+    __tablename__ = "tiktok_usage"
+    id = Column(Integer, primary_key=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    month = Column(String(7), nullable=False)  # AAAA-MM
+    kind = Column(String(20), nullable=False, default="comment")  # comment | dm
+    count = Column(Integer, default=0)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "month", "kind", name="uq_tiktok_usage"),
+    )
+
+
+class AiCost(Base):
+    """Coût IA réel, par établissement / mois / tâche / modèle (cf. saas/costs.py).
+
+    Distinct de `UsageCounter`, qui compte des messages : un message ne dit rien
+    de ce qu'il coûte (le modèle et l'état du cache font varier le prix d'un
+    facteur cinquante). Ventilé par tâche pour pouvoir répondre à « qu'est-ce qui
+    coûte cher chez ce client » sans relire les logs.
+    """
+    __tablename__ = "ai_costs"
+    id = Column(Integer, primary_key=True)
+    tenant_id = Column(Integer, ForeignKey("tenants.id"), nullable=False)
+    month = Column(String(7), nullable=False)  # AAAA-MM
+    task = Column(String(30), nullable=False)  # brain | vision | config | learn
+    model = Column(String(80), nullable=False)
+    calls = Column(Integer, default=0)
+    tokens_in = Column(Integer, default=0)
+    tokens_out = Column(Integer, default=0)
+    tokens_cache_read = Column(Integer, default=0)
+    tokens_cache_write = Column(Integer, default=0)
+    # Micro-dollars entiers : additionner des flottants sur des milliers d'appels dérive.
+    cost_micro_usd = Column(Integer, default=0)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "month", "task", "model", name="uq_ai_cost"),
+    )
+
+
 class Contact(Base):
     """Nom d'affichage d'un interlocuteur (pushName WhatsApp) pour ne pas afficher
     un @lid illisible dans le tableau de bord."""
@@ -291,8 +380,12 @@ class GoogleAuth(Base):
     __tablename__ = "google_auth"
     tenant_id = Column(Integer, ForeignKey("tenants.id"), primary_key=True)
     refresh_token = Column(Text, default="")
-    calendar_id = Column(String(255), default="primary")
-    email = Column(String(255), default="")   # id du calendrier principal (= e-mail), pour affichage
+    # Agenda secondaire « Wapy — Réservations » créé chez l'établissement au
+    # moment du consentement. Les lignes antérieures à la bascule vers le scope
+    # non sensible portent encore "primary" et continuent de fonctionner avec
+    # leur ancien jeton, jusqu'à reconnexion.
+    calendar_id = Column(String(255), default="")
+    email = Column(String(255), default="")   # e-mail du compte Google, pour affichage
     connected_at = Column(DateTime, default=datetime.utcnow)
 
 

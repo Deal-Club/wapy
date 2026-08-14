@@ -24,6 +24,7 @@ import {
   COLONNES_TARIFS,
   TARIF_NON_PUBLIE,
   lignesTarifs,
+  montantAffiche,
   offresPubliables,
 } from "@/content/plans";
 import { liensSortants } from "@/lib/maillage";
@@ -51,8 +52,7 @@ const ID_MONTANTS = "montants";
   Repères du haut de page. Trois plans comptés sur `content/plans.ts`, essai de
   `JOURS_ESSAI` jours (`saas/billing.py:14`), aucun moyen de paiement demandé à
   l'inscription (`saas/app.py:243-247`, abonnement créé en statut « trial »),
-  facturation mensuelle en francs CFA (`content/plans.ts`, devise XOF). Aucun
-  montant : la grille n'est pas arrêtée.
+  facturation mensuelle en francs CFA (`content/plans.ts`, devise XOF).
 */
 const REPERES: [string, string][] = [
   [`${PLANS.length} plans`, "Le même assistant, des fonctions différentes"],
@@ -92,9 +92,10 @@ export const metadata: Metadata = {
 
 export default function PageTarifs() {
   const liens = liensSortants("/tarifs");
-  // `offerLd` lève sur un tableau vide (schema.ts) : tant qu'aucun plan ne porte
-  // de montant, la page n'émet aucune AggregateOffer. Le jour où `content/plans.ts`
-  // reçoit des prix, le balisage apparait sans qu'on touche à ce fichier.
+  // `offerLd` lève sur un tableau vide (schema.ts) : la page teste donc la
+  // longueur avant d'émettre le balisage. Les trois plans portant un prix, il est
+  // émis aujourd'hui ; retirer un prix de `content/plans.ts` le retirerait d'ici
+  // sans qu'on touche à ce fichier.
   const offres = offresPubliables(PLANS);
 
   return (
@@ -155,10 +156,12 @@ export default function PageTarifs() {
             <span className="text-brand">sept jours d&apos;essai</span>
           </h1>
 
+          {/* Le sommaire du nouveau gabarit vit plus bas, en variante « barre » :
+              celui que portait l'ancienne page ferait doublon ici. */}
           <EnBref>
             Wapy se règle par abonnement mensuel, facturé en francs CFA, après sept jours d&apos;essai
-            gratuit. Trois plans se distinguent par les fonctions ouvertes et par le nombre de
-            comptes et de documents autorisés. Les montants ne sont pas publiés à ce jour.
+            gratuit. Trois plans se distinguent par le volume de conversations inclus et par les
+            fonctions ouvertes, à partir de 9 900 FCFA par mois.
           </EnBref>
 
           <div className="mt-7 flex flex-wrap items-center gap-3">
@@ -182,7 +185,7 @@ export default function PageTarifs() {
               { id: ID_ESSAI, libelle: `Les ${JOURS_ESSAI} jours d'essai` },
               { id: ID_PLANS, libelle: "Les trois plans" },
               { id: ID_OPTIONS, libelle: "Les options" },
-              { id: ID_MONTANTS, libelle: "Pourquoi aucun montant n'est affiché" },
+              { id: ID_MONTANTS, libelle: "Ce que vous payez, et ce qui est compté" },
             ]}
           />
         </div>
@@ -235,11 +238,11 @@ export default function PageTarifs() {
                   <h3 className="font-display text-xl font-bold">{p.nom}</h3>
                   <p className="mt-2 text-sm leading-relaxed text-muted">{p.resume}</p>
 
-                  {/* Le tarif tient la même place sur les trois cartes, occupée
-                      aujourd'hui par la mention d'absence : une carte de plan
-                      sans ligne de prix se lit comme une carte inachevée. */}
-                  <p className="mt-5 rounded-lg border border-dashed border-line bg-cream px-3 py-2 text-center text-xs font-semibold text-muted">
-                    {TARIF_NON_PUBLIE}
+                  {/* Le tarif tient la même place sur les trois cartes. Il vient
+                      de `content/plans.ts` : le jour où un montant y change, la
+                      carte suit sans qu'on touche à ce fichier. */}
+                  <p className="mt-5 rounded-lg border border-line bg-cream px-3 py-2 text-center font-display text-lg font-bold text-brand">
+                    {montantAffiche(p) ?? TARIF_NON_PUBLIE}
                   </p>
 
                   <ul className="mt-5 flex-1 space-y-2.5 text-sm">
@@ -303,21 +306,28 @@ export default function PageTarifs() {
 
         <SectionGuide
           id={ID_MONTANTS}
-          titre="Pourquoi aucun montant n'est affiché"
-          intro="La grille est en cours de révision, et un tarif corrigé coûte plus cher qu'un tarif annoncé plus tard."
+          titre="Ce que vous payez, et ce qui est compté"
+          intro="Un tarif sans unité de compte n'est pas un tarif : voici le montant, et ce qu'une conversation veut dire sur la facture."
         >
           <Reveal>
             <div className="card">
               <p className="leading-relaxed text-muted">
-                La grille tarifaire est en cours de révision. Publier des montants aujourd&apos;hui
-                reviendrait à vous engager sur des valeurs qui vont bouger, et un tarif annoncé puis
-                corrigé coûte plus cher en confiance qu&apos;un tarif annoncé plus tard. La colonne
-                Tarif du tableau porte donc la mention « {TARIF_NON_PUBLIE} ».
+                La facturation est mensuelle, en francs CFA, sans engagement de durée et sans
+                frais de mise en service. L&apos;entrée de gamme est à 9 900 FCFA par mois, et
+                l&apos;essai de {JOURS_ESSAI} jours la précède, sans carte bancaire.
               </p>
               <p className="mt-4 leading-relaxed text-muted">
-                Ce qui est acquis, en revanche : la facturation est mensuelle, en francs CFA, et
-                l&apos;essai de {JOURS_ESSAI} jours la précède. Écrivez-nous ou lancez l&apos;essai
-                pour connaitre le montant applicable à votre établissement.
+                Ce qui est compté, c&apos;est la conversation : un client qui vous écrit dans le
+                mois compte pour une, qu&apos;il envoie deux messages ou trente, et qu&apos;il
+                revienne ou non les jours suivants. Un habitué qui vous écrit chaque semaine reste
+                donc une seule conversation sur sa facture. Le plan Starter en couvre 500 par mois,
+                le plan Pro 2 000, le plan Business 6 000.
+              </p>
+              <p className="mt-4 leading-relaxed text-muted">
+                Si vous atteignez le plafond, les échanges déjà engagés continuent normalement et
+                vous êtes prévenu sur WhatsApp. Les nouveaux clients reçoivent un message
+                d&apos;attente jusqu&apos;à ce que vous ajoutiez du volume : rien ne se coupe sans
+                que vous le sachiez.
               </p>
             </div>
           </Reveal>
@@ -325,9 +335,9 @@ export default function PageTarifs() {
           <Reveal delai={80}>
             <div className="mt-6">
               <Note>
-                Le jour où la grille est arrêtée, les montants paraissent ici, dans le tableau et
-                dans le balisage de la page sans qu&apos;aucune autre page soit à reprendre : ils
-                sont lus depuis un seul fichier de données.
+                Les montants affichés ici, ceux du tableau et ceux du balisage de la page viennent
+                d&apos;un seul fichier de données. Un changement de grille se fait donc à un seul
+                endroit, sans qu&apos;aucune page soit à reprendre.
               </Note>
             </div>
           </Reveal>

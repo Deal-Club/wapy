@@ -11,16 +11,33 @@ calendrier n'est qu'un miroir.
 """
 import os
 from datetime import timedelta
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import requests
 
 AUTH_URI = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URI = "https://oauth2.googleapis.com/token"
 REVOKE_URI = "https://oauth2.googleapis.com/revoke"
+USERINFO_URI = "https://www.googleapis.com/oauth2/v2/userinfo"
 CAL_API = "https://www.googleapis.com/calendar/v3"
-# calendar.events : lecture/écriture des événements, sans accès aux autres agendas.
-SCOPE = "https://www.googleapis.com/auth/calendar.events"
+
+# Scopes NON SENSIBLES au sens de Google — donc aucune validation d'application
+# requise, aucun écran « Google n'a pas validé cette application », et aucun
+# plafond de 100 utilisateurs à vie sur le projet.
+#
+#   calendar.app.created : créer un agenda secondaire et n'agir QUE sur celui-là.
+#   userinfo.email       : l'e-mail du compte, pour l'afficher dans le dashboard.
+#
+# Ne jamais revenir à `calendar.events` (sensible) : il donne accès à tous les
+# agendas de l'utilisateur et impose la procédure de validation (vidéo démo,
+# plusieurs semaines d'instruction) — cf. l'agenda dédié créé par `create_calendar`.
+SCOPE = " ".join([
+    "https://www.googleapis.com/auth/calendar.app.created",
+    "https://www.googleapis.com/auth/userinfo.email",
+])
+
+# Nom de l'agenda créé chez l'établissement (visible dans son Google Agenda).
+CALENDAR_SUMMARY = "Wapy — Réservations"
 
 
 def client_id() -> str:
@@ -50,7 +67,9 @@ def auth_url(state: str) -> str:
         "scope": SCOPE,
         "access_type": "offline",   # nécessaire pour recevoir un refresh_token
         "prompt": "consent",        # force un refresh_token neuf à chaque connexion
-        "include_granted_scopes": "true",
+        # Pas d'`include_granted_scopes` : il réinjecterait le `calendar.events`
+        # consenti avant la bascule par les établissements déjà connectés, et
+        # l'écran « application non validée » réapparaîtrait pour eux.
         "state": state,
     }
     return f"{AUTH_URI}?{urlencode(params)}"
@@ -83,15 +102,31 @@ def access_token(refresh_token: str) -> str:
     return (r.json() or {}).get("access_token", "")
 
 
-def primary_calendar(access_tok: str) -> dict:
-    """Métadonnées du calendrier principal (son id = l'e-mail du compte)."""
+def create_calendar(access_tok: str, summary: str = CALENDAR_SUMMARY) -> str:
+    """Crée l'agenda secondaire dédié à Wapy. Renvoie son id.
+
+    C'est le seul agenda que le scope `calendar.app.created` nous laisse toucher :
+    l'agenda principal de l'établissement reste hors de portée, par construction.
+    """
+    r = requests.post(
+        f"{CAL_API}/calendars",
+        headers={"Authorization": f"Bearer {access_tok}"},
+        json={"summary": summary},
+        timeout=30,
+    )
+    r.raise_for_status()
+    return (r.json() or {}).get("id", "")
+
+
+def user_email(access_tok: str) -> str:
+    """E-mail du compte connecté, pour l'afficher dans le dashboard."""
     r = requests.get(
-        f"{CAL_API}/calendars/primary",
+        USERINFO_URI,
         headers={"Authorization": f"Bearer {access_tok}"},
         timeout=30,
     )
     r.raise_for_status()
-    return r.json() or {}
+    return (r.json() or {}).get("email", "")
 
 
 def _event_body(summary: str, start_utc, duration_min: int, description: str) -> dict:
@@ -108,10 +143,14 @@ def _event_body(summary: str, start_utc, duration_min: int, description: str) ->
 def create_event(refresh_token: str, calendar_id: str, summary: str,
                  start_utc, duration_min: int, description: str = "") -> str:
     """Crée un événement dans l'agenda de l'établissement. Renvoie l'id (ou '')."""
+    # Pas de repli sur `primary` : le scope ne l'autorise pas, un repli muet
+    # produirait un 403 incompréhensible plutôt qu'une absence de synchro.
+    if not calendar_id:
+        return ""
     tok = access_token(refresh_token)
     if not tok:
         return ""
-    cal = calendar_id or "primary"
+    cal = quote(calendar_id, safe="")
     r = requests.post(
         f"{CAL_API}/calendars/{cal}/events",
         headers={"Authorization": f"Bearer {tok}"},
@@ -124,12 +163,12 @@ def create_event(refresh_token: str, calendar_id: str, summary: str,
 
 def delete_event(refresh_token: str, calendar_id: str, event_id: str) -> None:
     """Supprime l'événement (à l'annulation d'un RDV). Best-effort."""
-    if not event_id:
+    if not event_id or not calendar_id:
         return
     tok = access_token(refresh_token)
     if not tok:
         return
-    cal = calendar_id or "primary"
+    cal = quote(calendar_id, safe="")
     requests.delete(
         f"{CAL_API}/calendars/{cal}/events/{event_id}",
         headers={"Authorization": f"Bearer {tok}"},

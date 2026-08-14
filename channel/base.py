@@ -26,3 +26,12 @@ class WhatsAppChannel(ABC):
 
     @abstractmethod
     def session_status(self) -> str: ...
+
+    # Indicateur « écrit… » pendant qu'on regroupe les messages et qu'on rédige.
+    # Non abstraits : un adaptateur qui ne sait pas le faire reste utilisable.
+    # Best-effort des deux côtés — jamais de quoi empêcher une réponse.
+    def start_typing(self, chat_id: str) -> None:
+        return None
+
+    def stop_typing(self, chat_id: str) -> None:
+        return None

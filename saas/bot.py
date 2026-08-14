@@ -17,6 +17,14 @@ from saas import config_repo, models, phone, usage
 logger = logging.getLogger("wapy.saas")
 
 HISTORY_LIMIT = 20
+
+# Servi quand le cerveau renvoie une action inconnue sans message : on parle au
+# client plutôt que de le laisser sans réponse ou d'alerter le responsable.
+ATTENTE = "Un instant, je vérifie cette information et je reviens vers vous."
+ESCALADE_DEJA_OUVERTE = (
+    "Votre demande est déjà transmise au responsable, "
+    "il revient vers vous au plus vite. 🙏"
+)
 HANDBACK_CMDS = {"/fin", "fin", "/bot", "terminé", "termine"}
 # Base interne pour que WAHA récupère les images servies par l'API.
 MEDIA_BASE = os.environ.get("MEDIA_INTERNAL_BASE", "http://api:8000")
@@ -35,14 +43,26 @@ def _csv(value: str | None) -> list[str]:
     return [x.strip() for x in (value or "").split(",") if x.strip()]
 
 
-def handle_message(channel, store, brain, fiche_text, staff_send, staff_recognize, payload, pay_link=None, book_slot=None, lookup_fn=None, extra_context=""):
+def handle_message(channel, store, brain, fiche_text, staff_send, staff_recognize, payload, pay_link=None, book_slot=None, lookup_fn=None, extra_context="", quota_fn=None):
     msg = channel.parse_incoming(payload)
     if msg is None:
+        # Événement non-message (accusé de réception, présence…). Très fréquent et
+        # jamais une perte : en DEBUG, sinon il noierait le journal.
+        logger.debug("Webhook sans message exploitable")
         return {"status": "ignored"}
     if msg.from_me or msg.is_group or is_broadcast(msg.chat_id) or is_group(msg.chat_id):
+        motif = ("envoyé par nous" if msg.from_me
+                 else "groupe" if (msg.is_group or is_group(msg.chat_id))
+                 else "diffusion")
+        logger.info("Message écarté (%s) — %s : %s",
+                    motif, msg.chat_id, (msg.text or "")[:80])
         return {"status": "ignored"}
 
     if msg.id and store.is_processed(msg.id):
+        # Renvoi du même id par WAHA. Sans cette trace, un message perdu ici était
+        # invisible : le webhook répond 200 et le client n'a jamais de réponse.
+        logger.info("Message déjà traité (id=%s) — %s : %s",
+                    msg.id, msg.chat_id, (msg.text or "")[:80])
         return {"status": "duplicate"}
     if msg.id:
         store.mark_processed(msg.id)
@@ -103,6 +123,16 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
 
     # Bot
     store.append(msg.chat_id, "user", msg.text)
+
+    # Quota de conversations. Contrôlé ICI, avant l'appel au modèle : un refus qui
+    # se paie un appel au modèle ne protège de rien.
+    if quota_fn is not None:
+        refus = quota_fn(msg.chat_id)
+        if refus:
+            channel.send_text(msg.chat_id, refus)
+            store.append(msg.chat_id, "assistant", refus)
+            return {"status": "quota"}
+
     history = store.get_history(msg.chat_id, HISTORY_LIMIT)
     decision = decide_with_lookup(brain, fiche_text, history, msg.text, lookup_fn,
                                   extra_context=extra_context)
@@ -176,6 +206,26 @@ def handle_message(channel, store, brain, fiche_text, staff_send, staff_recogniz
             if hasattr(store, "add_record"):
                 store.add_record(msg.chat_id, "Rendez-vous", confirm)
         return {"status": "booked" if ok else "replied"}
+
+    if decision.action != "escalate":
+        # Filet de sécurité. L'escalade était le comportement PAR DÉFAUT de cette
+        # fonction : toute action non reconnue réveillait le responsable. Déranger
+        # un humain doit résulter d'une décision explicite, jamais d'un glissement.
+        logger.warning("Action inconnue du cerveau (%r) — on répond sans escalader",
+                       decision.action)
+        texte = decision.message or ATTENTE
+        channel.send_text(msg.chat_id, texte)
+        store.append(msg.chat_id, "assistant", texte)
+        return {"status": "replied"}
+
+    # Une escalade déjà ouverte suffit : sans ce garde-fou, chaque message
+    # rouvrait un handoff et renvoyait le même accusé, si bien que le client
+    # recevait « je transmets » en boucle et le responsable était alerté à
+    # chaque phrase.
+    if getattr(store, "escalade_recente", lambda _c: False)(msg.chat_id):
+        channel.send_text(msg.chat_id, ESCALADE_DEJA_OUVERTE)
+        store.append(msg.chat_id, "assistant", ESCALADE_DEJA_OUVERTE)
+        return {"status": "escalade-deja-ouverte"}
 
     escalate_to_staff(channel, store, msg.chat_id, msg.text, staff_send, decision.reason)
     return {"status": "escalated"}
@@ -278,22 +328,11 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
             )
             taken_local = [booking.to_local(bcfg, b.start) for b in ups]
             slots = booking.free_slots(bcfg, taken_local)
-            svc = ", ".join((x.get("name") or "") for x in bcfg.get("services", [])) or "prestation"
-            if slots:
-                lines = "\n".join(f"- [{s:%Y-%m-%dT%H:%M}] {booking.human(s)}" for s in slots)
-                volatile += (
-                    "\n\n## Rendez-vous\nRéservation possible. Services : " + svc +
-                    ".\nCréneaux disponibles (utilise l'horodatage entre crochets pour book_datetime) :\n" + lines
-                )
-            else:
-                # RDV activés mais aucun créneau libre (agenda plein ou horaires non
-                # renseignés) : ne JAMAIS nier la prise de RDV — proposer de noter.
-                volatile += (
-                    "\n\n## Rendez-vous\nLa prise de rendez-vous est possible (services : " + svc +
-                    "), mais aucun créneau n'est libre dans la fenêtre actuelle. Ne dis pas que tu ne "
-                    "prends pas de rendez-vous : invite le client à laisser ses disponibilités "
-                    "souhaitées, puis escalade au responsable (action='escalate')."
-                )
+            volatile += booking.prompt_block(bcfg, slots)
+            if not slots:
+                logger.warning(
+                    "RDV activés mais aucun créneau libre (tenant %s) — horaires "
+                    "d'ouverture renseignés : %s", tenant.id, bool(bcfg.get("hours")))
 
             def book_slot(dt_iso, service, chat_id, name, _b=bcfg):
                 try:
@@ -343,9 +382,36 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
         fiche_text += connector.fiche_note(dc)
         lookup_fn = connector.lookup_fn_for(dc)
 
+    _limite = billing.tenant_entitlements(
+        session.get(models.Subscription, tenant.id)
+    )["limits"].get("conversations", 0)
+
+    def quota_fn(chat_id, _t=tenant, _lim=_limite):
+        """Message d'attente si le quota est atteint, chaîne vide sinon."""
+        if not usage.quota_atteint(session, _t.id, chat_id, _lim):
+            usage.noter_conversation(session, _t.id, chat_id)
+            # Alerte une seule fois par mois, au moment précis où la dernière
+            # conversation du forfait est comptée. Prévenir à chaque refus
+            # inonderait le responsable le jour où ça compte le plus.
+            if _lim and usage.conversations_du_mois(session, _t.id) == _lim:
+                for num in staff_send:
+                    try:
+                        channel.send_text(num, (
+                            f"⚠️ Forfait atteint : {_lim} conversations ce mois-ci.\n"
+                            "Les échanges déjà engagés continuent normalement, mais "
+                            "les nouveaux clients recevront un message d'attente.\n"
+                            "Augmentez le forfait pour rouvrir le service."
+                        ))
+                    except Exception:
+                        pass
+            return ""
+        return ("Merci pour votre message ! Nous revenons vers vous très vite — "
+                "un membre de l'équipe prend le relais.")
+
     result = handle_message(
         channel, store, brain, fiche_text, staff_send, staff_recognize, payload,
-        pay_link=None, book_slot=book_slot, lookup_fn=lookup_fn, extra_context=volatile
+        pay_link=None, book_slot=book_slot, lookup_fn=lookup_fn, extra_context=volatile,
+        quota_fn=quota_fn,
     )
     status = result.get("status")
     if status not in ("ignored", "duplicate"):
@@ -355,4 +421,13 @@ def process_incoming(session, channel, brain, tenant, payload, vision_analyze=No
             in_delta=1,
             out_delta=1 if status in _SENT_STATUSES else 0,
         )
+    # Coût réel du tour de parole. Après `handle_message` et non dans le cerveau :
+    # un tour peut coûter plusieurs appels (boucle `lookup`), et c'est le tour
+    # entier qu'on veut imputer. Un message qui n'a pas atteint le cerveau
+    # (escalade, opt-out, doublon) laisse le cumul vide et n'écrit rien.
+    if hasattr(brain, "consommer_conso"):
+        from saas import costs
+
+        costs.enregistrer(session, tenant.id, "brain",
+                          getattr(brain, "modele", ""), brain.consommer_conso())
     return result

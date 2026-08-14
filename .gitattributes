@@ -1,0 +1,30 @@
+# Fins de ligne : LF partout, y compris dans les copies de travail Windows.
+#
+# POURQUOI. Le dépôt est développé sous Windows et déployé sur Linux. Sans cette
+# règle, Git convertit les fichiers texte en CRLF à chaque extraction — et
+# `git archive`, qui sert à envoyer le code sur le serveur, applique la même
+# conversion. Un script shell livré en CRLF a un `\r` collé à la fin de son
+# shebang : le noyau cherche alors un interpréteur nommé « /usr/bin/env bash\r »,
+# ne le trouve pas, et le script échoue avec un « bad interpreter » que rien
+# n'explique à la lecture du fichier.
+#
+# Le 12/08/2026, un déploiement a livré `deploy/backup.sh` (sauvegarde
+# quotidienne) et `deploy/uptime.sh` (surveillance) en CRLF. Les deux étaient
+# cassés en silence : le cron continuait de les appeler, ils ne faisaient plus
+# rien. Aucune alerte n'aurait signalé la disparition des sauvegardes — c'est
+# précisément le genre de panne qu'on découvre le jour où on a besoin du fichier
+# qui n'existe pas.
+#
+# `text=auto` laisse Git détecter ce qui est du texte ; `eol=lf` impose LF à
+# l'extraction ET à l'archivage, sur toutes les plateformes. Les binaires sont
+# listés explicitement plus bas plutôt que laissés à la détection : une image
+# « corrigée » par une conversion de fins de ligne est une image corrompue.
+* text=auto eol=lf
+
+# Binaires — jamais convertis, jamais diffés comme du texte.
+*.png   binary
+*.webp  binary
+*.ico   binary
+*.xlsx  binary
+*.pdf   binary
+*.docx  binary

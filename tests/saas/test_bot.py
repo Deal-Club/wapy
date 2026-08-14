@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy.orm import sessionmaker
 
 from channel.base import IncomingMessage
@@ -96,6 +98,9 @@ class _Store:
         for h in self.handoffs:
             if h[1] == client:
                 h[2] = True
+
+    def escalade_recente(self, cid):
+        return cid in getattr(self, "escalades_recentes", set())
 
 
 def _msg(cid="c@c.us", body="c'est quoi vos horaires ?", from_me=False, mid="m1"):
@@ -353,3 +358,93 @@ def test_process_incoming_end_to_end_db():
     # persistance en DB
     rows = s.query(models.Conversation).filter_by(tenant_id=tenant.id).all()
     assert any(x.role == "assistant" for x in rows)
+
+
+class _Journal(logging.Handler):
+    """Capte les logs de `wapy.saas` sans dépendre de la config globale : d'autres
+    tests reconfigurent le logging et neutralisent la capture de pytest."""
+
+    def __enter__(self):
+        self.lignes = []
+        self._lg = logging.getLogger("wapy.saas")
+        self._niveau, self._propage = self._lg.level, self._lg.propagate
+        self._lg.setLevel(logging.INFO)
+        self._lg.addHandler(self)
+        return self
+
+    def __exit__(self, *_):
+        self._lg.removeHandler(self)
+        self._lg.setLevel(self._niveau)
+        self._lg.propagate = self._propage
+
+    def emit(self, record):
+        self.lignes.append(record.getMessage())
+
+    @property
+    def texte(self):
+        return "\n".join(self.lignes)
+
+
+def test_message_deja_traite_est_journalise():
+    """WAHA peut renvoyer le même id. Sans trace, un message perdu ici était
+    indétectable : le webhook répond 200 et le client n'a jamais de réponse."""
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("reply", "Bonjour !", "salut"))
+    m = _msg(body="bonjour", mid="dup1")
+    handle_message(ch, store, brain, "x", [], [], m)
+    with _Journal() as j:
+        r = handle_message(ch, store, brain, "x", [], [], m)
+    assert r["status"] == "duplicate"
+    assert "dup1" in j.texte and "déjà traité" in j.texte
+
+
+def test_message_ecarte_journalise_le_motif():
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("reply", "Bonjour !", "salut"))
+    with _Journal() as j:
+        r = handle_message(ch, store, brain, "x", [], [], _msg(from_me=True, mid="own1"))
+    assert r["status"] == "ignored"
+    assert "écarté" in j.texte and "envoyé par nous" in j.texte
+
+
+def test_action_inconnue_ne_reveille_jamais_le_responsable():
+    """L'escalade était le cas PAR DÉFAUT en fin de `handle_message` : toute
+    action non gérée alertait le responsable. Déranger un humain ne doit jamais
+    être ce vers quoi on glisse par accident."""
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("bidule", "On ouvre à 12h.", "action inattendue"))
+    r = handle_message(ch, store, brain, "x", ["s@c.us"], ["s@c.us"], _msg())
+    assert r["status"] == "replied"
+    assert ("c@c.us", "On ouvre à 12h.") in ch.sent
+    assert store.handoffs == []                      # aucune alerte ouverte
+    assert "c@c.us" not in store.esc
+
+
+def test_action_inconnue_sans_message_repond_quand_meme():
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("bidule", "", "vide"))
+    r = handle_message(ch, store, brain, "x", ["s@c.us"], ["s@c.us"], _msg())
+    assert r["status"] == "replied"
+    assert ch.sent and ch.sent[0][1].strip()         # jamais un envoi vide
+
+
+def test_pas_de_seconde_alerte_si_escalade_recente():
+    """Sans garde-fou, chaque message rouvrait un handoff et renvoyait le meme
+    accuse : le client recevait « je transmets » en boucle et le responsable
+    etait alerte a chaque phrase."""
+    ch, store = _Ch(), _Store()
+    store.escalades_recentes = {"c@c.us"}
+    brain = _Brain(Decision("escalate", "", "client mecontent"))
+    r = handle_message(ch, store, brain, "x", ["s@c.us"], ["s@c.us"], _msg())
+    assert r["status"] == "escalade-deja-ouverte"
+    assert store.handoffs == []                      # pas de seconde alerte
+    envoyes_client = [t for c, t in ch.sent if c == "c@c.us"]
+    assert envoyes_client and "déjà" in envoyes_client[0].lower()
+
+
+def test_escalade_normale_alerte_bien_le_responsable():
+    ch, store = _Ch(), _Store()
+    brain = _Brain(Decision("escalate", "", "litige"))
+    r = handle_message(ch, store, brain, "x", ["s@c.us"], ["s@c.us"], _msg())
+    assert r["status"] == "escalated"
+    assert store.handoffs and store.handoffs[0][1] == "c@c.us"

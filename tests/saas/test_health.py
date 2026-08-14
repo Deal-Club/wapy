@@ -87,3 +87,24 @@ def test_check_once_recovery_sets_last_seen_no_incident():
     assert n == 0
     row = sf().query(models.WaSession).first()
     assert row.status == "WORKING" and row.last_seen is not None
+
+
+def test_send_booking_reminders_ne_leve_pas():
+    """`timedelta` manquait à l'import : la fonction levait NameError à chaque
+    tour de boucle, donc AUCUN rappel J-1/H-2 n'est jamais parti en production."""
+    sf = _sf()
+    s = sf()
+    t = models.Tenant(name="T", staff_numbers="")
+    s.add(t); s.commit()
+    s.add(models.Booking(tenant_id=t.id, chat_id="c@c.us", service="Coupe",
+                         start=datetime.utcnow() + timedelta(hours=23, minutes=30),
+                         duration_min=30, status="booked"))
+    s.commit(); s.close()
+
+    envoyes = []
+
+    class _Wa:
+        def send_text(self, chat_id, text):
+            envoyes.append((chat_id, text))
+
+    assert health.send_booking_reminders(sf, _Wa()) >= 0
