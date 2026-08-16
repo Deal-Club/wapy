@@ -128,6 +128,31 @@ def _auth(token):
     return {"Authorization": f"Bearer {token}"}
 
 
+def test_config_enregistrable_sans_numero_du_responsable():
+    """Le numéro se règle à l'écran « Connexion WhatsApp », pas ici.
+
+    L'écran de configuration ne possède plus ce champ : il ne doit donc plus
+    l'envoyer, et le serveur doit accepter son absence. Le garde-fou ne vise
+    qu'un envoi EXPLICITE à vide, qui effacerait le numéro et rendrait toute
+    escalade silencieuse — il ne doit pas bloquer un nouvel inscrit qui n'a pas
+    encore atteint l'étape WhatsApp.
+    """
+    c = TestClient(create_app(session_factory=_factory()))
+    tok = _token(c)
+    r = c.put("/api/config", json={"sector": "Salon", "infos": []}, headers=_auth(tok))
+    assert r.status_code == 200, r.text
+    assert c.get("/api/config", headers=_auth(tok)).json()["sector"] == "Salon"
+
+
+def test_config_refuse_un_numero_explicitement_vide():
+    """L'autre moitié du contrat : effacer le numéro reste interdit."""
+    c = TestClient(create_app(session_factory=_factory()))
+    tok = _token(c)
+    r = c.put("/api/config", json={"sector": "Salon", "staff_numbers": ""}, headers=_auth(tok))
+    assert r.status_code == 400
+    assert "responsable" in r.json()["detail"]
+
+
 def test_config_put_then_get():
     c = TestClient(create_app(session_factory=_factory()))
     tok = _token(c)

@@ -7,6 +7,7 @@ import {
   AlertTriangle, CheckCircle2, PartyPopper, type LucideIcon,
 } from "lucide-react";
 import { api, getToken, clearToken } from "@/lib/api";
+import { corpsConfig } from "@/lib/config";
 import ConfigEditor, { Config, emptyConfig } from "@/components/ConfigEditor";
 import WhatsAppConnect from "@/components/WhatsAppConnect";
 import StaffAlertVerify from "@/components/StaffAlertVerify";
@@ -251,11 +252,9 @@ function EstablishmentSection() {
     setSaving(true);
     setSaved(false);
     try {
-      // `booking` et `documents` sont gérés par leurs propres cartes (sauvegardes
-      // dédiées) : on ne les renvoie pas ici, sinon un état périmé les écraserait.
-      // Le numéro du responsable est géré dans « Connexion WhatsApp » (vérif OTP).
-      const { booking, documents, ...rest } = config as any;
-      await api.putConfig(rest);
+      // Cette page n'envoie que ce qu'elle édite : `corpsConfig` écarte les champs
+      // renvoyés par le GET mais possédés ailleurs (cf. lib/config.ts).
+      await api.putConfig(corpsConfig(config as any));
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e: any) {

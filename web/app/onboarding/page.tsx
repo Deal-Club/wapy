@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Check } from "lucide-react";
 import { api, getToken } from "@/lib/api";
+import { corpsConfig } from "@/lib/config";
 import ConfigEditor, { Config, emptyConfig } from "@/components/ConfigEditor";
 import SectorPicker from "@/components/SectorPicker";
 import WhatsAppConnect from "@/components/WhatsAppConnect";
@@ -28,9 +29,9 @@ export default function Onboarding() {
   async function saveConfig() {
     setSaving(true);
     try {
-      // Le numéro du responsable se règle à l'étape WhatsApp (vérif OTP).
-      const { booking, documents, ...rest } = config as any;
-      await api.putConfig(rest);
+      // Cette page n'envoie que ce qu'elle édite : le numéro du responsable se
+      // règle à l'étape WhatsApp, et l'envoyer vide ici bloquait l'inscription.
+      await api.putConfig(corpsConfig(config as any));
       setStep(2);
     } finally {
       setSaving(false);
