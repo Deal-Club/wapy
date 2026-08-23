@@ -58,7 +58,7 @@ def _widget_rate_ok(key: str) -> bool:
     return True
 
 from saas.db import SessionLocal, init_db
-from saas import auth, config_repo, costs, models, phone, sectors, usage, wa
+from saas import auth, config_repo, costs, models, phone, pont, sectors, usage, wa
 from saas.bot import process_incoming
 from saas.debounce import Regroupeur, fusionner
 from saas.store_db import DbStore
@@ -1338,10 +1338,154 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
             s.commit()
         return {"status": "logged_out"}
 
+    # --- Pont WhatsApp pour développeurs -----------------------------------
+    #
+    # Service distinct de l'assistant : pas de fiche, pas de cerveau, pas
+    # d'abonnement. Une application tierce connecte SON numéro et fait partir des
+    # messages transactionnels. Gratuit, sur invitation, et borné.
+    #
+    # L'authentification passe par l'en-tête `Authorization`, jamais par l'URL :
+    # une clé dans une chaîne de requête finit dans les journaux du proxy, dans
+    # l'historique du navigateur et dans les référents sortants.
+    def pont_app(authorization: str = Header(None), s=Depends(db)):
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Clé d'API manquante.")
+        app_pont = pont.app_pour_cle(s, authorization[7:].strip())
+        if not app_pont:
+            raise HTTPException(status_code=401, detail="Clé d'API invalide ou compte suspendu.")
+        return app_pont
+
+    def _pont_envoyer(s, app_pont, destinataire: str, texte: str, genre: str,
+                      idempotence: str) -> dict:
+        """Chemin commun aux deux points d'entrée. Ne renvoie jamais le contenu."""
+        if not idempotence:
+            raise HTTPException(status_code=400, detail="En-tête Idempotency-Key obligatoire.")
+        deja = pont.envoi_existant(s, app_pont.id, idempotence)
+        if deja:
+            # Rejeu : on ne renvoie PAS un second message. C'est ce qui empêche
+            # qu'un délai réseau annonce deux fois un paiement au même parent.
+            return {"id": deja.id, "statut": deja.statut, "motif": deja.motif, "rejeu": True}
+
+        jid = phone.to_jid(destinataire)
+        if not jid:
+            raise HTTPException(status_code=400, detail="Numéro de destinataire invalide.")
+        texte = (texte or "").strip()
+        if not texte or len(texte) > pont.MAX_TEXTE:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Message vide ou trop long (maximum {pont.MAX_TEXTE} caractères).",
+            )
+
+        emp = pont.empreinte(jid)
+        autorise, motif, attente = pont.verifier(s, app_pont, emp, genre)
+        if not autorise:
+            pont.journaliser(s, app_pont.id, idempotence, emp, genre, len(texte), "refuse", motif)
+            code = 403 if motif == "destinataire-desabonne" else 429
+            raise HTTPException(status_code=code, detail=motif,
+                                headers={"Retry-After": str(attente)} if attente else None)
+
+        try:
+            wa.channel_for_session(app_pont.session_name).send_text(jid, texte)
+        except Exception:
+            pont.journaliser(s, app_pont.id, idempotence, emp, genre, len(texte), "echec", "envoi-impossible")
+            raise HTTPException(status_code=502, detail="Le numéro WhatsApp du compte n'a pas pu émettre.")
+
+        ligne = pont.journaliser(s, app_pont.id, idempotence, emp, genre, len(texte), "envoye")
+        return {"id": getattr(ligne, "id", 0), "statut": "envoye", "rejeu": False}
+
+    @app.post("/pont/v1/messages")
+    def pont_message(
+        body: dict = Body(...),
+        idempotency_key: str = Header(None, alias="Idempotency-Key"),
+        app_pont=Depends(pont_app),
+        s=Depends(db),
+    ):
+        """Envoie un message transactionnel depuis le numéro du compte.
+
+        `consentement` est obligatoire : une référence attestant que le
+        destinataire a accepté d'être contacté (identifiant d'inscription,
+        numéro de dossier). Elle n'est pas vérifiable par nous, mais l'exiger
+        place la responsabilité là où elle doit être, et c'est ce qui distingue
+        un service transactionnel d'un relais de diffusion.
+        """
+        if not (body.get("consentement") or "").strip():
+            raise HTTPException(status_code=400, detail="Champ « consentement » obligatoire.")
+        return _pont_envoyer(s, app_pont, body.get("destinataire") or "",
+                             body.get("texte") or "", "texte", (idempotency_key or "").strip())
+
+    @app.post("/pont/v1/otp")
+    def pont_otp(
+        body: dict = Body(...),
+        idempotency_key: str = Header(None, alias="Idempotency-Key"),
+        app_pont=Depends(pont_app),
+        s=Depends(db),
+    ):
+        """Envoie un code à usage unique.
+
+        Le corps du message est composé ici, pas par l'appelant : un gabarit fixe
+        empêche que ce point d'entrée, au plafond plus permissif que l'autre,
+        serve à faire passer autre chose qu'un code.
+
+        Le code n'est jamais journalisé, ni stocké, ni renvoyé dans la réponse.
+        """
+        code = (body.get("code") or "").strip()
+        if not code or len(code) > 12:
+            raise HTTPException(status_code=400, detail="Code manquant ou trop long.")
+        service = (body.get("service") or "").strip()[:40]
+        minutes = int(body.get("minutes") or 10)
+        texte = (
+            f"Votre code de vérification{' ' + service if service else ''} est {code}.\n"
+            f"Il expire dans {minutes} minutes. Ne le communiquez à personne."
+        )
+        return _pont_envoyer(s, app_pont, body.get("destinataire") or "", texte, "otp",
+                             (idempotency_key or "").strip())
+
+    @app.get("/pont/v1/statut")
+    def pont_statut(app_pont=Depends(pont_app), s=Depends(db)):
+        """État du compte et consommation. Aucune donnée de destinataire."""
+        from datetime import timedelta as _td
+
+        maintenant = datetime.utcnow()
+        return {
+            "nom": app_pont.nom,
+            "statut": app_pont.statut,
+            "numero_connecte": bool(app_pont.session_name),
+            "limites": {
+                "intervalle_min_s": app_pont.intervalle_min_s,
+                "envois_par_heure": app_pont.envois_par_heure,
+                "envois_par_jour": app_pont.envois_par_jour,
+                "otp_par_heure_et_destinataire": pont.OTP_PAR_HEURE,
+                "taille_max_message": pont.MAX_TEXTE,
+            },
+            "consommation": {
+                "derniere_heure": pont._compter(s, app_pont.id, maintenant - _td(hours=1)),
+                "dernier_jour": pont._compter(s, app_pont.id, maintenant - _td(days=1)),
+            },
+        }
+
     # --- Webhook WAHA (routé par session -> tenant) ---
     @app.post("/webhook")
     async def webhook(request: Request, s=Depends(db)):
         payload = await request.json()
+
+        # Session d'un compte de pont : le cerveau n'est JAMAIS appelé. On
+        # n'écoute qu'une chose, la demande d'arrêt — obligation WhatsApp, et
+        # meilleure défense en cas de plainte. Tout le reste est ignoré, sans
+        # stockage : le pont ne lit pas les conversations de ses développeurs.
+        sname = payload.get("session", "")
+        app_pont = s.query(models.PontApp).filter_by(session_name=sname).first() if sname else None
+        if app_pont is not None:
+            try:
+                msg = wa.channel_for_session(sname).parse_incoming(payload)
+            except Exception:
+                msg = None
+            from safety.guards import detect_optout
+
+            if msg and not msg.from_me and detect_optout(msg.text or ""):
+                pont.bloquer(s, app_pont.id, msg.chat_id)
+                return {"status": "pont-desabonne"}
+            return {"status": "pont-ignore"}
+
         tenant = wam.tenant_for_session(s, payload.get("session", ""))
         if tenant is None:
             return {"status": "unknown-session"}

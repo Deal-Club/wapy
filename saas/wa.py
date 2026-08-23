@@ -22,6 +22,12 @@ def channel_for(tenant) -> WahaProvider:
     return WahaProvider(WAHA_BASE_URL, session_name(tenant.id), WAHA_API_KEY)
 
 
+def channel_for_session(sname: str) -> WahaProvider:
+    """Canal d'une session nommée. Sert au pont développeurs, dont la session est
+    dédiée et ne suit pas la convention `t{id}` des tenants."""
+    return WahaProvider(WAHA_BASE_URL, sname, WAHA_API_KEY)
+
+
 def tenant_for_session(session, sname: str):
     """Résout le tenant depuis le nom de session WAHA (table WaSession, sinon 't{id}')."""
     row = session.query(models.WaSession).filter_by(session_name=sname).first()

@@ -234,6 +234,79 @@ class TikTokUsage(Base):
     )
 
 
+class PontApp(Base):
+    """Compte developpeur du pont WhatsApp — service distinct de l'assistant.
+
+    Un compte de pont n'est PAS un `Tenant` : pas de fiche, pas de cerveau, pas
+    d'abonnement. Il n'a qu'une chose, sa propre session WhatsApp, et n'obtient
+    qu'une chose, le droit d'y envoyer des messages par HTTP. Les melanger
+    exposerait ces comptes aux entitlements, aux quotas de conversation et au
+    routage du bot, dont ils n'ont que faire.
+
+    La cle d'API n'est jamais stockee en clair : seul son SHA-256 l'est, avec un
+    prefixe court non secret qui sert a la retrouver sans parcourir la table. Un
+    dump de la base ne permet donc d'envoyer aucun message.
+    """
+    __tablename__ = "pont_apps"
+    id = Column(Integer, primary_key=True)
+    nom = Column(String(120), nullable=False)
+    email = Column(String(255), nullable=False)
+    # 12 premiers caracteres de la cle : identifiant, pas secret.
+    prefixe_cle = Column(String(16), unique=True, index=True, nullable=False)
+    cle_hash = Column(String(64), nullable=False)
+    # Session WAHA dediee. Un bannissement de ce numero ne touche aucun bot.
+    session_name = Column(String(120), unique=True, nullable=False)
+    statut = Column(String(20), default="actif")  # actif | suspendu
+    # Debits. Le pont est gratuit : ces bornes sont la seule chose qui empeche
+    # qu'il devienne un relais de diffusion.
+    intervalle_min_s = Column(Integer, default=3)     # lissage : jamais de rafale
+    envois_par_heure = Column(Integer, default=60)
+    envois_par_jour = Column(Integer, default=500)
+    created_at = Column(DateTime, server_default=func.now())
+
+
+class PontEnvoi(Base):
+    """Trace d'un envoi du pont. AUCUN CONTENU DE MESSAGE.
+
+    On stocke de quoi compter, facturer un jour, et arbitrer un litige : qui,
+    quand, quel genre, quelle taille, quelle issue. Jamais le texte, jamais le
+    code a usage unique, et le destinataire uniquement sous forme d'empreinte
+    HMAC — deterministe, donc suffisante pour limiter le debit par destinataire,
+    mais inexploitable dans un dump.
+    """
+    __tablename__ = "pont_envois"
+    id = Column(Integer, primary_key=True)
+    app_id = Column(Integer, ForeignKey("pont_apps.id"), nullable=False, index=True)
+    # Fournie par l'appelant. Rejouer la meme requete ne renvoie pas un 2e message.
+    idempotence = Column(String(80), nullable=False)
+    destinataire_hmac = Column(String(64), nullable=False, index=True)
+    genre = Column(String(20), nullable=False)  # texte | otp
+    taille = Column(Integer, default=0)
+    statut = Column(String(20), nullable=False)  # envoye | refuse | echec
+    motif = Column(String(60), default="")
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    __table_args__ = (
+        UniqueConstraint("app_id", "idempotence", name="uq_pont_idem"),
+    )
+
+
+class PontBloque(Base):
+    """Destinataire ayant demande l'arret sur le numero d'un compte de pont.
+
+    Obligation WhatsApp, et meilleure defense en cas de plainte. Alimente par les
+    messages entrants sur la session du pont : le bot n'y repond jamais, mais un
+    « STOP » y est toujours entendu.
+    """
+    __tablename__ = "pont_bloques"
+    id = Column(Integer, primary_key=True)
+    app_id = Column(Integer, ForeignKey("pont_apps.id"), nullable=False)
+    destinataire_hmac = Column(String(64), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    __table_args__ = (
+        UniqueConstraint("app_id", "destinataire_hmac", name="uq_pont_bloque"),
+    )
+
+
 class AiCost(Base):
     """Coût IA réel, par établissement / mois / tâche / modèle (cf. saas/costs.py).
 
