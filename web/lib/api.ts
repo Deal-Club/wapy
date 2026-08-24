@@ -65,6 +65,13 @@ export const api = {
     }),
   adminTenantConversations: (id: number) => req(`/api/admin/tenants/${id}/conversations`),
   adminIncidents: () => req("/api/admin/incidents"),
+  adminPont: () => req("/api/admin/pont"),
+  adminPontStatut: (id: number, statut: string) =>
+    req(`/api/admin/pont/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ statut }),
+    }),
   waHealth: () => req("/api/wa/health"),
   getSectors: () => req("/api/sectors"),
   aiGenerate: (sector: string, description: string) =>

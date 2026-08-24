@@ -417,6 +417,51 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         s.commit()
         return {"status": "saved"}
 
+    # --- Administration du pont développeurs -------------------------------
+    #
+    # Un compte de pont s'inscrit librement mais n'émet rien avant validation.
+    # Sans cet écran, personne ne pourrait jamais émettre : c'est la seule porte.
+    @app.get("/api/admin/pont")
+    def admin_pont_liste(_=Depends(require_admin), s=Depends(db)):
+        from datetime import timedelta as _td
+
+        maintenant = datetime.utcnow()
+        out = []
+        for a in s.query(models.PontApp).order_by(models.PontApp.id.desc()).all():
+            peut, motif = pont.peut_emettre(a)
+            out.append({
+                "id": a.id, "nom": a.nom, "email": a.email, "statut": a.statut,
+                "peut_emettre": peut, "blocage": motif,
+                "conditions_acceptees": pont.conditions_acceptees(a),
+                "conditions_le": a.conditions_le.isoformat() if a.conditions_le else "",
+                "cle_emise": bool(a.prefixe_cle),
+                "session": a.session_name,
+                "cree_le": a.created_at.isoformat() if a.created_at else "",
+                # Le volume récent est le seul signal d'abus visible d'ici : on ne
+                # stocke ni contenu ni destinataire, donc c'est là-dessus qu'on juge.
+                "envois_24h": pont._compter(s, a.id, maintenant - _td(days=1)),
+                "envois_7j": pont._compter(s, a.id, maintenant - _td(days=7)),
+            })
+        return {"comptes": out, "waha_isole": wa.pont_isole()}
+
+    @app.put("/api/admin/pont/{pid}")
+    def admin_pont_statut(pid: int, body: dict = Body(...), _=Depends(require_admin), s=Depends(db)):
+        a = s.get(models.PontApp, pid)
+        if not a:
+            raise HTTPException(status_code=404, detail="Compte de pont introuvable")
+        statut = (body.get("statut") or "").strip()
+        if statut not in ("en_attente", "actif", "suspendu"):
+            raise HTTPException(status_code=400, detail="Statut inconnu.")
+        # Valider un compte qui n'a pas accepté les conditions le ferait émettre
+        # sous des règles qu'il n'a pas lues : `peut_emettre` l'en empêcherait de
+        # toute façon, mais le refuser ici évite un écran qui ment.
+        if statut == "actif" and not pont.conditions_acceptees(a):
+            raise HTTPException(status_code=400,
+                                detail="Ce compte n'a pas encore accepté les conditions.")
+        a.statut = statut
+        s.commit()
+        return {"statut": a.statut}
+
     @app.get("/api/admin/tenants/{tid}/conversations")
     def admin_tenant_conversations(tid: int, _=Depends(require_admin), s=Depends(db)):
         t = s.get(models.Tenant, tid)

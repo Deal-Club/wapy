@@ -19,6 +19,8 @@ export default function Admin() {
   const router = useRouter();
   const [tenants, setTenants] = useState<any[]>([]);
   const [incidents, setIncidents] = useState<any[]>([]);
+  const [pont, setPont] = useState<any[]>([]);
+  const [pontIsole, setPontIsole] = useState(true);
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
   const [authed, setAuthed] = useState<boolean | null>(null);
@@ -27,6 +29,9 @@ export default function Admin() {
     try {
       setTenants((await api.adminTenants()).tenants);
       setIncidents((await api.adminIncidents()).incidents);
+      const p = await api.adminPont();
+      setPont(p.comptes);
+      setPontIsole(p.waha_isole);
     } catch (e: any) {
       if ((e.message || "").includes("administrateur") || (e.message || "").includes("403")) setDenied(true);
     } finally {
@@ -131,6 +136,97 @@ export default function Admin() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Pont développeurs. Un compte s'inscrit librement mais n'émet rien avant
+          validation : sans cet écran, personne ne peut jamais émettre. */}
+      <div className="card mt-6">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="font-display text-lg">Pont développeurs</h3>
+          {!pontIsole && (
+            <span className="rounded-lg bg-red-50 px-2 py-1 text-xs font-semibold text-red-700">
+              WAHA non isolé : le pont partage le conteneur des assistants
+            </span>
+          )}
+        </div>
+        {pont.length === 0 ? (
+          <p className="text-sm text-muted">Aucun compte développeur pour l&apos;instant.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-muted">
+                  <th className="py-2">Application</th>
+                  <th>Conditions</th>
+                  <th>Clé</th>
+                  <th className="tabular-nums">24 h</th>
+                  <th className="tabular-nums">7 j</th>
+                  <th>Statut</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {pont.map((p) => (
+                  <tr key={p.id} className="border-t border-line">
+                    <td className="py-2">
+                      <b>{p.nom}</b>
+                      <div className="text-xs text-muted">{p.email}</div>
+                    </td>
+                    <td>{p.conditions_acceptees ? "acceptées" : <span className="text-red-600">non</span>}</td>
+                    <td>{p.cle_emise ? "émise" : "—"}</td>
+                    <td className="tabular-nums">{p.envois_24h}</td>
+                    <td className="tabular-nums">{p.envois_7j}</td>
+                    <td>
+                      <span
+                        className={
+                          p.statut === "actif"
+                            ? "text-emerald-700"
+                            : p.statut === "suspendu"
+                              ? "text-red-600"
+                              : "text-muted"
+                        }
+                      >
+                        {p.statut.replace("_", " ")}
+                      </span>
+                    </td>
+                    <td className="py-2 text-right">
+                      <div className="flex justify-end gap-2">
+                        {p.statut !== "actif" && (
+                          <button
+                            disabled={!p.conditions_acceptees}
+                            title={
+                              p.conditions_acceptees
+                                ? "Autoriser ce compte à émettre"
+                                : "Ce compte n'a pas encore accepté les conditions"
+                            }
+                            onClick={async () => {
+                              await api.adminPontStatut(p.id, "actif");
+                              load();
+                            }}
+                            className="btn-ghost px-3 py-1 text-xs disabled:opacity-40"
+                          >
+                            Valider
+                          </button>
+                        )}
+                        {p.statut !== "suspendu" && (
+                          <button
+                            onClick={async () => {
+                              await api.adminPontStatut(p.id, "suspendu");
+                              load();
+                            }}
+                            className="btn-ghost px-3 py-1 text-xs"
+                          >
+                            Suspendre
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="card mt-6">

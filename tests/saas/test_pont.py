@@ -184,6 +184,87 @@ def test_un_jeton_d_etablissement_n_ouvre_pas_le_pont():
                  headers={"Authorization": f"Bearer {jeton_tenant}"}).status_code == 401
 
 
+# --- Validation par l'administrateur ---------------------------------------
+
+def _admin(c, sf):
+    """Un compte propriétaire dont l'adresse figure dans ADMIN_EMAILS."""
+    import os
+
+    from saas import auth
+
+    s = sf()
+    _, tenant = auth.signup(s, "patron@wapy.pro", "motdepasse1", "Wapy")
+    os.environ["ADMIN_EMAILS"] = "patron@wapy.pro"
+    return auth.create_token(
+        s.query(models.User).filter_by(email="patron@wapy.pro").first().id, tenant.id
+    )
+
+
+def test_l_admin_valide_un_compte_et_le_pont_s_ouvre():
+    sf = _factory()
+    c = _client(sf)
+    token, _ = _inscrire(c)
+    ent = {"Authorization": f"Bearer {token}"}
+    c.post("/pont/v1/conditions", headers=ent)
+    cle = c.post("/pont/v1/cle", headers=ent).json()["cle"]
+
+    assert c.post("/pont/v1/messages", json=_corps(), headers=_entetes(cle)).status_code == 403
+
+    jeton_admin = _admin(c, sf)
+    liste = c.get("/api/admin/pont", headers={"Authorization": f"Bearer {jeton_admin}"}).json()
+    pid = liste["comptes"][0]["id"]
+    r = c.put(f"/api/admin/pont/{pid}", json={"statut": "actif"},
+              headers={"Authorization": f"Bearer {jeton_admin}"})
+    assert r.status_code == 200 and r.json()["statut"] == "actif"
+
+    assert c.post("/pont/v1/messages", json=_corps(), headers=_entetes(cle, "apres")).status_code == 200
+
+
+def test_on_ne_valide_pas_un_compte_qui_n_a_pas_accepte():
+    """Le valider le ferait emettre sous des regles qu'il n'a pas lues — et
+    l'ecran mentirait, puisque `peut_emettre` le bloquerait quand meme."""
+    sf = _factory()
+    c = _client(sf)
+    _inscrire(c)
+    jeton_admin = _admin(c, sf)
+    ent = {"Authorization": f"Bearer {jeton_admin}"}
+    pid = c.get("/api/admin/pont", headers=ent).json()["comptes"][0]["id"]
+    r = c.put(f"/api/admin/pont/{pid}", json={"statut": "actif"}, headers=ent)
+    assert r.status_code == 400
+
+
+def test_l_admin_suspend_et_l_envoi_cesse():
+    sf = _factory()
+    s = sf()
+    a, cle = _app_pont(s, email="dev@susp.bj")
+    c = _client(sf)
+    assert c.post("/pont/v1/messages", json=_corps(), headers=_entetes(cle, "avant")).status_code == 200
+    jeton_admin = _admin(c, sf)
+    c.put(f"/api/admin/pont/{a.id}", json={"statut": "suspendu"},
+          headers={"Authorization": f"Bearer {jeton_admin}"})
+    r = c.post("/pont/v1/messages", json=_corps(), headers=_entetes(cle, "apres"))
+    assert r.status_code == 403 and r.json()["detail"] == "compte-suspendu"
+
+
+def test_la_liste_admin_ne_divulgue_aucun_destinataire():
+    sf = _factory()
+    s = sf()
+    _, cle = _app_pont(s, email="dev@fuite.bj")
+    c = _client(sf)
+    c.post("/pont/v1/messages", json=_corps(), headers=_entetes(cle))
+    jeton_admin = _admin(c, sf)
+    r = c.get("/api/admin/pont", headers={"Authorization": f"Bearer {jeton_admin}"})
+    assert r.status_code == 200
+    assert "22990000001" not in r.text
+    assert r.json()["comptes"][0]["envois_24h"] == 1
+
+
+def test_la_liste_admin_est_reservee_aux_administrateurs():
+    sf = _factory()
+    c = _client(sf)
+    assert c.get("/api/admin/pont").status_code == 401
+
+
 # --- Confidentialite du journal -------------------------------------------
 
 def test_la_cle_d_idempotence_n_est_pas_stockee_en_clair():
