@@ -222,7 +222,11 @@ export default function ConsoleDeveloppeur() {
             <li>Un destinataire ayant répondu « STOP » n&apos;est plus joignable.</li>
           </ul>
           <p className="mt-3 text-sm text-muted">
-            Le détail des points d&apos;entrée est dans les{" "}
+            Points d&apos;entrée, codes d&apos;erreur et exemples complets :{" "}
+            <Link href="/developpeurs/documentation" className="text-brand underline">
+              la documentation
+            </Link>
+            . Les engagements que vous prenez sont dans les{" "}
             <Link href="/developpeurs/conditions" className="text-brand underline">
               conditions
             </Link>

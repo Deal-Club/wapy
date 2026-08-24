@@ -92,11 +92,16 @@ export default function PageDeveloppeurs() {
           </div>
 
           <p className="mt-5 text-sm text-muted">
-            Les règles complètes sont dans les{" "}
+            Vous pouvez lire la{" "}
+            <Link href="/developpeurs/documentation" className="text-brand underline">
+              documentation
+            </Link>{" "}
+            avant même de créer un compte : points d&apos;entrée, codes d&apos;erreur et exemples en
+            Node, PHP et Python. Les règles que vous acceptez sont dans les{" "}
             <Link href="/developpeurs/conditions" className="text-brand underline">
               conditions d&apos;utilisation
             </Link>
-            . Vous devrez les accepter avant d&apos;obtenir une clé.
+            .
           </p>
         </section>
 
