@@ -76,6 +76,28 @@ export default function DocumentationPont() {
             Adresse de base : <code className="font-mono text-ink">https://wapy.pro</code>. Toutes
             les requêtes sont en <code className="font-mono text-ink">application/json</code>.
           </p>
+          <div className="mt-4 rounded-xl2 border border-brand/40 bg-brand-soft p-4 text-sm">
+            <p className="font-display font-bold text-ink">
+              Mettez votre clé dans une variable d&apos;environnement, jamais dans la commande
+            </p>
+            <p className="mt-2">
+              Les exemples de cette page lisent{" "}
+              <code className="font-mono text-ink">WAPY_PONT_CLE</code>. Une clé écrite en clair
+              dans une commande survit dans l&apos;historique du terminal, dans les journaux du
+              serveur et dans le premier message de support où on la recopie.
+            </p>
+            <Bloc titre="bash">{`export WAPY_PONT_CLE="wapy_pont_…"`}</Bloc>
+            <Bloc titre="PowerShell">{`$env:WAPY_PONT_CLE = "wapy_pont_…"`}</Bloc>
+            <p className="mt-3">
+              <strong>Sous Windows PowerShell, les exemples curl ne fonctionnent pas :</strong>{" "}
+              <code className="font-mono text-ink">curl</code> y est un alias d&apos;
+              <code className="font-mono text-ink">Invoke-WebRequest</code>, qui ignore{" "}
+              <code className="font-mono text-ink">-X</code>,{" "}
+              <code className="font-mono text-ink">-H</code> et{" "}
+              <code className="font-mono text-ink">-d</code>. Chaque section donne l&apos;équivalent
+              PowerShell juste en dessous.
+            </p>
+          </div>
         </Section>
 
         <Section id="authentification" titre="Authentification">
@@ -84,7 +106,7 @@ export default function DocumentationPont() {
             jamais dans l&apos;URL : une clé en chaîne de requête finit dans les journaux du serveur,
             dans l&apos;historique du navigateur et dans les référents sortants.
           </p>
-          <Bloc>{`Authorization: Bearer wapy_pont_VOTRE_CLE`}</Bloc>
+          <Bloc>{`Authorization: Bearer $WAPY_PONT_CLE`}</Bloc>
           <p>
             Gardez-la côté serveur. Elle ne doit jamais atteindre un navigateur ni une application
             mobile : quiconque la détient peut écrire depuis votre numéro. Nous n&apos;en conservons
@@ -117,7 +139,7 @@ export default function DocumentationPont() {
             vérifier ; elle engage votre responsabilité.
           </p>
           <Bloc titre="curl">{`curl -X POST https://wapy.pro/pont/v1/messages \\
-  -H "Authorization: Bearer wapy_pont_VOTRE_CLE" \\
+  -H "Authorization: Bearer $WAPY_PONT_CLE" \\
   -H "Idempotency-Key: paiement-2026-114" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -171,7 +193,7 @@ Invoke-RestMethod -Method Post -Uri "https://wapy.pro/pont/v1/messages" \`
             codes par heure et par destinataire.
           </p>
           <Bloc titre="curl">{`curl -X POST https://wapy.pro/pont/v1/otp \\
-  -H "Authorization: Bearer wapy_pont_VOTRE_CLE" \\
+  -H "Authorization: Bearer $WAPY_PONT_CLE" \\
   -H "Idempotency-Key: otp-9f3c1a" \\
   -H "Content-Type: application/json" \\
   -d '{
@@ -180,6 +202,20 @@ Invoke-RestMethod -Method Post -Uri "https://wapy.pro/pont/v1/messages" \`
     "service": "Mon École",
     "minutes": 10
   }'`}</Bloc>
+          <Bloc titre="PowerShell">{`$corps = @{
+  destinataire = "+22990000001"
+  code         = "482913"
+  service      = "Mon École"
+  minutes      = 10
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri "https://wapy.pro/pont/v1/otp" \`
+  -Headers @{
+    "Authorization"   = "Bearer $env:WAPY_PONT_CLE"
+    "Idempotency-Key" = "otp-9f3c1a"
+  } \`
+  -ContentType "application/json; charset=utf-8" \`
+  -Body ([System.Text.Encoding]::UTF8.GetBytes($corps))`}</Bloc>
           <p>Le destinataire reçoit :</p>
           <Bloc>{`Votre code de vérification Mon École est 482913.
 Il expire dans 10 minutes. Ne le communiquez à personne.`}</Bloc>
