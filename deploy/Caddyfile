@@ -1,6 +1,9 @@
 # Reverse-proxy interne (HTTP). L'HTTPS est terminé par nginx en amont (cf. https-nginx.md).
 :80 {
-	@backend path /api/* /auth/* /webhook /webhook/* /media/*
+	# `/pont/*` : API du pont développeurs. Sans cette entrée, les appels tombent
+	# sur Next et renvoient 404 — la page /developpeurs existe, mais l'API sous
+	# le même préfixe n'était pas jointe.
+	@backend path /api/* /auth/* /pont/* /webhook /webhook/* /media/*
 	handle @backend {
 		reverse_proxy api:8000
 	}

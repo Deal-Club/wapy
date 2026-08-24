@@ -62,7 +62,10 @@ const nextConfig = {
   async rewrites() {
     const api = process.env.WAPY_API_PROXY;
     if (!api) return [];
-    return ["/api/:path*", "/auth/:path*", "/webhook", "/webhook/:path*", "/media/:path*"].map(
+    // Doit rester aligné sur `@backend` du Caddyfile : ce qui va à l'API en
+    // production doit y aller aussi en local, sinon un chemin marche d'un côté
+    // et pas de l'autre.
+    return ["/api/:path*", "/auth/:path*", "/pont/:path*", "/webhook", "/webhook/:path*", "/media/:path*"].map(
       (source) => ({ source, destination: `${api}${source}` })
     );
   },
