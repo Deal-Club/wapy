@@ -69,7 +69,18 @@ export const pont = {
   nouvelleCle: (): Promise<{ cle: string; prefixe: string; avertissement: string }> =>
     req("/pont/v1/cle", { method: "POST" }),
   connecterWhatsApp: () => req("/pont/v1/whatsapp/connexion", { method: "POST" }),
-  qrUrl: () => BASE + "/pont/v1/whatsapp/qr",
+  /**
+   * Récupère le QR et en fait une URL d'objet locale.
+   *
+   * Une balise `<img src="…">` ne peut pas porter d'en-tête `Authorization` :
+   * le navigateur demanderait l'image sans jeton et recevrait un 401, ne
+   * laissant que le texte alternatif. On récupère donc l'image par `fetch`,
+   * authentifiée comme le reste, puis on l'affiche depuis la mémoire.
+   */
+  qrBlob: async (): Promise<string> => {
+    const res: Response = await req("/pont/v1/whatsapp/qr");
+    return URL.createObjectURL(await res.blob());
+  },
 };
 
 /** Ce que le blocage veut dire, en français, pour la personne qui le lit. */

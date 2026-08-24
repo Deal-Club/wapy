@@ -44,6 +44,42 @@ export default function ConsoleDeveloppeur() {
     return () => clearInterval(t);
   }, []);
 
+  // Le QR se renouvelle côté WhatsApp toutes les quelques dizaines de secondes :
+  // un code figé à l'écran finit par ne plus rien valoir. On le rafraîchit tant
+  // que la session l'attend, et on le récupère aussi après un rechargement de
+  // page, où l'état est « à scanner » sans qu'on ait cliqué sur quoi que ce soit.
+  useEffect(() => {
+    if (compte?.whatsapp !== "SCAN_QR_CODE") {
+      setQr((ancien) => {
+        if (ancien) URL.revokeObjectURL(ancien);
+        return "";
+      });
+      return;
+    }
+    let vivant = true;
+    const charger = async () => {
+      try {
+        const url = await pont.qrBlob();
+        if (!vivant) {
+          URL.revokeObjectURL(url);
+          return;
+        }
+        setQr((ancien) => {
+          if (ancien) URL.revokeObjectURL(ancien);
+          return url;
+        });
+      } catch {
+        /* QR pas encore prêt : la prochaine tentative le trouvera. */
+      }
+    };
+    charger();
+    const t = setInterval(charger, 15000);
+    return () => {
+      vivant = false;
+      clearInterval(t);
+    };
+  }, [compte?.whatsapp]);
+
   async function agir(action: () => Promise<unknown>) {
     setErr("");
     setOccupe(true);
@@ -154,8 +190,9 @@ export default function ConsoleDeveloppeur() {
               disabled={occupe}
               onClick={() =>
                 agir(async () => {
+                  // Le QR est récupéré par l'effet ci-dessus dès que la session
+                  // passe à « à scanner » : rien à charger ici.
                   await pont.connecterWhatsApp();
-                  setQr(`${pont.qrUrl()}?t=${Date.now()}`);
                 })
               }
               className="btn-ghost"
@@ -163,15 +200,24 @@ export default function ConsoleDeveloppeur() {
               {connecte ? "Reconnecter un autre numéro" : "Connecter mon numéro"}
             </button>
           </div>
-          {qr && !connecte && (
+          {compte.whatsapp === "SCAN_QR_CODE" && (
             <div className="mt-4">
               <p className="text-sm text-muted">
-                Scannez ce code depuis WhatsApp → Appareils connectés.
+                Scannez ce code depuis WhatsApp → Appareils connectés. Il se renouvelle tout seul.
               </p>
-              {/* Image servie par l'API, pas par next/image : elle change à chaque
-                  tentative et n'a pas à être optimisée ni mise en cache. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={qr} alt="QR de connexion WhatsApp" className="mt-3 h-56 w-56" />
+              {qr ? (
+                <>
+                  {/* Image récupérée par `fetch` authentifié puis affichée depuis la
+                      mémoire : une balise `img` ne peut pas porter de jeton, et
+                      `next/image` n'a rien à optimiser sur une URL d'objet locale. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={qr} alt="QR de connexion WhatsApp" className="mt-3 h-56 w-56" />
+                </>
+              ) : (
+                <div className="mt-3 flex h-56 w-56 items-center justify-center rounded-lg border border-dashed border-line text-sm text-muted">
+                  Génération du code…
+                </div>
+              )}
             </div>
           )}
         </section>
