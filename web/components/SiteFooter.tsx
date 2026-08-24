@@ -19,6 +19,9 @@ export default function SiteFooter() {
           <Link href="/tarifs" className="hover:text-ink">Tarifs</Link>
           <Link href="/faq" className="hover:text-ink">FAQ</Link>
           <Link href="/blog" className="hover:text-ink">Blog</Link>
+          {/* Le pont est un service distinct de l'assistant : sa porte d'entrée
+              est ici, pas dans le parcours d'inscription des établissements. */}
+          <Link href="/developpeurs" className="hover:text-ink">Développeurs</Link>
           <Link href="/signup" className="hover:text-ink">Commencer</Link>
           <Link href="/confidentialite" className="hover:text-ink">Confidentialité</Link>
           <Link href="/conditions" className="hover:text-ink">Conditions</Link>

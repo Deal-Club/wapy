@@ -18,6 +18,20 @@ services:
     volumes:
       - ./waha_sessions:/app/.sessions
 
+  # Instance WAHA dédiée au pont développeurs. Séparée de celle des assistants,
+  # et pas seulement par principe : un développeur qui pousse du volume ne doit
+  # pas pouvoir dégrader le bot d'un client qui paie, et un incident sur l'un des
+  # deux (mémoire, session corrompue, redémarrage) ne doit pas toucher l'autre.
+  # Sessions et volumes distincts : aucun état partagé.
+  waha-pont:
+    image: devlikeapro/waha
+    restart: unless-stopped
+    environment:
+      - WHATSAPP_DEFAULT_ENGINE=NOWEB
+      - WHATSAPP_API_KEY=${WHATSAPP_PONT_API_KEY:-${WHATSAPP_API_KEY}}
+    volumes:
+      - ./waha_pont_sessions:/app/.sessions
+
   api:
     restart: unless-stopped
     build:
@@ -28,6 +42,10 @@ services:
       - JWT_SECRET=${JWT_SECRET}
       - WAHA_BASE_URL=http://waha:3000
       - WHATSAPP_API_KEY=${WHATSAPP_API_KEY}
+      # Pont développeurs : instance WAHA distincte, clé distincte.
+      - WAHA_PONT_BASE_URL=http://waha-pont:3000
+      - WHATSAPP_PONT_API_KEY=${WHATSAPP_PONT_API_KEY:-${WHATSAPP_API_KEY}}
+      - WAPY_PONT_HMAC_KEY=${WAPY_PONT_HMAC_KEY:-}
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - ADMIN_EMAILS=${ADMIN_EMAILS:-admin@wapy.io}
       - GENIUSPAY_API_KEY=${GENIUSPAY_API_KEY:-}

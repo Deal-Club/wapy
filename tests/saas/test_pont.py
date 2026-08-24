@@ -40,9 +40,20 @@ class _Canal:
 
 
 def _app_pont(s, **kw):
+    """Compte de pont prêt à émettre : validé, conditions acceptées, clé posée.
+
+    Les verrous d'accès (validation, conditions) ont leurs propres tests ; les
+    autres n'auraient rien mesuré si chaque appel butait d'abord sur eux.
+    """
+    from datetime import datetime
+
     cle, prefixe, empreinte_cle = pont.generer_cle()
     a = models.PontApp(
-        nom=kw.get("nom", "Gestion scolaire"), email="dev@ecole.bj",
+        nom=kw.get("nom", "Gestion scolaire"),
+        email=kw.get("email", f"dev+{kw.get('session_name', 'pont1')}@ecole.bj"),
+        password_hash="x",
+        conditions_le=kw.get("conditions_le", datetime.utcnow()),
+        conditions_version=kw.get("conditions_version", pont.CONDITIONS_VERSION),
         prefixe_cle=prefixe, cle_hash=empreinte_cle,
         session_name=kw.get("session_name", "pont1"),
         statut=kw.get("statut", "actif"),
@@ -71,6 +82,146 @@ def _corps(dest="+22990000001", texte="Paiement recu : 50 000 FCFA."):
     return {"destinataire": dest, "texte": texte, "consentement": "insc-2026-114"}
 
 
+# --- Parcours du developpeur ----------------------------------------------
+
+def _inscrire(c, email="dev@app.bj"):
+    r = c.post("/pont/auth/inscription",
+               json={"nom": "Gestion scolaire", "email": email, "mot_de_passe": "motdepasse1"})
+    assert r.status_code == 200, r.text
+    return r.json()["token"], r.json()["compte"]
+
+
+def test_inscription_puis_connexion():
+    sf = _factory()
+    c = _client(sf)
+    _, compte = _inscrire(c)
+    assert compte["statut"] == "en_attente"
+    assert compte["peut_emettre"] is False
+    r = c.post("/pont/auth/connexion", json={"email": "dev@app.bj", "mot_de_passe": "motdepasse1"})
+    assert r.status_code == 200 and r.json()["token"]
+
+
+def test_inscription_refuse_un_doublon_et_un_mot_de_passe_court():
+    sf = _factory()
+    c = _client(sf)
+    _inscrire(c)
+    assert c.post("/pont/auth/inscription",
+                  json={"nom": "Autre", "email": "dev@app.bj", "mot_de_passe": "motdepasse1"}
+                  ).status_code == 400
+    assert c.post("/pont/auth/inscription",
+                  json={"nom": "X", "email": "x@app.bj", "mot_de_passe": "court"}
+                  ).status_code == 400
+
+
+def test_aucune_cle_avant_acceptation_des_conditions():
+    """Le verrou demande : on n'obtient rien tant qu'on n'a pas accepte."""
+    sf = _factory()
+    c = _client(sf)
+    token, _ = _inscrire(c)
+    ent = {"Authorization": f"Bearer {token}"}
+    assert c.post("/pont/v1/cle", headers=ent).status_code == 403
+    assert c.post("/pont/v1/whatsapp/connexion", headers=ent).status_code == 403
+
+    assert c.post("/pont/v1/conditions", headers=ent).json()["conditions_acceptees"] is True
+    r = c.post("/pont/v1/cle", headers=ent)
+    assert r.status_code == 200 and r.json()["cle"].startswith(pont.PREFIXE)
+
+
+def test_conditions_a_reaccepter_si_le_texte_change(monkeypatch):
+    """Un texte revise doit etre re-accepte : on n'oppose pas a un developpeur
+    des regles qu'il n'a jamais lues."""
+    sf = _factory()
+    c = _client(sf)
+    token, _ = _inscrire(c)
+    ent = {"Authorization": f"Bearer {token}"}
+    c.post("/pont/v1/conditions", headers=ent)
+    monkeypatch.setattr(pont, "CONDITIONS_VERSION", "2027-01-01")
+    assert c.get("/pont/v1/compte", headers=ent).json()["conditions_acceptees"] is False
+
+
+def test_un_compte_en_attente_ne_peut_rien_emettre():
+    """Inscription libre, emission fermee : la porte est ouverte, pas la capacite."""
+    sf = _factory()
+    c = _client(sf)
+    token, _ = _inscrire(c)
+    ent = {"Authorization": f"Bearer {token}"}
+    c.post("/pont/v1/conditions", headers=ent)
+    cle = c.post("/pont/v1/cle", headers=ent).json()["cle"]
+
+    r = c.post("/pont/v1/messages", json=_corps(), headers=_entetes(cle))
+    assert r.status_code == 403 and r.json()["detail"] == "compte-non-valide"
+    assert _Canal.envoyes == []
+
+    # Le statut reste consultable : un developpeur bloque doit voir pourquoi.
+    st = c.get("/pont/v1/statut", headers={"Authorization": f"Bearer {cle}"})
+    assert st.status_code == 200 and st.json()["blocage"] == "compte-non-valide"
+
+
+def test_une_nouvelle_cle_revoque_la_precedente():
+    sf = _factory()
+    s = sf()
+    a, ancienne = _app_pont(s)
+    c = _client(sf)
+    token = pont.creer_token(a.id)
+    nouvelle = c.post("/pont/v1/cle", headers={"Authorization": f"Bearer {token}"}).json()["cle"]
+    assert nouvelle != ancienne
+    assert c.post("/pont/v1/messages", json=_corps(),
+                  headers=_entetes(ancienne, "x")).status_code == 401
+    assert c.post("/pont/v1/messages", json=_corps(),
+                  headers=_entetes(nouvelle, "y")).status_code == 200
+
+
+def test_un_jeton_d_etablissement_n_ouvre_pas_le_pont():
+    """Les deux mondes sont etanches : la revendication du jeton diffère."""
+    from saas import auth
+
+    sf = _factory()
+    s = sf()
+    a, _ = _app_pont(s)
+    c = _client(sf)
+    jeton_tenant = auth.create_token(1, 1)  # porte « uid »/« tid », jamais « pid »
+    assert c.get("/pont/v1/compte",
+                 headers={"Authorization": f"Bearer {jeton_tenant}"}).status_code == 401
+
+
+# --- Confidentialite du journal -------------------------------------------
+
+def test_la_cle_d_idempotence_n_est_pas_stockee_en_clair():
+    """Elle porte souvent un identifiant metier : « paiement-2026-114 » revele la
+    nomenclature interne du client sans rien nous apporter."""
+    sf = _factory()
+    s = sf()
+    _, cle = _app_pont(s)
+    c = _client(sf)
+    c.post("/pont/v1/messages", json=_corps(), headers=_entetes(cle, "paiement-2026-114"))
+    ligne = s.query(models.PontEnvoi).first()
+    assert "paiement" not in ligne.idempotence_hmac
+    assert ligne.idempotence_hmac == pont.empreinte_idempotence("paiement-2026-114")
+
+
+def test_le_journal_se_purge():
+    """Aucune raison de garder indefiniment de quoi reconstituer le rythme
+    d'activite d'un client."""
+    from datetime import datetime, timedelta
+
+    sf = _factory()
+    s = sf()
+    a, _ = _app_pont(s)
+    s.add(models.PontEnvoi(app_id=a.id, idempotence_hmac="vieux", destinataire_hmac="x",
+                           genre="texte", statut="envoye",
+                           created_at=datetime.utcnow() - timedelta(days=pont.RETENTION_JOURS + 1)))
+    s.add(models.PontEnvoi(app_id=a.id, idempotence_hmac="recent", destinataire_hmac="x",
+                           genre="texte", statut="envoye", created_at=datetime.utcnow()))
+    s.commit()
+    assert pont.purger(s) == 1
+    assert s.query(models.PontEnvoi).count() == 1
+
+
+def test_les_numeros_se_normalisent_avant_comptage():
+    """Changer de format ne doit pas contourner un plafond."""
+    assert pont.empreinte("+229 90 00 00 01") == pont.empreinte("22990000001@c.us")
+
+
 # --- Authentification ------------------------------------------------------
 
 def test_sans_cle_rien_ne_part():
@@ -91,12 +242,18 @@ def test_cle_invalide_refusee():
 
 
 def test_compte_suspendu_refuse():
-    """L'interrupteur : couper un compte sans toucher au reste du service."""
+    """L'interrupteur : couper un compte sans toucher au reste du service.
+
+    403 et non 401 : la clé est valide, c'est le droit d'émettre qui est retiré.
+    Répondre 401 ferait chercher une clé perdue au lieu de la vraie cause.
+    """
     sf = _factory()
     s = sf()
     _, cle = _app_pont(s, statut="suspendu")
     c = _client(sf)
-    assert c.post("/pont/v1/messages", json=_corps(), headers=_entetes(cle)).status_code == 401
+    r = c.post("/pont/v1/messages", json=_corps(), headers=_entetes(cle))
+    assert r.status_code == 403 and r.json()["detail"] == "compte-suspendu"
+    assert _Canal.envoyes == []
 
 
 def test_la_cle_n_est_jamais_stockee_en_clair():

@@ -48,10 +48,136 @@ def _cle_hmac() -> bytes:
     return brute.encode()
 
 
+def _empreinte(valeur: str) -> str:
+    return hmac.new(_cle_hmac(), (valeur or "").encode(), hashlib.sha256).hexdigest()
+
+
 def empreinte(numero: str) -> str:
-    """Empreinte stable d'un numero. Jamais reversible, toujours comparable."""
-    normalise = "".join(c for c in (numero or "") if c.isdigit())
-    return hmac.new(_cle_hmac(), normalise.encode(), hashlib.sha256).hexdigest()
+    """Empreinte stable d'un numero. Jamais reversible, toujours comparable.
+
+    Les chiffres seuls sont retenus : `+229 90 00 00 01`, `22990000001` et
+    `22990000001@c.us` designent le meme destinataire et doivent partager un
+    plafond. Sans cette normalisation, changer de format contournerait la borne.
+    """
+    return _empreinte("".join(c for c in (numero or "") if c.isdigit()))
+
+
+def empreinte_idempotence(cle: str) -> str:
+    """Empreinte d'une cle d'idempotence.
+
+    Elle est choisie par l'appelant et porte souvent un identifiant metier : la
+    stocker en clair fuiterait sa nomenclature interne sans rien nous apporter.
+    """
+    return _empreinte((cle or "").strip())
+
+
+# --- Comptes developpeurs --------------------------------------------------
+#
+# Authentification distincte de celle des etablissements : un compte de pont
+# n'est pas un `Tenant` et n'a rien a faire dans la table des utilisateurs. Le
+# jeton porte la revendication `pid`, jamais `tid` — un jeton d'assistant ne
+# peut donc pas ouvrir le pont, ni l'inverse.
+
+# Version des conditions. Changer le texte sans changer ce numero laisserait
+# croire que d'anciens comptes ont accepte un texte qu'ils n'ont jamais lu.
+CONDITIONS_VERSION = "2026-08-24"
+
+# Retention du journal d'envois. Il ne porte que des metadonnees, mais il n'y a
+# aucune raison de garder indefiniment de quoi reconstituer le rythme d'activite
+# d'un client. Au-dela, on purge.
+RETENTION_JOURS = 90
+
+
+def inscrire(session, nom: str, email: str, mot_de_passe: str):
+    """Cree un compte de pont. Il ne peut rien emettre avant validation."""
+    from saas import auth
+
+    email = (email or "").strip().lower()
+    if not email or not nom.strip():
+        raise ValueError("Nom et adresse électronique obligatoires.")
+    if len(mot_de_passe or "") < 8:
+        raise ValueError("Mot de passe de 8 caractères au minimum.")
+    if session.query(models.PontApp).filter_by(email=email).first():
+        raise ValueError("Un compte existe déjà pour cette adresse.")
+
+    app = models.PontApp(
+        nom=nom.strip()[:120], email=email,
+        password_hash=auth.hash_password(mot_de_passe),
+        session_name="", statut="en_attente",
+    )
+    session.add(app)
+    session.flush()
+    # Le nom de session derive de l'identifiant : il ne peut donc etre ni devine
+    # ni choisi, et ne collisionne jamais avec la convention `t{id}` des tenants.
+    app.session_name = f"pont{app.id}"
+    session.commit()
+    return app
+
+
+def authentifier(session, email: str, mot_de_passe: str):
+    from saas import auth
+
+    app = session.query(models.PontApp).filter_by(email=(email or "").strip().lower()).first()
+    if not app or not auth.verify_password(mot_de_passe or "", app.password_hash or ""):
+        return None
+    return app
+
+
+def creer_token(app_id: int) -> str:
+    import time
+
+    import jwt as _jwt
+    from saas import auth
+
+    charge = {"pid": app_id, "iat": int(time.time()), "exp": int(time.time()) + 7 * 24 * 3600}
+    return _jwt.encode(charge, auth.JWT_SECRET, algorithm=auth.JWT_ALGO)
+
+
+def app_pour_token(session, token: str):
+    import jwt as _jwt
+    from saas import auth
+
+    try:
+        charge = _jwt.decode(token, auth.JWT_SECRET, algorithms=[auth.JWT_ALGO])
+    except Exception:
+        return None
+    pid = charge.get("pid")
+    return session.get(models.PontApp, pid) if pid else None
+
+
+def conditions_acceptees(app) -> bool:
+    """Vraies conditions, dans leur version courante. Un texte revise doit etre
+    re-accepte : sinon on opposerait a un developpeur des regles qu'il n'a pas vues."""
+    return bool(app.conditions_le) and (app.conditions_version or "") == CONDITIONS_VERSION
+
+
+def accepter_conditions(session, app):
+    app.conditions_le = datetime.utcnow()
+    app.conditions_version = CONDITIONS_VERSION
+    session.commit()
+    return app
+
+
+def peut_emettre(app) -> tuple[bool, str]:
+    """Trois verrous, dans l'ordre ou le developpeur peut les lever."""
+    if not conditions_acceptees(app):
+        return False, "conditions-non-acceptees"
+    if app.statut == "suspendu":
+        return False, "compte-suspendu"
+    if app.statut != "actif":
+        return False, "compte-non-valide"
+    if not (app.prefixe_cle or ""):
+        return False, "aucune-cle"
+    return True, ""
+
+
+def purger(session, jours: int = RETENTION_JOURS) -> int:
+    """Efface les traces d'envoi au-dela de la retention. Renvoie le nombre efface."""
+    limite = datetime.utcnow() - timedelta(days=jours)
+    n = (session.query(models.PontEnvoi)
+         .filter(models.PontEnvoi.created_at < limite).delete(synchronize_session=False))
+    session.commit()
+    return n
 
 
 # --- Cles d'API ------------------------------------------------------------
@@ -77,7 +203,11 @@ def app_pour_cle(session, cle: str):
     attendu = hashlib.sha256(cle.encode()).hexdigest()
     if not hmac.compare_digest(attendu, app.cle_hash or ""):
         return None
-    return app if app.statut == "actif" else None
+    # Le statut n'est PAS filtré ici : authentifier n'est pas autoriser. Une clé
+    # valide sur un compte suspendu doit ouvrir `/statut` pour que son
+    # propriétaire lise « suspendu » plutôt qu'un 401 qui lui ferait croire à une
+    # clé perdue. Le droit d'émettre se décide dans `peut_emettre`.
+    return app
 
 
 # --- Garde-fous ------------------------------------------------------------
@@ -151,14 +281,14 @@ def envoi_existant(session, app_id: int, idempotence: str):
     if not idempotence:
         return None
     return (session.query(models.PontEnvoi)
-            .filter_by(app_id=app_id, idempotence=idempotence).first())
+            .filter_by(app_id=app_id, idempotence_hmac=empreinte_idempotence(idempotence)).first())
 
 
 def journaliser(session, app_id: int, idempotence: str, emp: str, genre: str,
                 taille: int, statut: str, motif: str = ""):
     ligne = models.PontEnvoi(
-        app_id=app_id, idempotence=idempotence, destinataire_hmac=emp,
-        genre=genre, taille=taille, statut=statut, motif=motif,
+        app_id=app_id, idempotence_hmac=empreinte_idempotence(idempotence),
+        destinataire_hmac=emp, genre=genre, taille=taille, statut=statut, motif=motif,
     )
     session.add(ligne)
     try:

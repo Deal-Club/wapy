@@ -10,6 +10,7 @@ from sqlalchemy import (
     Column,
     DateTime,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
@@ -250,13 +251,23 @@ class PontApp(Base):
     __tablename__ = "pont_apps"
     id = Column(Integer, primary_key=True)
     nom = Column(String(120), nullable=False)
-    email = Column(String(255), nullable=False)
-    # 12 premiers caracteres de la cle : identifiant, pas secret.
-    prefixe_cle = Column(String(16), unique=True, index=True, nullable=False)
-    cle_hash = Column(String(64), nullable=False)
+    email = Column(String(255), unique=True, nullable=False)
+    password_hash = Column(String(255), nullable=False, default="")
+    # Conditions d'utilisation : tant qu'elles ne sont pas acceptees, aucun envoi.
+    # Horodatage et non booleen : en cas de litige, la question est « quand », pas
+    # « si ». La version acceptee est figee pour que reediter le texte n'efface
+    # pas ce qui a ete accepte.
+    conditions_le = Column(DateTime)
+    conditions_version = Column(String(20), default="")
+    # 18 premiers caracteres de la cle : identifiant, pas secret.
+    prefixe_cle = Column(String(16), unique=True, index=True)
+    cle_hash = Column(String(64), default="")
     # Session WAHA dediee. Un bannissement de ce numero ne touche aucun bot.
     session_name = Column(String(120), unique=True, nullable=False)
-    statut = Column(String(20), default="actif")  # actif | suspendu
+    # Un compte s'inscrit librement mais n'emet rien avant validation : la porte
+    # est ouverte, la capacite ne l'est pas. Le developpeur peut donc preparer
+    # toute son integration pendant que la demande est examinee.
+    statut = Column(String(20), default="en_attente")  # en_attente | actif | suspendu
     # Debits. Le pont est gratuit : ces bornes sont la seule chose qui empeche
     # qu'il devienne un relais de diffusion.
     intervalle_min_s = Column(Integer, default=3)     # lissage : jamais de rafale
@@ -277,16 +288,23 @@ class PontEnvoi(Base):
     __tablename__ = "pont_envois"
     id = Column(Integer, primary_key=True)
     app_id = Column(Integer, ForeignKey("pont_apps.id"), nullable=False, index=True)
-    # Fournie par l'appelant. Rejouer la meme requete ne renvoie pas un 2e message.
-    idempotence = Column(String(80), nullable=False)
-    destinataire_hmac = Column(String(64), nullable=False, index=True)
+    # Cle d'idempotence, sous forme d'empreinte : elle est choisie par l'appelant
+    # et porte souvent un identifiant metier (« paiement-2026-114 »). La stocker
+    # en clair fuiterait sa nomenclature interne sans rien nous apporter — la
+    # comparaison d'egalite suffit, et une empreinte la permet.
+    idempotence_hmac = Column(String(64), nullable=False)
+    destinataire_hmac = Column(String(64), nullable=False)
     genre = Column(String(20), nullable=False)  # texte | otp
     taille = Column(Integer, default=0)
     statut = Column(String(20), nullable=False)  # envoye | refuse | echec
     motif = Column(String(60), default="")
-    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
     __table_args__ = (
-        UniqueConstraint("app_id", "idempotence", name="uq_pont_idem"),
+        UniqueConstraint("app_id", "idempotence_hmac", name="uq_pont_idem"),
+        # Tous les controles de debit interrogent (compte, date), et le plafond
+        # par destinataire y ajoute l'empreinte. Un index composite evite de
+        # parcourir l'historique du compte a chaque envoi.
+        Index("ix_pont_envois_debit", "app_id", "created_at", "destinataire_hmac"),
     )
 
 

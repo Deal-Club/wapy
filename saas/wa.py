@@ -22,10 +22,74 @@ def channel_for(tenant) -> WahaProvider:
     return WahaProvider(WAHA_BASE_URL, session_name(tenant.id), WAHA_API_KEY)
 
 
-def channel_for_session(sname: str) -> WahaProvider:
-    """Canal d'une session nommée. Sert au pont développeurs, dont la session est
-    dédiée et ne suit pas la convention `t{id}` des tenants."""
-    return WahaProvider(WAHA_BASE_URL, sname, WAHA_API_KEY)
+# --- Pont développeurs : instance WAHA distincte ----------------------------
+#
+# Séparée de celle des assistants, et pas seulement par principe. Un développeur
+# qui pousse du volume ne doit pas pouvoir dégrader le bot d'un client qui paie,
+# et un incident sur l'une des deux instances ne doit pas toucher l'autre.
+# En développement, faute des deux variables, tout retombe sur l'instance unique.
+WAHA_PONT_BASE_URL = os.environ.get("WAHA_PONT_BASE_URL", "").strip() or WAHA_BASE_URL
+WAHA_PONT_API_KEY = os.environ.get("WHATSAPP_PONT_API_KEY", "").strip() or WAHA_API_KEY
+
+
+def channel_pont(sname: str) -> WahaProvider:
+    """Canal d'une session de pont. Ne suit pas la convention `t{id}` des tenants."""
+    return WahaProvider(WAHA_PONT_BASE_URL, sname, WAHA_PONT_API_KEY)
+
+
+def pont_isole() -> bool:
+    """Vrai si le pont tourne bien sur son instance dédiée (contrôle d'exploitation)."""
+    return WAHA_PONT_BASE_URL != WAHA_BASE_URL
+
+
+def _entetes_pont() -> dict:
+    return {"X-Api-Key": WAHA_PONT_API_KEY} if WAHA_PONT_API_KEY else {}
+
+
+def demarrer_session_pont(sname: str, webhook_url: str) -> None:
+    """Démarre une session sur l'instance du pont, à zéro.
+
+    Pas de store NOWEB ici, contrairement aux assistants : le pont n'a pas à
+    résoudre les @lid puisqu'il ne reconnaît personne et ne répond à personne.
+    Moins d'état conservé, moins de mémoire, moins de données au repos.
+    """
+    try:
+        requests.delete(f"{WAHA_PONT_BASE_URL}/api/sessions/{sname}",
+                        headers=_entetes_pont(), timeout=15)
+    except Exception:
+        pass
+    requests.post(
+        f"{WAHA_PONT_BASE_URL}/api/sessions",
+        json={
+            "name": sname,
+            "start": True,
+            "config": {
+                "webhooks": [{"url": webhook_url, "events": ["message", "session.status"]}],
+                "client": {"deviceName": "Wapy Pont", "browserName": "Wapy"},
+            },
+        },
+        headers=_entetes_pont(),
+        timeout=30,
+    )
+
+
+def qr_pont(sname: str) -> bytes:
+    r = requests.get(f"{WAHA_PONT_BASE_URL}/api/{sname}/auth/qr?format=image",
+                     headers=_entetes_pont(), timeout=30)
+    r.raise_for_status()
+    return r.content
+
+
+def etat_pont(sname: str) -> str:
+    try:
+        r = requests.get(f"{WAHA_PONT_BASE_URL}/api/sessions/{sname}",
+                         headers=_entetes_pont(), timeout=15)
+        if r.status_code == 404:
+            return "STOPPED"
+        r.raise_for_status()
+        return (r.json() or {}).get("status") or "UNKNOWN"
+    except Exception:
+        return "UNKNOWN"
 
 
 def tenant_for_session(session, sname: str):

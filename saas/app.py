@@ -1347,12 +1347,103 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
     # L'authentification passe par l'en-tête `Authorization`, jamais par l'URL :
     # une clé dans une chaîne de requête finit dans les journaux du proxy, dans
     # l'historique du navigateur et dans les référents sortants.
-    def pont_app(authorization: str = Header(None), s=Depends(db)):
+    # Compte développeur : jeton de session, distinct de la clé d'API. La clé sert
+    # aux machines, le jeton à la console. Confondre les deux ferait circuler dans
+    # un navigateur un secret conçu pour vivre sur un serveur.
+    def pont_compte(authorization: str = Header(None), s=Depends(db)):
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(status_code=401, detail="Session expirée, reconnectez-vous.")
+        compte = pont.app_pour_token(s, authorization[7:].strip())
+        if not compte:
+            raise HTTPException(status_code=401, detail="Session expirée, reconnectez-vous.")
+        return compte
+
+    def _etat_compte(s, compte) -> dict:
+        peut, motif = pont.peut_emettre(compte)
+        return {
+            "nom": compte.nom,
+            "email": compte.email,
+            "statut": compte.statut,
+            "peut_emettre": peut,
+            "blocage": motif,
+            "conditions_acceptees": pont.conditions_acceptees(compte),
+            "conditions_version": pont.CONDITIONS_VERSION,
+            "cle_prefixe": compte.prefixe_cle or "",
+            "session": compte.session_name,
+            "whatsapp": wa.etat_pont(compte.session_name) if compte.session_name else "STOPPED",
+        }
+
+    @app.post("/pont/auth/inscription")
+    def pont_inscription(body: dict = Body(...), s=Depends(db)):
+        try:
+            compte = pont.inscrire(s, body.get("nom") or "", body.get("email") or "",
+                                   body.get("mot_de_passe") or "")
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return {"token": pont.creer_token(compte.id), "compte": _etat_compte(s, compte)}
+
+    @app.post("/pont/auth/connexion")
+    def pont_connexion(body: dict = Body(...), s=Depends(db)):
+        compte = pont.authentifier(s, body.get("email") or "", body.get("mot_de_passe") or "")
+        if not compte:
+            raise HTTPException(status_code=401, detail="Identifiants invalides.")
+        return {"token": pont.creer_token(compte.id), "compte": _etat_compte(s, compte)}
+
+    @app.get("/pont/v1/compte")
+    def pont_mon_compte(compte=Depends(pont_compte), s=Depends(db)):
+        return _etat_compte(s, compte)
+
+    @app.post("/pont/v1/conditions")
+    def pont_accepter_conditions(compte=Depends(pont_compte), s=Depends(db)):
+        pont.accepter_conditions(s, compte)
+        return _etat_compte(s, compte)
+
+    @app.post("/pont/v1/cle")
+    def pont_nouvelle_cle(compte=Depends(pont_compte), s=Depends(db)):
+        """Émet une clé d'API. La précédente cesse immédiatement de fonctionner.
+
+        La clé n'est montrée qu'ici et jamais relue : nous n'en gardons que
+        l'empreinte. Perdue, elle se remplace ; elle ne se retrouve pas.
+        """
+        if not pont.conditions_acceptees(compte):
+            raise HTTPException(status_code=403, detail="conditions-non-acceptees")
+        cle, prefixe, empreinte_cle = pont.generer_cle()
+        compte.prefixe_cle, compte.cle_hash = prefixe, empreinte_cle
+        s.commit()
+        return {"cle": cle, "prefixe": prefixe,
+                "avertissement": "Notez-la maintenant : elle ne sera plus jamais affichée."}
+
+    @app.post("/pont/v1/whatsapp/connexion")
+    def pont_wa_connexion(compte=Depends(pont_compte), s=Depends(db)):
+        if not pont.conditions_acceptees(compte):
+            raise HTTPException(status_code=403, detail="conditions-non-acceptees")
+        wa.demarrer_session_pont(compte.session_name, WEBHOOK_URL)
+        return {"session": compte.session_name, "whatsapp": wa.etat_pont(compte.session_name)}
+
+    @app.get("/pont/v1/whatsapp/qr")
+    def pont_wa_qr(compte=Depends(pont_compte)):
+        try:
+            return Response(content=wa.qr_pont(compte.session_name), media_type="image/png")
+        except Exception:
+            raise HTTPException(status_code=409, detail="QR indisponible : relancez la connexion.")
+
+    def pont_app_lecture(authorization: str = Header(None), s=Depends(db)):
+        """Clé valide, sans exiger le droit d'émettre : `/statut` doit rester
+        lisible même bloqué, sinon le développeur ne peut pas voir ce qui cloche."""
         if not authorization or not authorization.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Clé d'API manquante.")
         app_pont = pont.app_pour_cle(s, authorization[7:].strip())
         if not app_pont:
             raise HTTPException(status_code=401, detail="Clé d'API invalide ou compte suspendu.")
+        return app_pont
+
+    def pont_app(app_pont=Depends(pont_app_lecture)):
+        # Trois verrous avant tout envoi : conditions acceptées, compte validé,
+        # clé émise. Le message nomme lequel a cédé — un développeur bloqué doit
+        # savoir quoi corriger, pas deviner.
+        ok, motif = pont.peut_emettre(app_pont)
+        if not ok:
+            raise HTTPException(status_code=403, detail=motif)
         return app_pont
 
     def _pont_envoyer(s, app_pont, destinataire: str, texte: str, genre: str,
@@ -1441,14 +1532,19 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
                              (idempotency_key or "").strip())
 
     @app.get("/pont/v1/statut")
-    def pont_statut(app_pont=Depends(pont_app), s=Depends(db)):
+    def pont_statut(app_pont=Depends(pont_app_lecture), s=Depends(db)):
         """État du compte et consommation. Aucune donnée de destinataire."""
         from datetime import timedelta as _td
 
         maintenant = datetime.utcnow()
+        peut, motif = pont.peut_emettre(app_pont)
         return {
             "nom": app_pont.nom,
             "statut": app_pont.statut,
+            "peut_emettre": peut,
+            "blocage": motif,
+            "conditions_acceptees": pont.conditions_acceptees(app_pont),
+            "conditions_version": pont.CONDITIONS_VERSION,
             "numero_connecte": bool(app_pont.session_name),
             "limites": {
                 "intervalle_min_s": app_pont.intervalle_min_s,
