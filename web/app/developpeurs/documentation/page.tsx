@@ -126,6 +126,37 @@ export default function DocumentationPont() {
     "consentement": "inscription-2026-114"
   }'`}</Bloc>
           <Bloc titre="Réponse">{`{ "id": 1042, "statut": "envoye", "rejeu": false }`}</Bloc>
+
+          <p className="mt-6">
+            <strong>Sous Windows PowerShell</strong>, la commande ci-dessus ne fonctionne pas :{" "}
+            <code className="font-mono text-ink">curl</code> y est un alias d&apos;
+            <code className="font-mono text-ink">Invoke-WebRequest</code>, qui ignore{" "}
+            <code className="font-mono text-ink">-X</code>,{" "}
+            <code className="font-mono text-ink">-H</code> et{" "}
+            <code className="font-mono text-ink">-d</code>, et les{" "}
+            <code className="font-mono text-ink">\</code> de fin de ligne n&apos;y sont pas des
+            continuations. Utilisez plutôt&nbsp;:
+          </p>
+          <Bloc titre="PowerShell">{`$corps = @{
+  destinataire = "+22990000001"
+  texte        = "Paiement reçu : 50 000 FCFA. Merci."
+  consentement = "inscription-2026-114"
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri "https://wapy.pro/pont/v1/messages" \`
+  -Headers @{
+    "Authorization"   = "Bearer $env:WAPY_PONT_CLE"
+    "Idempotency-Key" = "paiement-2026-114"
+  } \`
+  -ContentType "application/json; charset=utf-8" \`
+  -Body ([System.Text.Encoding]::UTF8.GetBytes($corps))`}</Bloc>
+          <p>
+            Les deux dernières lignes ne sont pas décoratives : sans elles, Windows PowerShell 5.1
+            encode le corps dans la page de codes du système et « Paiement reçu » arrive mutilé chez
+            votre client. Le binaire <code className="font-mono text-ink">curl.exe</code> reste
+            disponible si vous préférez la syntaxe Unix — mais appelez-le par son nom complet, sinon
+            c&apos;est l&apos;alias qui répond.
+          </p>
         </Section>
 
         <Section id="otp" titre="Envoyer un code de vérification">
