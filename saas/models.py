@@ -259,8 +259,12 @@ class PontApp(Base):
     # pas ce qui a ete accepte.
     conditions_le = Column(DateTime)
     conditions_version = Column(String(20), default="")
-    # 18 premiers caracteres de la cle : identifiant, pas secret.
-    prefixe_cle = Column(String(16), unique=True, index=True)
+    # Premiers caracteres de la cle : identifiant, pas secret. La longueur exacte
+    # vit dans `pont.LONGUEUR_PREFIXE` ; la colonne garde de la marge, et un test
+    # verifie que la valeur generee y tient. SQLite n'applique pas les longueurs
+    # de VARCHAR, PostgreSQL si : sans ce test, l'ecart ne se voit qu'en
+    # production, au premier appel reel.
+    prefixe_cle = Column(String(32), unique=True, index=True)
     cle_hash = Column(String(64), default="")
     # Session WAHA dediee. Un bannissement de ce numero ne touche aucun bot.
     session_name = Column(String(120), unique=True, nullable=False)

@@ -337,6 +337,29 @@ def test_compte_suspendu_refuse():
     assert _Canal.envoyes == []
 
 
+def test_les_valeurs_generees_tiennent_dans_leurs_colonnes():
+    """SQLite n'applique pas les longueurs de VARCHAR, PostgreSQL si.
+
+    Sans ce test, un écart entre une constante et sa colonne ne se voit qu'en
+    production, au premier appel réel — c'est exactement ce qui est arrivé avec
+    `LONGUEUR_PREFIXE = 18` dans une colonne de 16.
+    """
+    cle, prefixe, empreinte_cle = pont.generer_cle()
+    attendues = {
+        (models.PontApp, "prefixe_cle"): prefixe,
+        (models.PontApp, "cle_hash"): empreinte_cle,
+        (models.PontEnvoi, "destinataire_hmac"): pont.empreinte("+22990000001"),
+        (models.PontEnvoi, "idempotence_hmac"): pont.empreinte_idempotence("paiement-2026-114"),
+    }
+    for (modele, colonne), valeur in attendues.items():
+        limite = modele.__table__.columns[colonne].type.length
+        assert limite is not None, f"{colonne} sans longueur déclarée"
+        assert len(valeur) <= limite, (
+            f"{modele.__tablename__}.{colonne} : {len(valeur)} caractères générés "
+            f"pour une colonne de {limite}"
+        )
+
+
 def test_la_cle_n_est_jamais_stockee_en_clair():
     sf = _factory()
     s = sf()
