@@ -1497,9 +1497,10 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         if not idempotence:
             raise HTTPException(status_code=400, detail="En-tête Idempotency-Key obligatoire.")
         deja = pont.envoi_existant(s, app_pont.id, idempotence)
-        if deja:
-            # Rejeu : on ne renvoie PAS un second message. C'est ce qui empêche
-            # qu'un délai réseau annonce deux fois un paiement au même parent.
+        if pont.rejeu_bloquant(deja):
+            # Rejeu d'un envoi RÉUSSI : on ne renvoie pas un second message. C'est
+            # ce qui empêche qu'un délai réseau annonce deux fois un paiement au
+            # même parent. Un échec ou un refus antérieur, lui, se retente.
             return {"id": deja.id, "statut": deja.statut, "motif": deja.motif, "rejeu": True}
 
         jid = phone.to_jid(destinataire)
@@ -1521,10 +1522,21 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
                                 headers={"Retry-After": str(attente)} if attente else None)
 
         try:
-            wa.channel_for_session(app_pont.session_name).send_text(jid, texte)
-        except Exception:
+            wa.channel_pont(app_pont.session_name).send_text(jid, texte)
+        except Exception as e:
+            # La cause est journalisée, jamais renvoyée : elle peut contenir des
+            # détails d'infrastructure. Sans cette trace, un 502 est indiagnostiquable
+            # après coup — il a fallu rejouer l'appel à la main pour comprendre le
+            # premier qui soit survenu en production.
+            detail = getattr(getattr(e, "response", None), "text", "") or str(e)
+            logger.warning("Pont %s : envoi impossible (%s) — %s",
+                           app_pont.id, type(e).__name__, detail[:300])
             pont.journaliser(s, app_pont.id, idempotence, emp, genre, len(texte), "echec", "envoi-impossible")
-            raise HTTPException(status_code=502, detail="Le numéro WhatsApp du compte n'a pas pu émettre.")
+            raise HTTPException(
+                status_code=502,
+                detail="Le numéro WhatsApp du compte n'a pas pu émettre. "
+                       "Vérifiez qu'il est bien connecté, puis réessayez avec la même clé.",
+            )
 
         ligne = pont.journaliser(s, app_pont.id, idempotence, emp, genre, len(texte), "envoye")
         return {"id": getattr(ligne, "id", 0), "statut": "envoye", "rejeu": False}
@@ -1617,7 +1629,7 @@ def create_app(session_factory=None, channel_factory=None, brain=None, wa_module
         app_pont = s.query(models.PontApp).filter_by(session_name=sname).first() if sname else None
         if app_pont is not None:
             try:
-                msg = wa.channel_for_session(sname).parse_incoming(payload)
+                msg = wa.channel_pont(sname).parse_incoming(payload)
             except Exception:
                 msg = None
             from safety.guards import detect_optout

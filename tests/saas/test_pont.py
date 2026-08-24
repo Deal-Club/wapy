@@ -70,7 +70,13 @@ def _client(sf, monkeypatch=None):
     _Canal.envoyes = []
     from saas import wa
 
-    wa.channel_for_session = lambda sname: _Canal()
+    # `assert hasattr` avant de remplacer : sans cette garde, un faux CREE la
+    # fonction qu'il croit remplacer. C'est exactement ce qui est arrive ici —
+    # `app.py` appelait `wa.channel_for_session`, supprimee en introduisant
+    # l'instance dediee, et le test la ressuscitait. La suite etait verte pendant
+    # que la production renvoyait 502 sur chaque envoi.
+    assert hasattr(wa, "channel_pont"), "wa.channel_pont a disparu : le faux masquerait le manque"
+    wa.channel_pont = lambda sname: _Canal()
     return TestClient(create_app(session_factory=sf))
 
 
@@ -414,6 +420,66 @@ def test_un_rejeu_n_envoie_pas_un_second_message():
     r2 = c.post("/pont/v1/messages", json=_corps(), headers=_entetes(cle, "paiement-42"))
     assert r1.status_code == 200 and r2.status_code == 200
     assert r2.json()["rejeu"] is True
+    assert len(_Canal.envoyes) == 1
+
+
+def test_un_echec_technique_se_retente_avec_la_meme_cle():
+    """Une cle d'idempotence ne doit pas garder une panne en memoire.
+
+    Sinon le paiement concerne ne serait jamais annonce : le developpeur devrait
+    inventer une seconde cle pour le meme evenement, ce qui defait exactement ce
+    que l'idempotence protege.
+    """
+    sf = _factory()
+    s = sf()
+    _, cle = _app_pont(s)
+    c = _client(sf)
+
+    class _Casse(_Canal):
+        def send_text(self, chat_id, texte):
+            raise RuntimeError("WAHA injoignable")
+
+    from saas import wa
+
+    wa.channel_pont = lambda sname: _Casse()
+    r1 = c.post("/pont/v1/messages", json=_corps(), headers=_entetes(cle, "paiement-77"))
+    assert r1.status_code == 502
+
+    wa.channel_pont = lambda sname: _Canal()
+    r2 = c.post("/pont/v1/messages", json=_corps(), headers=_entetes(cle, "paiement-77"))
+    assert r2.status_code == 200, r2.text
+    assert r2.json()["statut"] == "envoye" and r2.json()["rejeu"] is False
+    assert len(_Canal.envoyes) == 1
+    # La reprise remplace la trace au lieu d'en creer une seconde.
+    assert s.query(models.PontEnvoi).count() == 1
+
+
+def test_un_refus_de_quota_se_retente_quand_la_condition_a_change():
+    """Un plafond qui se libere doit rouvrir la meme cle : le refus etait
+    circonstanciel, pas definitif."""
+    sf = _factory()
+    s = sf()
+    a, cle = _app_pont(s, envois_par_heure=1)
+    c = _client(sf)
+    c.post("/pont/v1/messages", json=_corps(), headers=_entetes(cle, "premier"))
+    r = c.post("/pont/v1/messages", json=_corps(dest="+22990000002"), headers=_entetes(cle, "second"))
+    assert r.status_code == 429
+
+    a.envois_par_heure = 100
+    s.commit()
+    r2 = c.post("/pont/v1/messages", json=_corps(dest="+22990000002"), headers=_entetes(cle, "second"))
+    assert r2.status_code == 200 and r2.json()["statut"] == "envoye"
+
+
+def test_un_envoi_reussi_reste_bloquant():
+    """L'autre moitie du contrat, celle qui compte le plus."""
+    sf = _factory()
+    s = sf()
+    _, cle = _app_pont(s)
+    c = _client(sf)
+    c.post("/pont/v1/messages", json=_corps(), headers=_entetes(cle, "unique"))
+    r = c.post("/pont/v1/messages", json=_corps(), headers=_entetes(cle, "unique"))
+    assert r.json()["rejeu"] is True
     assert len(_Canal.envoyes) == 1
 
 

@@ -284,8 +284,40 @@ def envoi_existant(session, app_id: int, idempotence: str):
             .filter_by(app_id=app_id, idempotence_hmac=empreinte_idempotence(idempotence)).first())
 
 
+def rejeu_bloquant(ligne) -> bool:
+    """Une tentative anterieure empeche-t-elle un nouvel essai ?
+
+    Seul un envoi REUSSI bloque : c'est le doublon qu'il faut empecher, pas la
+    reprise. Une cle d'idempotence qui garderait une panne technique en memoire
+    condamnerait le paiement concerne a n'etre jamais annonce — le developpeur
+    devrait inventer une seconde cle pour le meme evenement, ce qui defait
+    exactement ce que l'idempotence protege.
+
+    Un refus (quota, desabonnement) ne bloque pas non plus : la condition qui
+    l'a motive peut avoir change entre-temps.
+    """
+    return bool(ligne) and ligne.statut == "envoye"
+
+
 def journaliser(session, app_id: int, idempotence: str, emp: str, genre: str,
                 taille: int, statut: str, motif: str = ""):
+    # Une tentative precedente non aboutie est REMPLACEE, pas dupliquee :
+    # l'unicite de la cle d'idempotence l'interdirait, et l'historique d'un echec
+    # deja repare n'apprend rien.
+    ancienne = envoi_existant(session, app_id, idempotence)
+    if ancienne is not None:
+        ancienne.destinataire_hmac = emp
+        ancienne.genre = genre
+        ancienne.taille = taille
+        ancienne.statut = statut
+        ancienne.motif = motif
+        ancienne.created_at = datetime.utcnow()
+        try:
+            session.commit()
+        except Exception:
+            session.rollback()
+        return ancienne
+
     ligne = models.PontEnvoi(
         app_id=app_id, idempotence_hmac=empreinte_idempotence(idempotence),
         destinataire_hmac=emp, genre=genre, taille=taille, statut=statut, motif=motif,
