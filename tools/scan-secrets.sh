@@ -83,8 +83,12 @@ grep_regle() {
 }
 
 demandes=("$@")
-if [ "${#demandes[@]}" -eq 0 ]; then
-  mapfile -t demandes < <(git ls-files)
+if [ "$#" -eq 0 ]; then
+  # Boucle de lecture plutot que `mapfile` : absent du bash 3.2 de macOS.
+  demandes=()
+  while IFS= read -r fichier; do
+    demandes+=("$fichier")
+  done < <(git ls-files)
 fi
 
 # Noms interdits (pur bash) + tri des fichiers reellement lisibles.

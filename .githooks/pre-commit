@@ -9,7 +9,13 @@
 set -uo pipefail
 
 racine="$(git rev-parse --show-toplevel)"
-mapfile -t indexes < <(git diff --cached --name-only --diff-filter=ACMR)
+# Boucle de lecture plutot que `mapfile` : macOS ne livre que bash 3.2, ou le
+# builtin n'existe pas. Il echouait en silence, puis `set -u` faisait sortir le
+# hook en erreur — donc tout commit refuse sur Mac, y compris sans secret.
+indexes=()
+while IFS= read -r fichier; do
+  indexes+=("$fichier")
+done < <(git diff --cached --name-only --diff-filter=ACMR)
 [ "${#indexes[@]}" -eq 0 ] && exit 0
 
 if ! "$racine/tools/scan-secrets.sh" "${indexes[@]}"; then

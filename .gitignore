@@ -1,6 +1,10 @@
 .env
 credentials.json
 wapy.db
+# Base SQLite de la plateforme en local (defaut de saas/db.py) : donnees clients.
+wapy_platform.db
+# Environnement Python local
+.venv/
 *.log
 __pycache__/
 *.pyc
